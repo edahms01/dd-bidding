@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dirigo Drywall — Bid System</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="12" height="10" rx="1.5"/>
+          <line x1="5" y1="7" x2="11" y2="7"/>
+          <line x1="5" y1="10" x2="8" y2="10"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-name">Dirigo Drywall</div>
+        <div class="logo-sub">Bid System</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="proj-badge">Project: <span>New bid</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="saveDraft()">Save draft</button>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <nav class="tabs">
+    <div class="tab active" onclick="goto('project')" id="tab-project"><span class="tnum">1</span> Project</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('conditions')" id="tab-conditions"><span class="tnum">2</span> Conditions</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('rates')" id="tab-rates"><span class="tnum">3</span> Rates</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('assemblies')" id="tab-assemblies"><span class="tnum">4</span> Assemblies</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('walls')" id="tab-walls"><span class="tnum">5</span> Walls</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('ceilings')" id="tab-ceilings"><span class="tnum">6</span> Ceilings</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('output')" id="tab-output"><span class="tnum">7</span> Bid output</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('history')" id="tab-history"><span class="tnum">8</span> Bid history</div>
+    <div class="tab-sep">›</div>
+    <div class="tab" onclick="goto('agent')" id="tab-agent"><span class="tnum">9</span> Agent</div>
+  </nav>
+
+  <div class="body">
+
+    <!-- ── PAGE 1: PROJECT ── -->
+    <div class="page active" id="page-project">
+      <div class="page-hdr">
+        <div><div class="page-title">Project</div><div class="page-sub">Basic info and scope for this bid</div></div>
+        <div class="page-actions"><button class="btn btn-primary" onclick="goto('conditions')">Next: Conditions →</button></div>
+      </div>
+      <div class="grid g3">
+        <div class="field"><span class="lbl">Project name</span><input type="text" id="proj-name" placeholder="e.g. 400 Main St Office Tower"></div>
+        <div class="field"><span class="lbl">General contractor</span><input type="text" id="proj-gc" placeholder="GC company name"></div>
+        <div class="field"><span class="lbl">Bid due date</span><input type="date" id="proj-bid"></div>
+      </div>
+      <div class="grid g3">
+        <div class="field"><span class="lbl">Project address</span><input type="text" placeholder="Street, city, state"></div>
+        <div class="field"><span class="lbl">Building type</span>
+          <select id="proj-type"><option value="">Select…</option><option>Office</option><option>Retail</option><option>Healthcare</option><option>Education</option><option>Hospitality</option><option>Mixed use</option><option>Other</option></select>
+        </div>
+        <div class="field"><span class="lbl">Drawing set ref</span><input type="text" placeholder="e.g. Rev B — 2024-03-15"></div>
+      </div>
+      <div class="grid g3">
+        <div class="field"><span class="lbl">Est. start date</span><input type="date" id="proj-start"></div>
+        <div class="field"><span class="lbl">Duration (weeks)</span><input id="proj-duration" type="number" min="1" placeholder="e.g. 12"></div>
+        <div class="field"><span class="lbl">Number of floors</span><input type="number" min="1" placeholder="e.g. 8"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label">Scope inclusions</div>
+      <div class="pills" style="margin-bottom:20px">
+        <div class="pill on" onclick="this.classList.toggle('on')">Metal framing</div>
+        <div class="pill on" onclick="this.classList.toggle('on')">Drywall</div>
+        <div class="pill" onclick="this.classList.toggle('on')">Plastering</div>
+        <div class="pill" onclick="this.classList.toggle('on')">External wall</div>
+        <div class="pill" onclick="this.classList.toggle('on')">Subcontractors</div>
+      </div>
+      <div class="field"><span class="lbl">Exclusions / notes</span><textarea placeholder="e.g. Excludes ACT ceiling grid. GC supplying blocking."></textarea></div>
+    </div>
+
+    <!-- ── PAGE 2: CONDITIONS ── -->
+    <div class="page" id="page-conditions">
+      <div class="page-hdr">
+        <div><div class="page-title">Conditions</div><div class="page-sub">Factors that affect labor rates, equipment needs, and contingency</div></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="goto('project')">← Back</button>
+          <button class="btn btn-primary" onclick="goto('rates')">Next: Rates →</button>
+        </div>
+      </div>
+      <div class="section-label">Height zones</div>
+      <div class="grid g3" style="margin-bottom:24px">
+        <div class="field"><span class="lbl">Max ceiling height (ft)</span><input id="cond-maxht" type="number" min="0" placeholder="e.g. 24"></div>
+        <div class="field"><span class="lbl">SF above 12 ft</span><input id="cond-sf12" type="number" min="0" placeholder="sq ft — triggers lift adder"></div>
+        <div class="field"><span class="lbl">SF above 20 ft</span><input id="cond-sf20" type="number" min="0" placeholder="sq ft — high-lift zone"></div>
+      </div>
+      <div class="section-label">Site flags</div>
+      <div class="flag-grid">
+        <div class="flag-card">
+          <span class="lbl">Curved walls</span>
+          <select id="f-curved" onchange="document.getElementById('f-curved-lf').style.display=this.value==='yes'?'block':'none'">
+            <option value="no">No</option><option value="yes">Yes</option>
+          </select>
+          <input type="number" min="0" id="f-curved-lf" placeholder="LF of curved walls" style="display:none">
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Exterior exposure</span>
+          <select><option value="no">No</option><option value="yes">Yes</option></select>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Phased work</span>
+          <select id="f-phase" onchange="document.getElementById('f-phase-n').style.display=this.value==='yes'?'block':'none'">
+            <option value="no">No</option><option value="yes">Yes</option>
+          </select>
+          <input type="number" min="0" id="f-phase-n" placeholder="Number of phases" style="display:none">
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Access difficulty</span>
+          <select><option value="normal">Normal</option><option value="restricted">Restricted</option></select>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Parking / unloading</span>
+          <select><option value="yes">Available</option><option value="no">Restricted</option></select>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Waste factor override</span>
+          <input id="cond-waste" type="number" min="0" placeholder="% — blank = default (10%)">
+        </div>
+      </div>
+      <div class="grid g2" style="margin-bottom:20px">
+        <div class="field"><span class="lbl">Estimated delivery trips</span><input id="cond-trips" type="number" min="0" placeholder="e.g. 4"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label" style="margin-bottom:10px">Estimator confidence</div>
+      <div class="conf-row" style="margin-bottom:20px;max-width:500px">
+        <button class="conf-btn" id="c-hi" onclick="setConf('hi')">High — straightforward</button>
+        <button class="conf-btn" id="c-md" onclick="setConf('md')">Medium — some unknowns</button>
+        <button class="conf-btn" id="c-lo" onclick="setConf('lo')">Low — significant risk</button>
+      </div>
+      <div class="field"><span class="lbl">Estimator notes</span><textarea style="min-height:100px" placeholder="Gut feelings, GC history, site concerns, anything not captured above…"></textarea></div>
+
+      <div class="divider" style="margin-top:24px"></div>
+      <div class="section-label">Market + competitive intelligence</div>
+
+      <div class="sub-lbl" style="margin-top:4px">Market signals</div>
+      <div class="flag-grid">
+        <div class="flag-card">
+          <span class="lbl">Crew availability</span>
+          <select id="intel-crew">
+            <option value="">Select…</option>
+            <option value="full">Fully available</option>
+            <option value="partial">Partially booked</option>
+            <option value="tight">Nearly full</option>
+          </select>
+          <div class="rhint">Tight crews = higher margin target — agent uses this to set pricing floor</div>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Pipeline pressure</span>
+          <select id="intel-pipeline">
+            <option value="">Select…</option>
+            <option value="need">Need this job</option>
+            <option value="neutral">Neutral</option>
+            <option value="pass">Can afford to pass</option>
+          </select>
+          <div class="rhint">Direct signal on aggressiveness — agent weighs this heavily against final bid</div>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Material price trend</span>
+          <select id="intel-material-trend">
+            <option value="">Select…</option>
+            <option value="stable">Stable</option>
+            <option value="rising">Rising</option>
+            <option value="falling">Falling</option>
+          </select>
+          <div class="rhint">Supplements escalation % — rising trend may warrant higher contingency</div>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">GC relationship</span>
+          <select id="intel-gc-rel">
+            <option value="">Select…</option>
+            <option value="strong">Strong</option>
+            <option value="neutral">Neutral</option>
+            <option value="new">New</option>
+            <option value="difficult">Difficult</option>
+          </select>
+          <div class="rhint">Strong relationships reduce payment risk and may justify tighter margin</div>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">GC price sensitivity</span>
+          <select id="intel-gc-price">
+            <option value="">Select…</option>
+            <option value="lowest">Always lowest price</option>
+            <option value="balanced">Balanced</option>
+            <option value="quality">Values quality</option>
+          </select>
+          <div class="rhint">Quality-focused GCs allow more margin; lowest-price GCs require sharp bids</div>
+        </div>
+      </div>
+
+      <div class="sub-lbl">Competitive signals</div>
+      <div class="flag-grid">
+        <div class="flag-card">
+          <span class="lbl">Competition level</span>
+          <select id="intel-competition">
+            <option value="">Select…</option>
+            <option value="light">Light (1–2 bidders)</option>
+            <option value="moderate">Moderate (3–4)</option>
+            <option value="heavy">Heavy (5+)</option>
+            <option value="unknown">Unknown</option>
+          </select>
+          <div class="rhint">More competition = tighter spread; agent adjusts recommended price accordingly</div>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Known competitors</span>
+          <input type="text" id="intel-competitors" placeholder="e.g. ABC Drywall, Smith &amp; Co.">
+          <div class="rhint">Logged for Phase 5B win-rate pattern analysis — not used in current calculation</div>
+        </div>
+        <div class="flag-card">
+          <span class="lbl">Dirigo's edge</span>
+          <select id="intel-edge">
+            <option value="">Select…</option>
+            <option value="strong">Strong — we're best fit</option>
+            <option value="neutral">Neutral</option>
+            <option value="weak">Weak — others better positioned</option>
+          </select>
+          <div class="rhint">Self-assessed fit — strong edge supports premium pricing over competitors</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE 3: RATES ── -->
+    <div class="page" id="page-rates">
+      <div class="page-hdr">
+        <div><div class="page-title">Rates</div><div class="page-sub">Current pricing for this project — labor, materials, and logistics</div></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="goto('conditions')">← Back</button>
+          <button class="btn btn-primary" onclick="goto('assemblies')">Next: Assemblies →</button>
+        </div>
+      </div>
+
+      <div class="totals-bar">
+        <div class="total-item"><div class="total-val" id="t-l">—</div><div class="total-lbl">Labor</div></div>
+        <div class="total-div"></div>
+        <div class="total-item"><div class="total-val" id="t-m">—</div><div class="total-lbl">Materials</div></div>
+        <div class="total-div"></div>
+        <div class="total-item"><div class="total-val" id="t-x">—</div><div class="total-lbl">Logistics</div></div>
+        <div class="total-div"></div>
+        <div class="total-item"><div class="total-val green" id="t-tot">—</div><div class="total-lbl">Direct cost total</div></div>
+      </div>
+
+      <div class="rgroup">
+        <div class="rgroup-hdr">
+          <div class="rgroup-icon icon-l">L</div>
+          <div><div class="rgroup-title">Labor rates</div><div class="rgroup-desc">All-in crew rate excluding burden</div></div>
+        </div>
+        <div class="rgrid g3" style="margin-bottom:12px">
+          <div class="rcard"><div class="rcard-lbl">Metal framing <span class="badge b-lf">per LF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-frame" class="ri L" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/LF</span></div><div class="rhint">Standard height. Adders applied automatically.</div></div>
+          <div class="rcard"><div class="rcard-lbl">Drywall hanging <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-hang" class="ri L" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF/layer</span></div><div class="rhint">Multiplied by board layers per assembly.</div></div>
+          <div class="rcard"><div class="rcard-lbl">Plastering <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-plaster" class="ri L" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div></div>
+          <div class="rcard"><div class="rcard-lbl">External wall <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-extwall" class="ri L" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div></div>
+          <div class="rcard"><div class="rcard-lbl">Labor burden <span class="badge b-pct">%</span></div><div class="iw"><input id="rate-burden" class="ri L" type="number" placeholder="32" oninput="calc()"><span class="isfx">%</span></div><div class="rhint">Payroll tax, workers comp, benefits. 28–40%.</div></div>
+          <div class="rcard"><div class="rcard-lbl">Supervision <span class="badge b-pct">%</span></div><div class="iw"><input id="rate-super" class="ri L" type="number" placeholder="8" oninput="calc()"><span class="isfx">%</span></div><div class="rhint">Foreman as % of total labor. 6–12%.</div></div>
+        </div>
+        <div class="sub-lbl">Taping + finishing — by finish level ($/SF)</div>
+        <div class="ftable">
+          <div class="fth"><div>Level</div><div>Description</div><div>Rate ($/SF)</div></div>
+          <div class="frow"><div class="flvl"><span class="ldot" style="background:#555a6b"></span>Level 1</div><div class="fdesc">Tape only — concealed areas</div><div><div class="fiw"><span class="fpfx">$</span><input id="rate-fin1" class="fi L" type="number" placeholder="0.00" oninput="calc()"></div></div></div>
+          <div class="frow"><div class="flvl"><span class="ldot" style="background:#4a8fe8"></span>Level 2</div><div class="fdesc">Tape + compound — wet areas</div><div><div class="fiw"><span class="fpfx">$</span><input id="rate-fin2" class="fi L" type="number" placeholder="0.00" oninput="calc()"></div></div></div>
+          <div class="frow"><div class="flvl"><span class="ldot" style="background:#2ab5a0"></span>Level 3</div><div class="fdesc">Standard commercial — paint ready</div><div><div class="fiw"><span class="fpfx">$</span><input id="rate-fin3" class="fi L" type="number" placeholder="0.00" oninput="calc()"></div></div></div>
+          <div class="frow"><div class="flvl"><span class="ldot" style="background:#e87c2a"></span>Level 4</div><div class="fdesc">High quality — most commercial work</div><div><div class="fiw"><span class="fpfx">$</span><input id="rate-fin4" class="fi L" type="number" placeholder="0.00" oninput="calc()"></div></div></div>
+          <div class="frow"><div class="flvl"><span class="ldot" style="background:#3abf7a"></span>Level 5</div><div class="fdesc">Premium — skim coat, critical lighting</div><div><div class="fiw"><span class="fpfx">$</span><input id="rate-fin5" class="fi L" type="number" placeholder="0.00" oninput="calc()"></div></div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="sub-lbl" style="margin-bottom:10px">Height adders — labor uplift %</div>
+        <div class="adder-row">
+          <div class="acard"><div><div class="albl">Above 12 ft</div><div class="asub">Requires lift. Applied to SF above 12 ft.</div></div><div class="aiw"><input id="rate-add12" class="ai L" type="number" placeholder="15" oninput="calc()"><span class="apct">%</span></div></div>
+          <div class="acard"><div><div class="albl">Above 20 ft</div><div class="asub">High-lift zone. Stacked on 12 ft adder.</div></div><div class="aiw"><input id="rate-add20" class="ai L" type="number" placeholder="30" oninput="calc()"><span class="apct">%</span></div></div>
+        </div>
+      </div>
+
+      <div class="rgroup">
+        <div class="rgroup-hdr">
+          <div class="rgroup-icon icon-m">M</div>
+          <div><div class="rgroup-title">Material rates</div><div class="rgroup-desc">Current supplier pricing — waste factor from conditions applied automatically</div></div>
+        </div>
+        <div class="sub-lbl">Stud + track by size ($/LF)</div>
+        <div class="rgrid g5" style="margin-bottom:14px">
+          <div class="stud-card"><div class="stud-sz">1-5/8"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud158" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+          <div class="stud-card"><div class="stud-sz">2-1/2"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud212" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+          <div class="stud-card"><div class="stud-sz">3-5/8"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud358" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+          <div class="stud-card"><div class="stud-sz">4"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud4" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+          <div class="stud-card"><div class="stud-sz">6"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud6" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+        </div>
+        <div class="sub-lbl">Drywall board by type ($/SF)</div>
+        <div class="rgrid g4" style="margin-bottom:14px">
+          <div class="rcard"><div class="rcard-lbl">Standard <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-std" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+          <div class="rcard"><div class="rcard-lbl">Type-X <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-typex" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+          <div class="rcard"><div class="rcard-lbl">Moisture-resistant <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-moist" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+          <div class="rcard"><div class="rcard-lbl">Impact-resistant <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-imp" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+        </div>
+        <div class="rgrid g3">
+          <div class="rcard"><div class="rcard-lbl">Tape + compound <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-tape" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Flat allowance across all finished SF.</div></div>
+          <div class="rcard"><div class="rcard-lbl">Insulation <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-insul" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Applied to assemblies with insulation flagged.</div></div>
+          <div class="rcard"><div class="rcard-lbl">Fasteners + adhesives <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-fasten" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Flat allowance. Typically $0.08–$0.15/SF.</div></div>
+        </div>
+      </div>
+
+      <div class="rgroup">
+        <div class="rgroup-hdr">
+          <div class="rgroup-icon icon-x">X</div>
+          <div><div class="rgroup-title">Logistics</div><div class="rgroup-desc">Per-trip and per-unit costs — quantities from conditions</div></div>
+        </div>
+        <div class="rgrid g3">
+          <div class="rcard"><div class="rcard-lbl">Delivery <span class="badge b-flat">per trip</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-delivery" class="ri X" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/trip</span></div><div class="rhint">Multiplied by estimated delivery trips.</div></div>
+          <div class="rcard"><div class="rcard-lbl">Waste disposal <span class="badge b-flat">per pull</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-disposal" class="ri X" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/pull</span></div></div>
+          <div class="rcard"><div class="rcard-lbl">Lift rental <span class="badge b-flat">per week</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-lift" class="ri X" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/wk</span></div><div class="rhint">Only applied if SF above 12 ft > 0.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE 4: ASSEMBLIES ── -->
+    <div class="page" id="page-assemblies">
+      <div class="page-hdr">
+        <div><div class="page-title">Assembly types</div><div class="page-sub">Define each wall and ceiling system. Each type ID is referenced in walls and ceilings.</div></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="goto('rates')">← Back</button>
+          <button class="btn btn-primary" onclick="goto('walls')">Next: Walls →</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Type ID</th><th>Category</th><th>Stud size</th><th>Spacing</th>
+            <th>Board layers</th><th>Board type</th><th>Fire rating</th>
+            <th>Acoustic</th><th>Finish level</th><th>Notes</th><th></th>
+          </tr></thead>
+          <tbody id="asm-body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addAsm()">+ Add assembly type</button>
+    </div>
+
+    <!-- ── PAGE 5: WALLS ── -->
+    <div class="page" id="page-walls">
+      <div class="page-hdr">
+        <div><div class="page-title">Wall quantities</div><div class="page-sub">One row per floor or zone. Net SF calculates automatically.</div></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="goto('assemblies')">← Back</button>
+          <button class="btn btn-primary" onclick="goto('ceilings')">Next: Ceilings →</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Location</th><th>Type ID</th><th>Height (ft)</th>
+            <th>LF framing</th><th>Gross SF board</th><th>Openings (SF)</th><th>Net SF</th><th></th>
+          </tr></thead>
+          <tbody id="wall-body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addWall()">+ Add wall area</button>
+    </div>
+
+    <!-- ── PAGE 6: CEILINGS ── -->
+    <div class="page" id="page-ceilings">
+      <div class="page-hdr">
+        <div><div class="page-title">Ceiling + soffit quantities</div><div class="page-sub">One row per area. Net SF calculates automatically.</div></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="goto('walls')">← Back</button>
+          <button class="btn btn-primary" onclick="goto('output')">Generate bid output →</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Location</th><th>Type ID</th><th>Height (ft)</th>
+            <th>SF ceiling</th><th>Soffit LF</th><th>Openings (SF)</th><th>Net SF</th><th></th>
+          </tr></thead>
+          <tbody id="ceil-body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addCeil()">+ Add ceiling area</button>
+    </div>
+
+    <!-- ── PAGE 7: OUTPUT ── -->
+    <div class="page" id="page-output">
+
+      <div class="page-hdr">
+        <div>
+          <div class="page-title">Bid output</div>
+          <div class="page-sub">Direct cost breakdown and pricing</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="goto('ceilings')">← Back</button>
+          <button class="btn btn-ghost" onclick="runCalculation()">↻ Recalculate</button>
+          <button class="btn btn-primary" onclick="submitBid()">Submit bid →</button>
+        </div>
+      </div>
+
+      <!-- Dynamic: Phase 3 direct cost output -->
+      <div id="output-phase3">
+        <div class="empty-state">Complete rates and click "Generate bid output →" to calculate.</div>
+      </div>
+
+      <!-- Static: Markup input panel -->
+      <div class="section-block">
+        <div class="section-label">Markup</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px 20px 8px">
+          <div class="rgrid g4">
+            <div class="rcard">
+              <div class="rcard-lbl">Company overhead <span class="badge b-pct">%</span></div>
+              <div class="iw"><input id="markup-overhead" class="ri" type="number" min="0" step="0.1" placeholder="10.0"><span class="isfx">%</span></div>
+              <div class="rhint">Office, insurance, fleet — % of direct costs</div>
+            </div>
+            <div class="rcard">
+              <div class="rcard-lbl">Risk / contingency <span class="badge b-pct">%</span></div>
+              <div class="iw"><input id="markup-contingency" class="ri" type="number" min="0" step="0.1" placeholder="—"><span class="isfx">%</span></div>
+              <div class="rhint">Pre-filled from confidence level — editable</div>
+            </div>
+            <div class="rcard">
+              <div class="rcard-lbl">Profit margin <span class="badge b-pct">%</span></div>
+              <div class="iw"><input id="markup-profit" class="ri" type="number" min="0" step="0.1" placeholder="8.0"><span class="isfx">%</span></div>
+              <div class="rhint">Target profit on direct costs</div>
+            </div>
+            <div class="rcard" id="escl-rcard">
+              <div class="rcard-lbl">Material escalation <span class="badge b-pct">%</span></div>
+              <div class="iw"><input id="markup-escalation" class="ri" type="number" min="0" step="0.1" placeholder="0.0"><span class="isfx">%</span></div>
+              <div class="rhint">Applied if start date &gt; 60 days out</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic: Phase 4 pricing breakdown + final bid price -->
+      <div id="output-bid"></div>
+
+    </div>
+
+    <!-- ── PAGE 8: BID HISTORY ── -->
+    <div class="page" id="page-history">
+      <div class="empty-state">Loading bid history…</div>
+    </div>
+
+    <div class="page" id="page-agent">
+      <div class="empty-state">Generate a bid output (Tab 7) to get the agent's recommendation.</div>
+    </div>
+
+  </div><!-- /body -->
+</div><!-- /shell -->
+
+<script src="js/state.js"></script>
+<script src="js/calculator.js"></script>
+<script src="js/history.js"></script>
+<script src="js/agent.js"></script>
+<script src="js/forms.js"></script>
+<script src="js/tabs.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
