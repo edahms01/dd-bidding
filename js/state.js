@@ -27,11 +27,17 @@ function collectFormData() {
   }
 
   const project = {
-    name:         document.getElementById('proj-name')?.value.trim() || '',
-    gc:           document.getElementById('proj-gc')?.value.trim()   || '',
-    buildingType: sel('proj-type'),
-    bidDate:      sel('proj-bid'),
-    startDate:    sel('proj-start')
+    name:          document.getElementById('proj-name')?.value.trim()     || '',
+    gc:            document.getElementById('proj-gc')?.value.trim()       || '',
+    buildingType:  sel('proj-type'),
+    bidDate:       sel('proj-bid'),
+    address:       document.getElementById('proj-addr')?.value.trim()     || '',
+    drawingsRef:   document.getElementById('proj-drawings')?.value.trim() || '',
+    startDate:     sel('proj-start'),
+    durationWeeks: num('proj-dur', 1),
+    floors:        num('proj-floors', 0),
+    scope:         Array.from(document.querySelectorAll('.pills .pill.on')).map(el => el.textContent.trim()),
+    exclusions:    document.getElementById('proj-exclusions')?.value.trim() || ''
   };
 
   const assemblies = [];
@@ -43,10 +49,13 @@ function collectFormData() {
       id:          inp[0].value.trim(),
       category:    sel[0]?.value || 'Wall',
       studSize:    sel[1]?.value || '3-5/8"',
+      spacing:     sel[2]?.value || '16"',
       layers:      parseInt(sel[3]?.value) || 1,
       boardType:   sel[4]?.value || 'Standard',
+      fireRating:  sel[5]?.value || 'None',
       acoustic:    sel[6]?.value || 'No',
-      finishLevel: parseInt(sel[7]?.value) || 3
+      finishLevel: parseInt(sel[7]?.value) || 3,
+      notes:       inp[1]?.value || ''
     });
   });
 
@@ -86,12 +95,21 @@ function collectFormData() {
 
   const wasteOverride = num('cond-waste', -1);
   const conditions = {
-    sfAbove12:     num('cond-sf12'),
-    sfAbove20:     num('cond-sf20'),
-    wastePct:      wasteOverride >= 0 ? wasteOverride : 10,
-    trips:         num('cond-trips'),
-    confidence:    STATE.conf,
-    durationWeeks: num('proj-duration', 1)
+    maxHt:            num('cond-maxht'),
+    sfAbove12:        num('cond-sf12'),
+    sfAbove20:        num('cond-sf20'),
+    curvedWalls:      sel('f-curved'),
+    curvedWallsLF:    num('f-curved-lf', 0),
+    exteriorExposure: sel('f-exterior'),
+    phasedWork:       sel('f-phase'),
+    phaseCount:       num('f-phase-n', 0),
+    accessDifficulty: sel('f-access'),
+    parking:          sel('f-parking'),
+    wastePct:         wasteOverride >= 0 ? wasteOverride : 10,
+    trips:            num('cond-trips'),
+    confidence:       STATE.conf,
+    durationWeeks:    num('proj-dur', 1),
+    notes:            document.getElementById('cond-notes')?.value || ''
   };
 
   const rates = {

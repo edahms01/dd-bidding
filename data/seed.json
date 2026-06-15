@@ -1,0 +1,247 @@
+{
+  "project_state": {
+    "project": {
+      "name": "Harborview Plaza — Retail Fit-Out",
+      "gc": "Callahan Construction Group",
+      "buildingType": "Retail",
+      "bidDate": "2026-07-15",
+      "address": "1240 Harbor Blvd, Portland, ME 04101",
+      "drawingsRef": "Rev C — 2025-08-12",
+      "startDate": "2026-09-13",
+      "durationWeeks": 14,
+      "floors": 2,
+      "scope": ["Metal framing", "Drywall", "Plastering"],
+      "exclusions": "Excludes paint and ACT grid. GC supplies blocking."
+    },
+    "conditions": {
+      "maxHt": 16,
+      "sfAbove12": 3200,
+      "sfAbove20": 0,
+      "curvedWalls": "yes",
+      "curvedWallsLF": 45,
+      "exteriorExposure": "yes",
+      "phasedWork": "no",
+      "phaseCount": 0,
+      "accessDifficulty": "restricted",
+      "parking": "no",
+      "wastePct": 12,
+      "trips": 6,
+      "confidence": "md",
+      "durationWeeks": 14,
+      "notes": "Tight site — loading dock shared with adjacent tenant. GC has confirmed phased ceiling access on Level 2. Curved feature wall at main entrance needs close attention."
+    },
+    "rates": {
+      "framing": 4.20,
+      "hanging": 0.95,
+      "burdenPct": 34,
+      "superPct": 9,
+      "finish": { "1": 0.55, "2": 0.75, "3": 1.10, "4": 1.55, "5": 2.40 },
+      "adder12Pct": 18,
+      "adder20Pct": 35,
+      "stud": {
+        "1-5/8\"": 0.38,
+        "2-1/2\"": 0.44,
+        "3-5/8\"": 0.52,
+        "4\"": 0.61,
+        "6\"": 0.78
+      },
+      "board": {
+        "Standard": 0.48,
+        "Type-X": 0.58,
+        "Moisture": 0.64,
+        "Impact": 0.72
+      },
+      "tape": 0.14,
+      "insul": 0.32,
+      "fasten": 0.11,
+      "delivery": 380,
+      "disposal": 420,
+      "lift": 650
+    },
+    "markupInputs": {
+      "overheadPct": 12,
+      "contingencyPct": 8,
+      "profitPct": 10,
+      "escalationPct": 3
+    },
+    "intelligence": {
+      "crewAvailability": "full",
+      "pipelinePressure": "neutral",
+      "materialTrend": "stable",
+      "gcRelationship": "strong",
+      "gcPriceSensitivity": "balanced",
+      "competitionLevel": "moderate",
+      "knownCompetitors": "Summit Drywall, Northeast Interiors",
+      "dirigoEdge": "strong"
+    },
+    "assemblies": [
+      {
+        "id": "W1", "category": "Wall", "studSize": "3-5/8\"", "spacing": "16\"",
+        "layers": 1, "boardType": "Standard", "fireRating": "None",
+        "acoustic": "No", "finishLevel": 3, "notes": "Standard partition"
+      },
+      {
+        "id": "W2", "category": "Wall", "studSize": "3-5/8\"", "spacing": "16\"",
+        "layers": 2, "boardType": "Type-X", "fireRating": "1-hr",
+        "acoustic": "Yes", "finishLevel": 3, "notes": "Demising wall — fire rated"
+      },
+      {
+        "id": "W3", "category": "Wall", "studSize": "6\"", "spacing": "16\"",
+        "layers": 1, "boardType": "Moisture", "fireRating": "None",
+        "acoustic": "No", "finishLevel": 4, "notes": "Exterior-adjacent wall — moisture resistant"
+      },
+      {
+        "id": "C1", "category": "Ceiling", "studSize": "2-1/2\"", "spacing": "24\"",
+        "layers": 1, "boardType": "Standard", "fireRating": "None",
+        "acoustic": "No", "finishLevel": 3, "notes": "Standard ceiling"
+      },
+      {
+        "id": "C2", "category": "Ceiling", "studSize": "2-1/2\"", "spacing": "16\"",
+        "layers": 2, "boardType": "Type-X", "fireRating": "1-hr",
+        "acoustic": "Yes", "finishLevel": 4, "notes": "Level 2 rated ceiling"
+      }
+    ],
+    "walls": [
+      { "location": "Level 1 — Sales floor",      "typeId": "W1", "height": 14, "lf": 320, "grossSF": 4480, "openings": 380, "netSF": 4100 },
+      { "location": "Level 1 — Back of house",    "typeId": "W2", "height": 14, "lf": 180, "grossSF": 2520, "openings": 120, "netSF": 2400 },
+      { "location": "Level 1 — Feature wall",     "typeId": "W3", "height": 16, "lf": 45,  "grossSF": 720,  "openings": 0,   "netSF": 720  },
+      { "location": "Level 2 — Office interiors", "typeId": "W1", "height": 10, "lf": 210, "grossSF": 2100, "openings": 280, "netSF": 1820 },
+      { "location": "Level 2 — Demising walls",   "typeId": "W2", "height": 10, "lf": 140, "grossSF": 1400, "openings": 60,  "netSF": 1340 }
+    ],
+    "ceilings": [
+      { "location": "Level 1 — Sales floor",   "typeId": "C1", "height": 14, "grossSF": 3800, "soffitLF": 0,  "openings": 220, "netSF": 3580 },
+      { "location": "Level 1 — Back of house", "typeId": "C1", "height": 12, "grossSF": 1200, "soffitLF": 0,  "openings": 80,  "netSF": 1120 },
+      { "location": "Level 1 — Entry soffit",  "typeId": "C2", "height": 16, "grossSF": 480,  "soffitLF": 62, "openings": 0,   "netSF": 480  },
+      { "location": "Level 2 — Office",        "typeId": "C2", "height": 10, "grossSF": 2100, "soffitLF": 0,  "openings": 140, "netSF": 1960 }
+    ]
+  },
+  "bid_history": [
+    {
+      "bid_id": "seed-1",
+      "date_submitted": "2025-10-14",
+      "project_name": "St. Mary's Medical Center — 3rd Floor Renovation",
+      "gc": "Cianbro Corporation",
+      "building_type": "Healthcare",
+      "bid_date": "2025-10-01",
+      "start_date": "2025-12-01",
+      "direct_cost": 148200,
+      "markup_pct": 27.8,
+      "final_bid": 189500,
+      "confidence": "hi",
+      "intelligence": {
+        "crewAvailability": "full", "pipelinePressure": "neutral",
+        "materialTrend": "stable", "gcRelationship": "strong",
+        "gcPriceSensitivity": "quality", "competitionLevel": "light",
+        "knownCompetitors": "", "dirigoEdge": "strong"
+      },
+      "outcome": "won",
+      "competitor_who_won": null,
+      "winning_bid": null,
+      "actual_cost": 151400,
+      "cost_variance": 3200,
+      "notes": "Strong GC relationship helped close. Came in on time."
+    },
+    {
+      "bid_id": "seed-2",
+      "date_submitted": "2025-12-03",
+      "project_name": "185 Middle St — Office Tower Fit-Out",
+      "gc": "PC Construction",
+      "building_type": "Office",
+      "bid_date": "2025-11-20",
+      "start_date": "2026-02-01",
+      "direct_cost": 92400,
+      "markup_pct": 29.5,
+      "final_bid": 119700,
+      "confidence": "md",
+      "intelligence": {
+        "crewAvailability": "partial", "pipelinePressure": "neutral",
+        "materialTrend": "rising", "gcRelationship": "neutral",
+        "gcPriceSensitivity": "lowest", "competitionLevel": "heavy",
+        "knownCompetitors": "Northeast Drywall Inc., Walsh Interiors",
+        "dirigoEdge": "neutral"
+      },
+      "outcome": "lost",
+      "competitor_who_won": "Northeast Drywall Inc.",
+      "winning_bid": 108000,
+      "actual_cost": null,
+      "cost_variance": null,
+      "notes": "GC went with lowest price. 10% under our number."
+    },
+    {
+      "bid_id": "seed-3",
+      "date_submitted": "2026-02-19",
+      "project_name": "Westbrook College — Science Hall Renovation",
+      "gc": "Bauen Corp",
+      "building_type": "Education",
+      "bid_date": "2026-02-05",
+      "start_date": "2026-05-12",
+      "direct_cost": 214800,
+      "markup_pct": 27.1,
+      "final_bid": 273000,
+      "confidence": "hi",
+      "intelligence": {
+        "crewAvailability": "full", "pipelinePressure": "pass",
+        "materialTrend": "stable", "gcRelationship": "strong",
+        "gcPriceSensitivity": "quality", "competitionLevel": "light",
+        "knownCompetitors": "Summit Drywall", "dirigoEdge": "strong"
+      },
+      "outcome": "won",
+      "competitor_who_won": null,
+      "winning_bid": null,
+      "actual_cost": 208300,
+      "cost_variance": -6500,
+      "notes": "Under estimate — efficient crew, good weather."
+    },
+    {
+      "bid_id": "seed-4",
+      "date_submitted": "2026-04-07",
+      "project_name": "The Crossing — Tenant Fit-Out Suite 110",
+      "gc": "Granite State Construction",
+      "building_type": "Retail",
+      "bid_date": "2026-03-25",
+      "start_date": "2026-06-01",
+      "direct_cost": 67100,
+      "markup_pct": 31.9,
+      "final_bid": 88500,
+      "confidence": "md",
+      "intelligence": {
+        "crewAvailability": "tight", "pipelinePressure": "need",
+        "materialTrend": "rising", "gcRelationship": "new",
+        "gcPriceSensitivity": "lowest", "competitionLevel": "heavy",
+        "knownCompetitors": "Summit Drywall, Tri-State Interiors",
+        "dirigoEdge": "weak"
+      },
+      "outcome": "lost",
+      "competitor_who_won": "Summit Drywall",
+      "winning_bid": 79500,
+      "actual_cost": null,
+      "cost_variance": null,
+      "notes": "Price-driven GC. Summit came in 10% lower."
+    },
+    {
+      "bid_id": "seed-5",
+      "date_submitted": "2026-06-01",
+      "project_name": "The Archer Hotel — Lobby + Bar Renovation",
+      "gc": "Consigli Construction Co.",
+      "building_type": "Hospitality",
+      "bid_date": "2026-05-22",
+      "start_date": "2026-08-15",
+      "direct_cost": 177600,
+      "markup_pct": 29.3,
+      "final_bid": 229600,
+      "confidence": "md",
+      "intelligence": {
+        "crewAvailability": "partial", "pipelinePressure": "neutral",
+        "materialTrend": "rising", "gcRelationship": "strong",
+        "gcPriceSensitivity": "balanced", "competitionLevel": "moderate",
+        "knownCompetitors": "Northeast Drywall Inc.", "dirigoEdge": "strong"
+      },
+      "outcome": "pending",
+      "competitor_who_won": null,
+      "winning_bid": null,
+      "actual_cost": null,
+      "cost_variance": null,
+      "notes": "Decision expected by end of June."
+    }
+  ]
+}
