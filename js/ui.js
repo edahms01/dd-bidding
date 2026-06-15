@@ -529,6 +529,7 @@ function renderAgentTab() {
       </div>
       <div class="page-actions">
         <button class="btn btn-ghost" onclick="goto('output')">← Back</button>
+        <button class="btn btn-primary" onclick="_showFinalizePanel()">Finalize bid →</button>
       </div>
     </div>`;
 
@@ -668,7 +669,7 @@ function renderAgentTab() {
           </ul>`}
     </div>
 
-    <div class="section-block">
+    <div class="section-block" style="display:none">
       <div class="section-label">Finalize bid</div>
       <div id="agent-finalize-panel" style="background:var(--surface);border:1px solid var(--border);
           border-radius:var(--rl);padding:20px">
@@ -716,6 +717,21 @@ function _selectBidOption(type) {
     row.style.borderColor = isSel ? 'var(--accent-border)' : 'transparent';
     row.style.background  = isSel ? 'var(--accent-dim)'    : 'transparent';
   });
+}
+
+function _showFinalizePanel() {
+  const panel = document.getElementById('agent-finalize-panel');
+  if (panel) {
+    panel.closest('.section-block').style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  const recommendedRadio = document.querySelector(
+    'input[name="agent-bid-option"][value="recommended"]'
+  );
+  if (recommendedRadio) {
+    recommendedRadio.checked = true;
+    recommendedRadio.dispatchEvent(new Event('change'));
+  }
 }
 
 function _finalizeBid() {
