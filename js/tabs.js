@@ -18,16 +18,6 @@ function goto(id) {
   // Ensure the workflow section is active (tab bar visible, nav state correct)
   _activateWorkflow();
 
-  // Agent page flows from Bid output — show it without changing the active tab
-  // so the "Bid output" tab stays highlighted while the agent page is visible
-  if (id === 'agent') {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const agentPage = document.getElementById('page-agent');
-    if (agentPage) agentPage.classList.add('active');
-    renderAgentTab();
-    return;
-  }
-
   // Standard tab routing — clear and re-activate
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -41,6 +31,7 @@ function goto(id) {
   _lastWorkflowTab = id;
 
   if (id === 'output') runCalculation();
+  if (id === 'agent')  renderAgentTab();
 }
 
 // ── SECTION CONTROL ───────────────────────────────────────────────────
