@@ -493,6 +493,48 @@ function deleteBidRecord(bid_id) {
 
 function renderAgentTab() {
   const page = document.getElementById('page-agent');
+  if (!page) return;
+
+  if (_lastAgentResult) {
+    _renderAgentResult(page, _lastAgentResult);
+    return;
+  }
+
+  const hdr = `
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Agent Recommendation</div>
+        <div class="page-sub">Bid strategy analysis by Claude AI</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" onclick="goto('output')">← Back</button>
+        <button id="agent-finalize-btn" class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Finalize bid →</button>
+      </div>
+    </div>`;
+
+  if (_agentLoading) {
+    page.innerHTML = hdr + `
+      <div style="text-align:center;padding:60px 24px">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Agent is analyzing your bid…</div>
+        <div style="font-size:11px;color:var(--text3)">This takes a few seconds.</div>
+      </div>`;
+    return;
+  }
+
+  if (!_agentResult) {
+    page.innerHTML = hdr + `
+      <div class="empty-state">
+        Complete your bid setup and click "Generate bid output →" on Tab 6 to get the agent's recommendation.
+      </div>`;
+    return;
+  }
+
+  _renderAgentResult(page, _agentResult);
+}
+
+function _renderAgentResult(page, r) {
+  _lastAgentResult   = r;
+  _selectedBidOption = 'recommended';
 
   const OPT_COLORS = {
     competitive: { color: 'var(--blue)',   bg: 'rgba(74,143,232,.08)',  border: 'rgba(74,143,232,.25)' },
@@ -534,27 +576,6 @@ function renderAgentTab() {
       </div>
     </div>`;
 
-  if (_agentLoading) {
-    page.innerHTML = hdr + `
-      <div style="text-align:center;padding:60px 24px">
-        <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Agent is analyzing your bid…</div>
-        <div style="font-size:11px;color:var(--text3)">This takes a few seconds.</div>
-      </div>`;
-    return;
-  }
-
-  if (!_agentResult) {
-    page.innerHTML = hdr + `
-      <div class="empty-state">
-        Complete your bid setup and click "Generate bid output →" on Tab 6 to get the agent's recommendation.
-      </div>`;
-    return;
-  }
-
-  const r = _agentResult;
-  _lastAgentResult   = r;
-  _selectedBidOption = 'recommended';
-
   const optCards = (r.options || []).map(opt => {
     const oc    = OPT_COLORS[opt.type] || { color: 'var(--text)', bg: 'var(--surface)', border: 'var(--border)' };
     const isRec = opt.type === 'recommended';
@@ -583,7 +604,6 @@ function renderAgentTab() {
         <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:12px">${opt.rationale}</div>
       </div>`;
   }).join('');
-
 
   page.innerHTML = hdr + `
     <div class="section-block">
@@ -657,6 +677,19 @@ function renderAgentTab() {
     </div>
 
   `;
+}
+
+// ── DEMO AGENT PRE-RUN ────────────────────────────────────────────────
+
+function runAgentIfNeeded() {
+  if (_lastAgentResult) return;
+  const state = collectFormData();
+  const bidHistory = getHistorySummary(state.project.gc, state.project.buildingType);
+  runBidAgent(state, _lastCalcSum, _lastCalcMarkup, bidHistory).then(result => {
+    _lastAgentResult = result;
+    const page = document.getElementById('page-agent');
+    if (page) _renderAgentResult(page, result);
+  });
 }
 
 function _selectBidOption(type) {

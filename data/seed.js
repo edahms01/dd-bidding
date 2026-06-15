@@ -24,6 +24,9 @@ async function loadSeedData() {
   runCalculation();
   goto('output');
 
+  // Pre-run agent for demo — Tab 8 ready without clicking through Tab 7
+  setTimeout(() => { runAgentIfNeeded(); }, 500);
+
   // Brief confirmation message in the toolbar
   const toolbar = document.getElementById('dev-toolbar');
   if (toolbar) {
