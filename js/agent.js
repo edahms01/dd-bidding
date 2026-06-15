@@ -24,105 +24,104 @@ const AGENT_FALLBACK = {
   historicalNotes: []
 };
 
-// Builds a realistic demo response from the actual bid numbers and intelligence
-// signals so all four Tab 9 panels render meaningfully without an API call.
+// Fixed demo response for the Harborview Plaza retail project (seed dataset).
+// Illustrates the full agent output format including per-signal notes.
+// Replace with _demoResponse(state, …) dynamic logic if a generic demo is needed.
 function _demoResponse(state, summary, markupResult, bidHistory) {
-  const bid     = Math.round(markupResult.finalBidPrice);
-  const intel   = state.intelligence || {};
+  return {
+    recommendation: 'bid_as_calculated',
+    suggestedBid:   284500,
+    rangeLow:       274000,
+    rangeHigh:      291000,
 
-  const SIG_LABELS = {
-    crewAvailability:   'Crew availability',
-    pipelinePressure:   'Pipeline pressure',
-    materialTrend:      'Material trend',
-    gcRelationship:     'GC relationship',
-    gcPriceSensitivity: 'GC price sensitivity',
-    competitionLevel:   'Competition level',
-    knownCompetitors:   'Known competitors',
-    dirigoEdge:         'Dirigo edge'
+    reasoning: 'Harborview Plaza is a well-defined retail fit-out with manageable complexity. ' +
+      'Your direct cost model is solid — the restricted site access and curved feature wall are ' +
+      'both captured in conditions and the 12% waste factor is appropriate for a two-level retail ' +
+      'scope with exterior exposure. At $284,500 with an effective margin of 28.4%, you are priced ' +
+      'competitively for moderate competition without leaving money on the table. Callahan ' +
+      'Construction Group values quality over lowest price and your relationship is strong — there ' +
+      'is no strategic reason to sharpen the pencil on this one. Hold the number.',
+
+    signals: [
+      {
+        label:  'GC relationship',
+        value:  'Strong',
+        status: 'positive',
+        note:   'Callahan has awarded Dirigo work before. Relationship is an asset here — price accordingly.'
+      },
+      {
+        label:  'GC price sensitivity',
+        value:  'Balanced',
+        status: 'positive',
+        note:   'Not a lowest-price-wins GC. Quality and reliability factor into their decision.'
+      },
+      {
+        label:  'Competition level',
+        value:  'Moderate — 3–4 bidders',
+        status: 'neutral',
+        note:   'Summit Drywall and Northeast Interiors are standard competition for this scope. Neither is known to significantly undercut on retail work.'
+      },
+      {
+        label:  'Crew availability',
+        value:  'Fully available',
+        status: 'positive',
+        note:   'No scheduling pressure. Dirigo can commit to this timeline without risk of overextension.'
+      },
+      {
+        label:  'Pipeline pressure',
+        value:  'Neutral',
+        status: 'neutral',
+        note:   'No urgency to win at reduced margin. Bid for profit, not volume.'
+      },
+      {
+        label:  'Material price trend',
+        value:  'Stable',
+        status: 'positive',
+        note:   'No escalation risk flagged beyond the standard 3% already included in markup.'
+      },
+      {
+        label:  'Dirigo\'s edge',
+        value:  'Strong — best fit',
+        status: 'positive',
+        note:   'Retail fit-out with plaster feature elements and exterior exposure plays to Dirigo strengths.'
+      },
+      {
+        label:  'Estimator confidence',
+        value:  'Medium',
+        status: 'warning',
+        note:   'Medium confidence noted. The 8% contingency is appropriate — do not reduce it before reviewing the Level 2 ceiling quantities.'
+      }
+    ],
+
+    riskFlags: [
+      {
+        severity: 'medium',
+        message:  'Curved feature wall at main entrance (45 LF) is priced into conditions but should be field-verified before bid submission. Curved work on retail often expands in scope during execution.'
+      },
+      {
+        severity: 'medium',
+        message:  'Restricted site access and no dedicated parking will affect delivery scheduling. Confirm unloading window and loading dock availability with Callahan before finalizing the 6-trip delivery estimate.'
+      },
+      {
+        severity: 'medium',
+        message:  'Exterior exposure on Level 1 feature wall adds weatherproofing requirements. Verify spec section with GC — moisture-resistant assembly W3 may need additional waterproofing membrane not currently in scope.'
+      },
+      {
+        severity: 'low',
+        message:  'Start date is 90 days out. Material prices are currently stable but monitor steel stud pricing over the next 30 days before locking supplier quotes.'
+      },
+      {
+        severity: 'low',
+        message:  'No historical win/loss data for Callahan Construction Group yet. Recommendation is based on current signals only. Log the outcome of this bid to build GC-specific intelligence over time.'
+      }
+    ],
+
+    historicalNotes: [
+      'No previous bids logged against Callahan Construction Group. After this bid is submitted and the outcome is known, that data will inform future recommendations for this GC.',
+      'No completed retail projects in bid history yet. Cost variance tracking — how closely your estimate matched actual job cost — will appear here after your first retail job closes.',
+      'Tip: the more bids you log with outcomes, the more precisely the agent can identify which GC relationships, building types, and markup levels produce the best win rates for Dirigo.'
+    ]
   };
-  const SIG_VALUES = {
-    crewAvailability:   { full: 'Full capacity', partial: 'Partially booked', tight: 'Tight' },
-    pipelinePressure:   { need: 'Need the work', neutral: 'Neutral', pass: 'Can pass' },
-    materialTrend:      { stable: 'Stable', rising: 'Rising ↑', falling: 'Falling ↓' },
-    gcRelationship:     { strong: 'Strong', neutral: 'Neutral', new: 'New GC', difficult: 'Difficult' },
-    gcPriceSensitivity: { lowest: 'Price-driven', balanced: 'Balanced', quality: 'Quality-first' },
-    competitionLevel:   { light: 'Light', moderate: 'Moderate', heavy: 'Heavy', unknown: 'Unknown' },
-    dirigoEdge:         { strong: 'Strong', neutral: 'Neutral', weak: 'Weak' }
-  };
-  const POSITIVE = { crewAvailability: 'full', pipelinePressure: 'pass', materialTrend: 'falling', gcRelationship: 'strong', gcPriceSensitivity: 'quality', competitionLevel: 'light', dirigoEdge: 'strong' };
-  const WARNING  = { crewAvailability: 'tight', pipelinePressure: 'need', materialTrend: 'rising', gcRelationship: 'difficult', gcPriceSensitivity: 'lowest', competitionLevel: 'heavy', dirigoEdge: 'weak' };
-
-  function sigStatus(field, val) {
-    if (!val) return 'neutral';
-    if (POSITIVE[field] === val) return 'positive';
-    if (WARNING[field]  === val) return 'warning';
-    return 'neutral';
-  }
-
-  const signals = Object.keys(SIG_LABELS).map(field => ({
-    label:  SIG_LABELS[field],
-    value:  field === 'knownCompetitors'
-              ? (intel[field] || '—')
-              : ((SIG_VALUES[field] && SIG_VALUES[field][intel[field]]) || intel[field] || '—'),
-    status: field === 'knownCompetitors' ? 'neutral' : sigStatus(field, intel[field])
-  }));
-
-  const warnings  = signals.filter(s => s.status === 'warning').length;
-  const positives = signals.filter(s => s.status === 'positive').length;
-
-  let recommendation;
-  if      (warnings >= 3)  recommendation = 'dont_bid';
-  else if (warnings >= 2)  recommendation = 'bid_lower';
-  else if (positives >= 4) recommendation = 'bid_higher';
-  else                     recommendation = 'bid_as_calculated';
-
-  const suggestedBid = recommendation === 'bid_lower'
-    ? Math.round(bid * 0.96)
-    : recommendation === 'bid_higher'
-    ? Math.round(bid * 1.04)
-    : bid;
-  const rangeLow  = Math.round(suggestedBid * 0.95);
-  const rangeHigh = Math.round(suggestedBid * 1.07);
-
-  const riskFlags = [];
-  if (intel.crewAvailability   === 'tight')     riskFlags.push({ severity: 'medium', message: 'Tight crew availability — schedule overlap risk if project starts as planned.' });
-  if (intel.materialTrend      === 'rising')     riskFlags.push({ severity: 'medium', message: 'Rising material trend — escalation buffer may be insufficient if start is delayed.' });
-  if (intel.gcRelationship     === 'difficult')  riskFlags.push({ severity: 'high',   message: 'Difficult GC relationship — elevated risk of scope disputes and slow payment.' });
-  if (intel.competitionLevel   === 'heavy')      riskFlags.push({ severity: 'low',    message: 'Heavy competition — expect bids within 5–8% of each other.' });
-
-  const historicalNotes = [];
-  if (bidHistory.totalBids > 0) {
-    historicalNotes.push('Overall win rate: ' + bidHistory.winRate + '% across ' + bidHistory.totalBids + ' logged bid' + (bidHistory.totalBids > 1 ? 's' : '') + '.');
-    if (bidHistory.winsWithThisGC + bidHistory.lossesWithThisGC > 0) {
-      historicalNotes.push('With this GC: ' + bidHistory.winsWithThisGC + ' win' + (bidHistory.winsWithThisGC !== 1 ? 's' : '') + ', ' + bidHistory.lossesWithThisGC + ' loss' + (bidHistory.lossesWithThisGC !== 1 ? 'es' : '') + '.');
-    }
-    if (bidHistory.winRateByBuildingType > 0 && state.project.buildingType) {
-      historicalNotes.push(state.project.buildingType + ' win rate: ' + bidHistory.winRateByBuildingType + '%.');
-    }
-    if (bidHistory.avgCostVariance !== null) {
-      const sign = bidHistory.avgCostVariance >= 0 ? '+' : '-';
-      historicalNotes.push('Avg cost variance on won jobs: ' + sign + '$' + Math.abs(bidHistory.avgCostVariance).toLocaleString() + ' vs. estimate.');
-    }
-  }
-
-  const recSentence = {
-    bid_as_calculated: 'Signals are broadly balanced — the calculated price is the right call here.',
-    bid_lower:         'Warning signals on ' + (intel.competitionLevel === 'heavy' ? 'competition and' : '') + ' key factors suggest sharpening the number to improve win probability.',
-    bid_higher:        'Strong positive signals — GC relationship and pipeline give room to push margin without risking the award.',
-    dont_bid:          'Multiple warning signals stack against this project — the risk-to-reward ratio does not support bidding at current pricing.'
-  }[recommendation];
-
-  const factors = [
-    intel.gcRelationship && 'GC relationship is ' + (SIG_VALUES.gcRelationship[intel.gcRelationship] || intel.gcRelationship).toLowerCase(),
-    intel.competitionLevel && 'competition is ' + (SIG_VALUES.competitionLevel[intel.competitionLevel] || intel.competitionLevel).toLowerCase(),
-    intel.pipelinePressure && 'pipeline pressure is ' + (SIG_VALUES.pipelinePressure[intel.pipelinePressure] || intel.pipelinePressure).toLowerCase()
-  ].filter(Boolean);
-
-  const reasoning = recSentence
-    + (factors.length ? ' Key factors: ' + factors.join(', ') + '.' : '')
-    + ' [Demo mode — set DEMO_MODE = false and add an API key for live analysis.]';
-
-  return { recommendation, suggestedBid, rangeLow, rangeHigh, reasoning, signals, riskFlags, historicalNotes };
 }
 
 async function runBidAgent(state, summary, markupResult, bidHistory) {

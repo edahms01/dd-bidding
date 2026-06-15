@@ -603,7 +603,7 @@ function renderAgentTab() {
           <tbody>
             ${r.signals.map(s => `<tr>
               <td style="font-weight:500">${s.label}</td>
-              <td style="color:var(--text2)">${s.value}</td>
+              <td style="color:var(--text2)">${s.value}${s.note ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">${s.note}</div>` : ''}</td>
               <td>${statusPill(s.status)}</td>
             </tr>`).join('')}
           </tbody>
