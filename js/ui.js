@@ -518,7 +518,7 @@ function renderAgentTab() {
   const hdr = `
     <div class="page-hdr">
       <div>
-        <div class="page-title">Agent recommendation</div>
+        <div class="page-title">Agent Recommendation</div>
         <div class="page-sub">Bid strategy analysis by Claude AI</div>
       </div>
       <div class="page-actions">
