@@ -174,7 +174,7 @@ td input:focus,td select:focus{border-color:var(--accent);outline:none}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}
 
 /* ── APP LAYOUT ── */
-.app-layout{display:flex;flex:1;overflow:hidden}
+.app-layout{display:flex;flex-direction:row;flex:1;min-height:0;overflow:hidden}
 
 /* ── LEFT NAV ── */
 .leftnav{width:200px;flex-shrink:0;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease}
