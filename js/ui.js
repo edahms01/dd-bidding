@@ -239,9 +239,6 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
       </div>
     </div>
 
-    <div style="margin-top:12px;text-align:right">
-      <button class="btn btn-ghost" onclick="goto('agent')">View agent recommendation →</button>
-    </div>
   `;
 }
 
@@ -522,7 +519,7 @@ function renderAgentTab() {
         <div class="page-sub">Bid strategy analysis by Claude AI</div>
       </div>
       <div class="page-actions">
-        <button class="btn btn-ghost" onclick="goto('output')">← Bid output</button>
+        <button class="btn btn-ghost" onclick="goto('output')">← Back</button>
       </div>
     </div>`;
 
@@ -646,7 +643,20 @@ function renderAgentTab() {
               </li>`).join('')}
           </ul>`}
     </div>
+
+    <div style="margin-top:8px;padding-bottom:8px;text-align:right">
+      <button id="agent-submit-btn" class="btn btn-primary" onclick="_submitFromAgent()">Submit bid →</button>
+    </div>
   `;
+}
+
+function _submitFromAgent() {
+  submitBid();
+  const btn = document.getElementById('agent-submit-btn');
+  if (btn) {
+    btn.textContent = 'View bid history →';
+    btn.onclick = function() { goto('history'); };
+  }
 }
 
 function overrideRecommendation(rec) {
