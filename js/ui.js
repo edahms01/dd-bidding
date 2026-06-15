@@ -9,11 +9,12 @@
 
 // ── AGENT STATE ───────────────────────────────────────────────────────
 
-let _agentResult    = null;
-let _agentLoading   = false;
-let _lastCalcState  = null;
-let _lastCalcSum    = null;
-let _lastCalcMarkup = null;
+let _agentResult      = null;
+let _agentLoading     = false;
+let _lastCalcState    = null;
+let _lastCalcSum      = null;
+let _lastCalcMarkup   = null;
+let _selectedBidOption = 'recommended';
 
 // ── RATES RUNNING TOTAL ───────────────────────────────────────────────
 
@@ -493,12 +494,10 @@ function renderAgentTab() {
   const page   = document.getElementById('page-agent');
   const apiKey = localStorage.getItem('dirigo_api_key') || '';
 
-  const REC_CONFIG = {
-    bid_as_calculated: { label: 'Bid as calculated', color: 'var(--green)',   bg: 'rgba(58,191,122,.12)', border: 'rgba(58,191,122,.3)' },
-    bid_lower:         { label: 'Bid lower',          color: '#4a8fe8',        bg: 'rgba(74,143,232,.12)', border: 'rgba(74,143,232,.3)' },
-    bid_higher:        { label: 'Bid higher',         color: 'var(--accent)', bg: 'rgba(232,124,42,.1)',  border: 'rgba(232,124,42,.3)' },
-    dont_bid:          { label: "Don't bid",          color: '#e85c4a',        bg: 'rgba(232,92,74,.12)',  border: 'rgba(232,92,74,.3)'  },
-    unknown:           { label: 'Unknown',            color: 'var(--text3)',   bg: 'rgba(255,255,255,.04)', border: 'var(--border)'      }
+  const OPT_COLORS = {
+    competitive: { color: 'var(--blue)',   bg: 'rgba(74,143,232,.08)',  border: 'rgba(74,143,232,.25)' },
+    recommended: { color: 'var(--green)',  bg: 'rgba(58,191,122,.08)',  border: 'rgba(58,191,122,.3)'  },
+    ambitious:   { color: 'var(--accent)', bg: 'rgba(232,124,42,.06)',  border: 'rgba(232,124,42,.25)' }
   };
 
   function statusPill(status) {
@@ -510,6 +509,14 @@ function renderAgentTab() {
   function flagDot(severity) {
     const col = severity === 'high' ? '#e85c4a' : severity === 'medium' ? 'var(--accent)' : 'var(--text3)';
     return `<span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;margin-top:5px;display:inline-block"></span>`;
+  }
+
+  function winPill(prob) {
+    if (prob === 'High')
+      return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(58,191,122,.1);border:1px solid rgba(58,191,122,.25);color:var(--green)">${prob}</span>`;
+    if (prob === 'Medium')
+      return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(232,124,42,.1);border:1px solid rgba(232,124,42,.3);color:var(--accent)">${prob}</span>`;
+    return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--text3)">${prob}</span>`;
   }
 
   const hdr = `
@@ -558,39 +565,69 @@ function renderAgentTab() {
     return;
   }
 
-  const r  = _agentResult;
-  const rc = REC_CONFIG[r.recommendation] || REC_CONFIG.unknown;
+  const r = _agentResult;
+  _selectedBidOption = 'recommended';
+
+  const optCards = (r.options || []).map(opt => {
+    const oc    = OPT_COLORS[opt.type] || { color: 'var(--text)', bg: 'var(--surface)', border: 'var(--border)' };
+    const isRec = opt.type === 'recommended';
+    const isSel = _selectedBidOption === opt.type;
+    return `
+      <div data-bid-opt="${opt.type}"
+           data-default-border="${oc.border}"
+           data-default-bg="${oc.bg}"
+           onclick="_selectBidOption('${opt.type}')"
+           style="flex:1;background:${isSel ? 'var(--accent-dim)' : oc.bg};
+                  border:1px solid ${isSel ? 'var(--accent-border)' : oc.border};
+                  border-radius:var(--rl);padding:18px 16px;cursor:pointer;position:relative;
+                  transition:all .15s;${isRec ? 'margin-top:-6px;padding-bottom:24px;' : ''}">
+        ${isRec ? `<span style="position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;
+            padding:2px 7px;border-radius:4px;background:rgba(58,191,122,.12);
+            border:1px solid rgba(58,191,122,.3);color:var(--green);letter-spacing:.03em">Agent pick</span>` : ''}
+        <div style="font-size:10px;font-weight:700;color:${oc.color};text-transform:uppercase;
+            letter-spacing:.08em;margin-bottom:12px">${opt.label}</div>
+        <div style="font-family:monospace;font-size:26px;font-weight:700;color:${oc.color};
+            line-height:1;margin-bottom:3px">${fmtCost(opt.bidAmount)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">${opt.margin}% margin</div>
+        ${winPill(opt.winProbability)}
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:12px">${opt.rationale}</div>
+      </div>`;
+  }).join('');
+
+  const finalizeRows = (r.options || []).map(opt => {
+    const isSel = _selectedBidOption === opt.type;
+    return `
+      <label id="finalize-row-${opt.type}"
+             style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:10px 12px;
+                    border-radius:var(--r);transition:all .15s;
+                    border:1px solid ${isSel ? 'var(--accent-border)' : 'transparent'};
+                    background:${isSel ? 'var(--accent-dim)' : 'transparent'}">
+        <input type="radio" name="agent-bid-option" value="${opt.type}" ${isSel ? 'checked' : ''}
+               onchange="_selectBidOption(this.value)"
+               style="accent-color:var(--accent);flex-shrink:0">
+        <span style="font-size:13px;font-weight:500;color:var(--text);flex:1">${opt.label}</span>
+        <span style="font-family:monospace;font-size:13px;color:var(--text2)">${fmtCost(opt.bidAmount)}</span>
+      </label>`;
+  }).join('');
 
   page.innerHTML = hdr + setup + `
     <div class="section-block">
-      <div class="section-label">Recommendation</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:24px">
-        <div style="margin-bottom:18px">
-          <span style="display:inline-block;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;
-              background:${rc.bg};border:1px solid ${rc.border};color:${rc.color}">
-            ${rc.label}
-          </span>
-        </div>
-        ${r.suggestedBid != null ? `
-        <div style="margin-bottom:16px">
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Suggested bid</div>
-          <div style="font-family:monospace;font-size:38px;font-weight:700;color:var(--green)">${fmtCost(r.suggestedBid)}</div>
-          ${r.rangeLow != null && r.rangeHigh != null ? `
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">
-            Acceptable range: ${fmtCost(r.rangeLow)} – ${fmtCost(r.rangeHigh)}
-          </div>` : ''}
-        </div>` : ''}
-        <div style="font-size:13px;color:var(--text2);line-height:1.65;padding:14px 16px;
-            background:var(--surface2);border-radius:var(--r);border-left:3px solid ${rc.color};
-            margin-bottom:20px">
-          ${r.reasoning || 'No reasoning provided.'}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:11px;color:var(--text3)">Override:</span>
-          <button class="btn btn-ghost btn-sm" onclick="overrideRecommendation('bid_lower')">Bid lower</button>
-          <button class="btn btn-ghost btn-sm" onclick="overrideRecommendation('bid_higher')">Bid higher</button>
-          <button class="btn btn-ghost btn-sm" style="color:#e85c4a" onclick="overrideRecommendation('dont_bid')">Don't bid</button>
-        </div>
+      <div class="section-label">Bid options</div>
+      <div style="display:flex;gap:12px;align-items:flex-end">
+        ${optCards}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:0 2px">
+        <span style="font-size:11px;color:var(--text3)">← Higher win rate</span>
+        <div style="flex:1;height:1px;background:var(--border);margin:0 16px"></div>
+        <span style="font-size:11px;color:var(--text3)">Higher margin →</span>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-label">Agent analysis</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);
+          padding:16px 18px;font-size:12px;color:var(--text2);line-height:1.65">
+        ${r.reasoning || 'No analysis provided.'}
       </div>
     </div>
 
@@ -644,25 +681,88 @@ function renderAgentTab() {
           </ul>`}
     </div>
 
-    <div style="margin-top:8px;padding-bottom:8px;text-align:right">
-      <button id="agent-submit-btn" class="btn btn-primary" onclick="_submitFromAgent()">Submit bid →</button>
+    <div class="section-block">
+      <div class="section-label">Finalize bid</div>
+      <div id="agent-finalize-panel" style="background:var(--surface);border:1px solid var(--border);
+          border-radius:var(--rl);padding:20px">
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">
+          ${finalizeRows}
+          <label id="finalize-row-override"
+                 style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:10px 12px;
+                        border-radius:var(--r);transition:all .15s;border:1px solid transparent">
+            <input type="radio" name="agent-bid-option" value="override"
+                   onchange="_selectBidOption('override')"
+                   style="accent-color:var(--accent);flex-shrink:0">
+            <span style="font-size:13px;font-weight:500;color:var(--text);flex:1">Custom override</span>
+            <input type="number" id="agent-custom-amount" min="0" step="500" placeholder="0"
+                   onfocus="_selectBidOption('override')"
+                   style="width:90px;background:var(--surface2);border:1px solid var(--border);
+                          border-radius:var(--r);padding:4px 8px;font-size:13px;
+                          color:var(--text);font-family:monospace;text-align:right">
+          </label>
+        </div>
+        <div style="text-align:right">
+          <button id="agent-submit-btn" class="btn btn-primary" onclick="_finalizeBid()">Submit bid →</button>
+        </div>
+      </div>
     </div>
   `;
 }
 
-function _submitFromAgent() {
-  submitBid();
-  const btn = document.getElementById('agent-submit-btn');
-  if (btn) {
-    btn.textContent = 'View bid history →';
-    btn.onclick = function() { goto('history'); };
-  }
+function _selectBidOption(type) {
+  _selectedBidOption = type;
+
+  document.querySelectorAll('[data-bid-opt]').forEach(el => {
+    const isSel = el.dataset.bidOpt === type;
+    el.style.borderColor = isSel ? 'var(--accent-border)' : el.dataset.defaultBorder;
+    el.style.background  = isSel ? 'var(--accent-dim)'   : el.dataset.defaultBg;
+  });
+
+  document.querySelectorAll('input[name="agent-bid-option"]').forEach(radio => {
+    radio.checked = radio.value === type;
+  });
+
+  ['competitive', 'recommended', 'ambitious', 'override'].forEach(t => {
+    const row = document.getElementById('finalize-row-' + t);
+    if (!row) return;
+    const isSel = t === type;
+    row.style.borderColor = isSel ? 'var(--accent-border)' : 'transparent';
+    row.style.background  = isSel ? 'var(--accent-dim)'    : 'transparent';
+  });
 }
 
-function overrideRecommendation(rec) {
-  if (_agentResult) {
-    _agentResult.recommendation = rec;
-    renderAgentTab();
+function _finalizeBid() {
+  const selected = document.querySelector('input[name="agent-bid-option"]:checked');
+  if (!selected) return;
+  const decision = selected.value;
+
+  let amount, label;
+  if (decision === 'override') {
+    amount = parseFloat(document.getElementById('agent-custom-amount')?.value || 0);
+    if (!amount || amount <= 0) return;
+    label  = 'Custom override';
+  } else {
+    const opt = (_agentResult?.options || []).find(o => o.type === decision);
+    amount = opt?.bidAmount ?? null;
+    label  = opt?.label ?? decision;
+  }
+
+  if (!amount) return;
+
+  submitBid();
+
+  const panel = document.getElementById('agent-finalize-panel');
+  if (panel) {
+    panel.innerHTML = `
+      <div style="background:var(--surface);border:2px solid var(--green);border-radius:var(--rl);
+          padding:28px;text-align:center">
+        <div style="font-size:24px;color:var(--green);margin-bottom:10px">✓</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submitted</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
+          ${label} — ${fmtCost(amount)}
+        </div>
+        <button class="btn btn-primary" onclick="goto('history')">View bid history →</button>
+      </div>`;
   }
 }
 

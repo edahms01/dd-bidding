@@ -11,13 +11,14 @@
 // Set to false to enable live Anthropic API calls (requires API key in localStorage).
 const DEMO_MODE = true;
 
-const AGENT_SYSTEM = `You are a bid strategy advisor for Dirigo Drywall, a commercial drywall subcontractor. You analyze bid data and market signals to recommend whether to bid as calculated, adjust the price, or pass on a job. You respond only in valid JSON matching the exact schema provided. Be direct and specific — your reasoning should reference the actual signals provided, not generic advice.`;
+const AGENT_SYSTEM = `You are a bid strategy advisor for Dirigo Drywall, a commercial drywall subcontractor. You analyze bid data and market signals and always return exactly three bid options: competitive, recommended, and ambitious. You respond only in valid JSON matching the exact schema provided. Be direct and specific — your reasoning should reference the actual signals provided, not generic advice.`;
 
 const AGENT_FALLBACK = {
-  recommendation:  'unknown',
-  suggestedBid:    null,
-  rangeLow:        null,
-  rangeHigh:       null,
+  options: [
+    { type: 'competitive', label: 'Competitive', bidAmount: null, margin: null, winProbability: 'High',        rationale: 'Agent unavailable — calculate a competitive price manually.' },
+    { type: 'recommended', label: 'Recommended', bidAmount: null, margin: null, winProbability: 'Medium',      rationale: 'Agent unavailable — review signals manually.' },
+    { type: 'ambitious',   label: 'Ambitious',   bidAmount: null, margin: null, winProbability: 'Low–Medium',  rationale: 'Agent unavailable — calculate an ambitious price manually.' }
+  ],
   reasoning:       'Agent unavailable — review signals manually.',
   signals:         [],
   riskFlags:       [{ severity: 'high', message: 'Could not connect to bid agent. Submit bid based on your own judgment.' }],
@@ -25,22 +26,42 @@ const AGENT_FALLBACK = {
 };
 
 // Fixed demo response for the Harborview Plaza retail project (seed dataset).
-// Illustrates the full agent output format including per-signal notes.
-// Replace with _demoResponse(state, …) dynamic logic if a generic demo is needed.
+// Set DEMO_MODE = false to use live Anthropic API.
 function _demoResponse(state, summary, markupResult, bidHistory) {
   return {
-    recommendation: 'bid_as_calculated',
-    suggestedBid:   284500,
-    rangeLow:       274000,
-    rangeHigh:      291000,
+    options: [
+      {
+        type:            'competitive',
+        label:           'Competitive',
+        bidAmount:       271000,
+        margin:          22.4,
+        winProbability:  'High',
+        rationale:       'Sharpens the number to maximise win probability. Best used when pipeline pressure is high or the GC relationship needs strengthening. Leaves less room for cost overruns — only viable if confidence in the takeoff is solid.'
+      },
+      {
+        type:            'recommended',
+        label:           'Recommended',
+        bidAmount:       284500,
+        margin:          28.4,
+        winProbability:  'Medium',
+        rationale:       "The agent's best read of this bid given current signals. Callahan Construction Group values quality over lowest price and your relationship is strong — this margin is defensible. The 8% contingency is appropriate given medium confidence on the takeoff."
+      },
+      {
+        type:            'ambitious',
+        label:           'Ambitious',
+        bidAmount:       298000,
+        margin:          34.1,
+        winProbability:  'Low–Medium',
+        rationale:       'Reaches for maximum margin at the cost of win probability. Justified when crews are fully available and pipeline is healthy — a loss here costs nothing. Only viable with a GC who prioritises quality over price, which Callahan does. Worth attempting if Dirigo has recently won other work from this GC.'
+      }
+    ],
 
     reasoning: 'Harborview Plaza is a well-defined retail fit-out with manageable complexity. ' +
       'Your direct cost model is solid — the restricted site access and curved feature wall are ' +
       'both captured in conditions and the 12% waste factor is appropriate for a two-level retail ' +
-      'scope with exterior exposure. At $284,500 with an effective margin of 28.4%, you are priced ' +
-      'competitively for moderate competition without leaving money on the table. Callahan ' +
-      'Construction Group values quality over lowest price and your relationship is strong — there ' +
-      'is no strategic reason to sharpen the pencil on this one. Hold the number.',
+      'scope with exterior exposure. Callahan Construction Group values quality over lowest price ' +
+      'and your relationship is strong, which makes the Recommended or Ambitious options both viable. ' +
+      'There is no strategic reason to sharpen the pencil unless pipeline pressure increases.',
 
     signals: [
       {
@@ -80,7 +101,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         note:   'No escalation risk flagged beyond the standard 3% already included in markup.'
       },
       {
-        label:  'Dirigo\'s edge',
+        label:  "Dirigo's edge",
         value:  'Strong — best fit',
         status: 'positive',
         note:   'Retail fit-out with plaster feature elements and exterior exposure plays to Dirigo strengths.'
@@ -166,12 +187,9 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
     intelligence: state.intelligence,
     history: bidHistory,
     schema: {
-      recommendation:  'bid_as_calculated | bid_lower | bid_higher | dont_bid',
-      suggestedBid:    'number — your recommended final bid price',
-      rangeLow:        'number — low end of acceptable bid range',
-      rangeHigh:       'number — high end of acceptable bid range',
-      reasoning:       'string — 2-3 sentences directly referencing the signals provided',
-      signals:         '[{ label: string, value: string, status: "positive"|"warning"|"neutral" }] — one entry per intelligence field',
+      options: '[{ type: "competitive"|"recommended"|"ambitious", label: string, bidAmount: number, margin: number, winProbability: "High"|"Medium"|"Low–Medium"|"Low", rationale: string }] — always exactly 3 entries',
+      reasoning:       'string — 2-3 sentences directly referencing the signals provided; explains the overall read on this bid',
+      signals:         '[{ label: string, value: string, status: "positive"|"warning"|"neutral", note: string }] — one entry per intelligence field',
       riskFlags:       '[{ severity: "high"|"medium"|"low", message: string }] — empty array if none',
       historicalNotes: '[string] — observations from bid history; empty array if none'
     }
