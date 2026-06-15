@@ -512,6 +512,14 @@
 
     </div><!-- /workflow-area -->
   </div><!-- /app-layout -->
+
+  <div id="dev-toolbar" style="background:#0a0d13;border-top:1px solid #2a2f3d;padding:8px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+    <span style="color:#555a6b;font-size:10px">Dev tools</span>
+    <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="loadSeedData()">Load seed data</button>
+    <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="clearSeedData()">Clear all data</button>
+    <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="document.getElementById('dev-toolbar').style.display='none'">Hide</button>
+  </div>
+
 </div><!-- /shell -->
 
 <script src="js/state.js"></script>
@@ -522,12 +530,5 @@
 <script src="js/tabs.js"></script>
 <script src="js/ui.js"></script>
 <script src="data/seed.js"></script>
-
-<div id="dev-toolbar" style="background:#0a0d13;border-top:1px solid #2a2f3d;padding:8px 24px;display:flex;align-items:center;gap:12px">
-  <span style="color:#555a6b;font-size:10px">Dev tools</span>
-  <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="loadSeedData()">Load seed data</button>
-  <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="clearSeedData()">Clear all data</button>
-  <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="document.getElementById('dev-toolbar').style.display='none'">Hide</button>
-</div>
 </body>
 </html>
