@@ -564,7 +564,7 @@ function renderAgentTab() {
            style="flex:1;background:${isSel ? 'var(--accent-dim)' : oc.bg};
                   border:1px solid ${isSel ? 'var(--accent-border)' : oc.border};
                   border-radius:var(--rl);padding:18px 16px;cursor:pointer;position:relative;
-                  transition:all .15s;${isRec ? 'margin-top:-6px;padding-bottom:24px;' : ''}">
+                  transition:all .15s;">
         ${isRec ? `<span style="position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;
             padding:2px 7px;border-radius:4px;background:rgba(58,191,122,.12);
             border:1px solid rgba(58,191,122,.3);color:var(--green);letter-spacing:.03em">Agent pick</span>` : ''}
@@ -599,22 +599,22 @@ function renderAgentTab() {
 
   page.innerHTML = hdr + `
     <div class="section-block">
+      <div class="section-label">Agent analysis</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);
+          padding:16px 18px;font-size:14px;color:var(--text2);line-height:1.7">
+        ${r.reasoning || 'No analysis provided.'}
+      </div>
+    </div>
+
+    <div class="section-block">
       <div class="section-label">Bid options</div>
-      <div style="display:flex;gap:12px;align-items:flex-end">
+      <div style="display:flex;gap:12px;align-items:stretch">
         ${optCards}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:0 2px">
         <span style="font-size:11px;color:var(--text3)">← Higher win rate</span>
         <div style="flex:1;height:1px;background:var(--border);margin:0 16px"></div>
         <span style="font-size:11px;color:var(--text3)">Higher margin →</span>
-      </div>
-    </div>
-
-    <div class="section-block">
-      <div class="section-label">Agent analysis</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);
-          padding:16px 18px;font-size:12px;color:var(--text2);line-height:1.65">
-        ${r.reasoning || 'No analysis provided.'}
       </div>
     </div>
 
