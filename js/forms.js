@@ -25,7 +25,7 @@ function addAsm() {
   const id  = 'W' + num;
   const tr  = document.createElement('tr');
   tr.innerHTML = `
-    <td><input value="${id}" data-auto="${id}" class="asm-id" style="width:52px"></td>
+    <td><input type="text" value="${id}" data-auto="${id}" class="asm-id" style="width:52px"></td>
     <td><select style="width:78px" onchange="updateAsmId(this,${num})"><option>Wall</option><option>Ceiling</option></select></td>
     <td><select style="width:76px"><option>1-5/8"</option><option>2-1/2"</option><option>3-5/8"</option><option>4"</option><option>6"</option></select></td>
     <td><select style="width:64px"><option>16"</option><option>24"</option><option>12"</option></select></td>
@@ -34,7 +34,7 @@ function addAsm() {
     <td><select style="width:68px"><option>None</option><option>1-hr</option><option>2-hr</option></select></td>
     <td><select style="width:58px"><option>No</option><option>Yes</option></select></td>
     <td><select style="width:54px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></td>
-    <td><input placeholder="notes" style="width:110px"></td>
+    <td><input type="text" placeholder="notes" style="width:110px"></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
   document.getElementById('asm-body').appendChild(tr);
 }
@@ -44,8 +44,8 @@ function addAsm() {
 function addWall() {
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input placeholder="Floor 3 / North" style="width:120px"></td>
-    <td><input placeholder="W1" style="width:52px"></td>
+    <td><input type="text" placeholder="Floor 3 / North" style="width:120px"></td>
+    <td><input type="text" placeholder="W1" style="width:52px"></td>
     <td><input type="number" min="0" placeholder="10" style="width:64px"></td>
     <td><input type="number" min="0" placeholder="0" style="width:72px" class="wlf"></td>
     <td><input type="number" min="0" placeholder="0" style="width:80px" class="wgsf" oninput="calcWall(this)"></td>
@@ -67,8 +67,8 @@ function calcWall(el) {
 function addCeil() {
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input placeholder="Floor 3 / Lobby" style="width:120px"></td>
-    <td><input placeholder="C1" style="width:52px"></td>
+    <td><input type="text" placeholder="Floor 3 / Lobby" style="width:120px"></td>
+    <td><input type="text" placeholder="C1" style="width:52px"></td>
     <td><input type="number" min="0" placeholder="12" style="width:64px"></td>
     <td><input type="number" min="0" placeholder="0" style="width:72px" class="cgsf" oninput="calcCeil(this)"></td>
     <td><input type="number" min="0" placeholder="0" style="width:72px"></td>
