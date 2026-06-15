@@ -9,12 +9,13 @@
 
 // ── AGENT STATE ───────────────────────────────────────────────────────
 
-let _agentResult      = null;
-let _agentLoading     = false;
-let _lastCalcState    = null;
-let _lastCalcSum      = null;
-let _lastCalcMarkup   = null;
+let _agentResult       = null;
+let _agentLoading      = false;
+let _lastCalcState     = null;
+let _lastCalcSum       = null;
+let _lastCalcMarkup    = null;
 let _selectedBidOption = 'recommended';
+let _lastAgentResult   = null;
 
 // ── RATES RUNNING TOTAL ───────────────────────────────────────────────
 
@@ -529,7 +530,7 @@ function renderAgentTab() {
       </div>
       <div class="page-actions">
         <button class="btn btn-ghost" onclick="goto('output')">← Back</button>
-        <button class="btn btn-primary" onclick="_showFinalizePanel()">Finalize bid →</button>
+        <button id="agent-finalize-btn" class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Finalize bid →</button>
       </div>
     </div>`;
 
@@ -551,6 +552,7 @@ function renderAgentTab() {
   }
 
   const r = _agentResult;
+  _lastAgentResult   = r;
   _selectedBidOption = 'recommended';
 
   const optCards = (r.options || []).map(opt => {
@@ -582,21 +584,6 @@ function renderAgentTab() {
       </div>`;
   }).join('');
 
-  const finalizeRows = (r.options || []).map(opt => {
-    const isSel = _selectedBidOption === opt.type;
-    return `
-      <label id="finalize-row-${opt.type}"
-             style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:10px 12px;
-                    border-radius:var(--r);transition:all .15s;
-                    border:1px solid ${isSel ? 'var(--accent-border)' : 'transparent'};
-                    background:${isSel ? 'var(--accent-dim)' : 'transparent'}">
-        <input type="radio" name="agent-bid-option" value="${opt.type}" ${isSel ? 'checked' : ''}
-               onchange="_selectBidOption(this.value)"
-               style="accent-color:var(--accent);flex-shrink:0">
-        <span style="font-size:13px;font-weight:500;color:var(--text);flex:1">${opt.label}</span>
-        <span style="font-family:monospace;font-size:13px;color:var(--text2)">${fmtCost(opt.bidAmount)}</span>
-      </label>`;
-  }).join('');
 
   page.innerHTML = hdr + `
     <div class="section-block">
@@ -669,31 +656,6 @@ function renderAgentTab() {
           </ul>`}
     </div>
 
-    <div class="section-block" style="display:none">
-      <div class="section-label">Finalize bid</div>
-      <div id="agent-finalize-panel" style="background:var(--surface);border:1px solid var(--border);
-          border-radius:var(--rl);padding:20px">
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">
-          ${finalizeRows}
-          <label id="finalize-row-override"
-                 style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:10px 12px;
-                        border-radius:var(--r);transition:all .15s;border:1px solid transparent">
-            <input type="radio" name="agent-bid-option" value="override"
-                   onchange="_selectBidOption('override')"
-                   style="accent-color:var(--accent);flex-shrink:0">
-            <span style="font-size:13px;font-weight:500;color:var(--text);flex:1">Custom override</span>
-            <input type="number" id="agent-custom-amount" min="0" step="500" placeholder="0"
-                   onfocus="_selectBidOption('override')"
-                   style="width:90px;background:var(--surface2);border:1px solid var(--border);
-                          border-radius:var(--r);padding:4px 8px;font-size:13px;
-                          color:var(--text);font-family:monospace;text-align:right">
-          </label>
-        </div>
-        <div style="text-align:right">
-          <button id="agent-submit-btn" class="btn btn-primary" onclick="_finalizeBid()">Submit bid →</button>
-        </div>
-      </div>
-    </div>
   `;
 }
 
@@ -719,33 +681,107 @@ function _selectBidOption(type) {
   });
 }
 
-function _showFinalizePanel() {
-  const panel = document.getElementById('agent-finalize-panel');
-  if (panel) {
-    panel.closest('.section-block').style.display = 'block';
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-  const recommendedRadio = document.querySelector(
-    'input[name="agent-bid-option"][value="recommended"]'
-  );
-  if (recommendedRadio) {
-    recommendedRadio.checked = true;
-    recommendedRadio.dispatchEvent(new Event('change'));
+// ── FINALIZE MODAL ────────────────────────────────────────────────────
+
+function _initFinalizeModal() {
+  if (document.getElementById('finalize-modal-overlay')) return;
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.id = 'finalize-modal-overlay';
+  el.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Select your final bid amount</div>
+        <button class="modal-close" onclick="_closeFinalizeModal()">×</button>
+      </div>
+      <div id="finalize-modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="_closeFinalizeModal()">Cancel</button>
+        <button class="btn btn-primary" id="finalize-confirm-btn" onclick="_finalizeBid()" disabled>
+          Confirm + submit →
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) _closeFinalizeModal(); });
+}
+
+function _showFinalizeModal(agentOptions) {
+  _initFinalizeModal();
+  const body = document.getElementById('finalize-modal-body');
+
+  const optRows = (agentOptions || []).map(opt => `
+    <div class="bid-option-row" data-modal-opt="${opt.type}" onclick="_modalSelectRow(this)">
+      <input type="radio" name="finalize-modal-option" value="${opt.type}" class="bid-option-radio">
+      <div style="flex:1">
+        <div class="bid-option-label">${opt.label}</div>
+        <div class="bid-option-note">${opt.margin}% margin</div>
+      </div>
+      <div class="bid-option-amount">${fmtCost(opt.bidAmount)}</div>
+    </div>`).join('');
+
+  body.innerHTML = optRows + `
+    <div class="bid-option-row" data-modal-opt="override" onclick="_modalSelectRow(this)">
+      <input type="radio" name="finalize-modal-option" value="override" class="bid-option-radio">
+      <div style="flex:1">
+        <div class="bid-option-label">Custom override</div>
+        <div class="custom-amount-wrap" id="modal-custom-wrap">
+          <input type="number" id="modal-custom-amount" placeholder="Enter amount" min="0" step="500"
+                 oninput="_modalCustomInput(this)" onclick="event.stopPropagation()"
+                 style="width:160px;background:var(--surface2);border:1px solid var(--border2);
+                        border-radius:var(--r);padding:5px 8px;font-size:13px;
+                        color:var(--text);font-family:monospace;margin-top:4px">
+        </div>
+      </div>
+    </div>`;
+
+  const recRow = body.querySelector('[data-modal-opt="recommended"]');
+  if (recRow) _modalSelectRow(recRow);
+
+  document.getElementById('finalize-modal-overlay').classList.add('open');
+}
+
+function _closeFinalizeModal() {
+  const el = document.getElementById('finalize-modal-overlay');
+  if (el) el.classList.remove('open');
+}
+
+function _modalSelectRow(rowEl) {
+  const body = document.getElementById('finalize-modal-body');
+  body.querySelectorAll('.bid-option-row').forEach(r => r.classList.remove('selected'));
+  rowEl.classList.add('selected');
+
+  const radio = rowEl.querySelector('input[type="radio"]');
+  if (radio) radio.checked = true;
+
+  const isOverride = rowEl.dataset.modalOpt === 'override';
+  const wrap = document.getElementById('modal-custom-wrap');
+  if (wrap) wrap.classList.toggle('visible', isOverride);
+
+  const confirmBtn = document.getElementById('finalize-confirm-btn');
+  if (confirmBtn) confirmBtn.disabled = isOverride;
+}
+
+function _modalCustomInput(input) {
+  const confirmBtn = document.getElementById('finalize-confirm-btn');
+  if (confirmBtn) {
+    const val = parseFloat(input.value);
+    confirmBtn.disabled = !(val && val > 0);
   }
 }
 
 function _finalizeBid() {
-  const selected = document.querySelector('input[name="agent-bid-option"]:checked');
+  const selected = document.querySelector('input[name="finalize-modal-option"]:checked');
   if (!selected) return;
   const decision = selected.value;
 
   let amount, label;
   if (decision === 'override') {
-    amount = parseFloat(document.getElementById('agent-custom-amount')?.value || 0);
+    amount = parseFloat(document.getElementById('modal-custom-amount')?.value || 0);
     if (!amount || amount <= 0) return;
     label  = 'Custom override';
   } else {
-    const opt = (_agentResult?.options || []).find(o => o.type === decision);
+    const opt = (_lastAgentResult?.options || []).find(o => o.type === decision);
     amount = opt?.bidAmount ?? null;
     label  = opt?.label ?? decision;
   }
@@ -753,21 +789,44 @@ function _finalizeBid() {
   if (!amount) return;
 
   submitBid();
-
-  const panel = document.getElementById('agent-finalize-panel');
-  if (panel) {
-    panel.innerHTML = `
-      <div style="background:var(--surface);border:2px solid var(--green);border-radius:var(--rl);
-          padding:28px;text-align:center">
-        <div style="font-size:24px;color:var(--green);margin-bottom:10px">✓</div>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submitted</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
-          ${label} — ${fmtCost(amount)}
-        </div>
-        <button class="btn btn-primary" onclick="goto('history')">View bid history →</button>
-      </div>`;
-  }
+  _closeFinalizeModal();
+  _showBidToast(label, amount);
 }
+
+function _showBidToast(label, amount) {
+  const existing = document.getElementById('bid-submit-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'bid-submit-toast';
+  toast.style.cssText = [
+    'position:fixed', 'bottom:24px', 'right:24px',
+    'background:var(--surface)', 'border:1px solid rgba(58,191,122,.35)',
+    'border-radius:var(--rl)', 'padding:12px 18px',
+    'color:var(--green)', 'font-size:13px', 'font-weight:500',
+    'box-shadow:0 4px 12px rgba(0,0,0,.3)', 'z-index:1100',
+    'transition:opacity .4s ease'
+  ].join(';');
+  toast.textContent = 'Bid submitted — ' + fmtCost(amount) + ' logged to history ✓';
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      toast.remove();
+      const btn = document.getElementById('agent-finalize-btn');
+      if (btn) {
+        btn.textContent = 'View bid history →';
+        btn.className   = 'btn btn-ghost';
+        btn.onclick     = function() { goto('history'); };
+      }
+    }, 400);
+  }, 3000);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') _closeFinalizeModal();
+});
 
 function saveApiKey() {
   const key = (document.getElementById('agent-api-key')?.value || '').trim();
