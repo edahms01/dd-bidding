@@ -15,9 +15,9 @@ const AGENT_SYSTEM = `You are a bid strategy advisor for Dirigo Drywall, a comme
 
 const AGENT_FALLBACK = {
   options: [
-    { type: 'competitive', label: 'Competitive', bidAmount: null, margin: null, winProbability: 'High',        rationale: 'Agent unavailable — calculate a competitive price manually.' },
-    { type: 'recommended', label: 'Recommended', bidAmount: null, margin: null, winProbability: 'Medium',      rationale: 'Agent unavailable — review signals manually.' },
-    { type: 'ambitious',   label: 'Ambitious',   bidAmount: null, margin: null, winProbability: 'Low–Medium',  rationale: 'Agent unavailable — calculate an ambitious price manually.' }
+    { type: 'competitive', label: 'Competitive', bidAmount: null, margin: null, winLikelihood: 'High',        rationale: 'Agent unavailable — calculate a competitive price manually.' },
+    { type: 'recommended', label: 'Recommended', bidAmount: null, margin: null, winLikelihood: 'Medium',      rationale: 'Agent unavailable — review signals manually.' },
+    { type: 'ambitious',   label: 'Ambitious',   bidAmount: null, margin: null, winLikelihood: 'Low–Medium',  rationale: 'Agent unavailable — calculate an ambitious price manually.' }
   ],
   reasoning:       'Agent unavailable — review signals manually.',
   signals:         [],
@@ -25,34 +25,62 @@ const AGENT_FALLBACK = {
   historicalNotes: []
 };
 
+// Derives win likelihood from intelligence signals + option type.
+// Used in demo mode; live API returns winLikelihood directly.
+function deriveWinLikelihood(intelligence, optionType) {
+  const base = { competitive: 2, recommended: 0, ambitious: -2 };
+  let score = base[optionType] || 0;
+
+  if (intelligence.gcRelationship === 'strong')    score += 1;
+  if (intelligence.gcRelationship === 'new')       score -= 1;
+  if (intelligence.gcRelationship === 'difficult') score -= 2;
+
+  if (intelligence.gcPriceSensitivity === 'lowest')  score -= 2;
+  if (intelligence.gcPriceSensitivity === 'quality') score += 1;
+
+  if (intelligence.competitionLevel === 'light') score += 2;
+  if (intelligence.competitionLevel === 'heavy') score -= 2;
+
+  if (intelligence.dirigoEdge === 'strong') score += 1;
+  if (intelligence.dirigoEdge === 'weak')   score -= 2;
+
+  if (score >= 4)  return 'Very High';
+  if (score >= 2)  return 'High';
+  if (score >= 0)  return 'Medium';
+  if (score >= -2) return 'Low–Medium';
+  return 'Low';
+}
+
 // Fixed demo response for the Harborview Plaza retail project (seed dataset).
+// winLikelihood is derived dynamically from state.intelligence via deriveWinLikelihood().
 // Set DEMO_MODE = false to use live Anthropic API.
 function _demoResponse(state, summary, markupResult, bidHistory) {
+  const intel = state.intelligence || {};
   return {
     options: [
       {
-        type:            'competitive',
-        label:           'Competitive',
-        bidAmount:       271000,
-        margin:          22.4,
-        winProbability:  'High',
-        rationale:       'Sharpens the number to maximise win probability. Best used when pipeline pressure is high or the GC relationship needs strengthening. Leaves less room for cost overruns — only viable if confidence in the takeoff is solid.'
+        type:           'competitive',
+        label:          'Competitive',
+        bidAmount:      271000,
+        margin:         22.4,
+        winLikelihood:  deriveWinLikelihood(intel, 'competitive'),
+        rationale:      'Sharpens the number to maximise win probability. Best used when pipeline pressure is high or the GC relationship needs strengthening. Leaves less room for cost overruns — only viable if confidence in the takeoff is solid.'
       },
       {
-        type:            'recommended',
-        label:           'Recommended',
-        bidAmount:       284500,
-        margin:          28.4,
-        winProbability:  'Medium',
-        rationale:       "The agent's best read of this bid given current signals. Callahan Construction Group values quality over lowest price and your relationship is strong — this margin is defensible. The 8% contingency is appropriate given medium confidence on the takeoff."
+        type:           'recommended',
+        label:          'Recommended',
+        bidAmount:      284500,
+        margin:         28.4,
+        winLikelihood:  deriveWinLikelihood(intel, 'recommended'),
+        rationale:      "The agent's best read of this bid given current signals. Callahan Construction Group values quality over lowest price and your relationship is strong — this margin is defensible. The 8% contingency is appropriate given medium confidence on the takeoff."
       },
       {
-        type:            'ambitious',
-        label:           'Ambitious',
-        bidAmount:       298000,
-        margin:          34.1,
-        winProbability:  'Low–Medium',
-        rationale:       'Reaches for maximum margin at the cost of win probability. Justified when crews are fully available and pipeline is healthy — a loss here costs nothing. Only viable with a GC who prioritises quality over price, which Callahan does. Worth attempting if Dirigo has recently won other work from this GC.'
+        type:           'ambitious',
+        label:          'Ambitious',
+        bidAmount:      298000,
+        margin:         34.1,
+        winLikelihood:  deriveWinLikelihood(intel, 'ambitious'),
+        rationale:      'Reaches for maximum margin at the cost of win probability. Justified when crews are fully available and pipeline is healthy — a loss here costs nothing. Only viable with a GC who prioritises quality over price, which Callahan does. Worth attempting if Dirigo has recently won other work from this GC.'
       }
     ],
 
@@ -187,7 +215,7 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
     intelligence: state.intelligence,
     history: bidHistory,
     schema: {
-      options: '[{ type: "competitive"|"recommended"|"ambitious", label: string, bidAmount: number, margin: number, winProbability: "High"|"Medium"|"Low–Medium"|"Low", rationale: string }] — always exactly 3 entries',
+      options: '[{ type: "competitive"|"recommended"|"ambitious", label: string, bidAmount: number, margin: number, winLikelihood: "Very High"|"High"|"Medium"|"Low–Medium"|"Low", rationale: string }] — always exactly 3 entries',
       reasoning:       'string — 2-3 sentences directly referencing the signals provided; explains the overall read on this bid',
       signals:         '[{ label: string, value: string, status: "positive"|"warning"|"neutral", note: string }] — one entry per intelligence field',
       riskFlags:       '[{ severity: "high"|"medium"|"low", message: string }] — empty array if none',

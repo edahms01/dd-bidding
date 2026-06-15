@@ -511,12 +511,15 @@ function renderAgentTab() {
     return `<span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;margin-top:5px;display:inline-block"></span>`;
   }
 
-  function winPill(prob) {
-    if (prob === 'High')
-      return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(58,191,122,.1);border:1px solid rgba(58,191,122,.25);color:var(--green)">${prob}</span>`;
-    if (prob === 'Medium')
-      return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(232,124,42,.1);border:1px solid rgba(232,124,42,.3);color:var(--accent)">${prob}</span>`;
-    return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--text3)">${prob}</span>`;
+  function winLikelihoodPill(val) {
+    const s = {
+      'Very High':  'background:rgba(58,191,122,.15);border:1px solid rgba(58,191,122,.35);color:#3abf7a',
+      'High':       'background:rgba(58,191,122,.10);border:1px solid rgba(58,191,122,.25);color:#3abf7a',
+      'Medium':     'background:rgba(232,124,42,.12);border:1px solid rgba(232,124,42,.30);color:#e87c2a',
+      'Low–Medium': 'background:rgba(232,92,74,.10);border:1px solid rgba(232,92,74,.25);color:#e85c4a',
+      'Low':        'background:rgba(232,92,74,.15);border:1px solid rgba(232,92,74,.35);color:#e85c4a'
+    }[val] || 'background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--text3)';
+    return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;${s}">${val || '—'}</span>`;
   }
 
   const hdr = `
@@ -589,7 +592,10 @@ function renderAgentTab() {
         <div style="font-family:monospace;font-size:26px;font-weight:700;color:${oc.color};
             line-height:1;margin-bottom:3px">${fmtCost(opt.bidAmount)}</div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:12px">${opt.margin}% margin</div>
-        ${winPill(opt.winProbability)}
+        <div>
+          <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.08em;margin-bottom:5px;text-transform:uppercase">WIN LIKELIHOOD</div>
+          ${winLikelihoodPill(opt.winLikelihood)}
+        </div>
         <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:12px">${opt.rationale}</div>
       </div>`;
   }).join('');
