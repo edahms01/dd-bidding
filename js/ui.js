@@ -491,8 +491,7 @@ function deleteBidRecord(bid_id) {
 // ── BID AGENT RENDER ──────────────────────────────────────────────────
 
 function renderAgentTab() {
-  const page   = document.getElementById('page-agent');
-  const apiKey = localStorage.getItem('dirigo_api_key') || '';
+  const page = document.getElementById('page-agent');
 
   const OPT_COLORS = {
     competitive: { color: 'var(--blue)',   bg: 'rgba(74,143,232,.08)',  border: 'rgba(74,143,232,.25)' },
@@ -533,26 +532,8 @@ function renderAgentTab() {
       </div>
     </div>`;
 
-  const setup = apiKey ? '' : `
-    <div class="section-block">
-      <div class="section-label">Setup</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;max-width:520px;line-height:1.6">
-          Enter your Anthropic API key to enable the bid agent.
-          Your key is stored in your browser only and sent exclusively to Anthropic's API.
-        </div>
-        <div class="grid g2" style="max-width:460px">
-          <div class="field">
-            <span class="lbl">Anthropic API key</span>
-            <input type="password" id="agent-api-key" placeholder="sk-ant-…" style="font-family:monospace">
-          </div>
-        </div>
-        <button class="btn btn-primary" style="margin-top:12px" onclick="saveApiKey()">Save &amp; run agent</button>
-      </div>
-    </div>`;
-
   if (_agentLoading) {
-    page.innerHTML = hdr + setup + `
+    page.innerHTML = hdr + `
       <div style="text-align:center;padding:60px 24px">
         <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Agent is analyzing your bid…</div>
         <div style="font-size:11px;color:var(--text3)">This takes a few seconds.</div>
@@ -561,7 +542,7 @@ function renderAgentTab() {
   }
 
   if (!_agentResult) {
-    page.innerHTML = hdr + setup + `
+    page.innerHTML = hdr + `
       <div class="empty-state">
         Complete your bid setup and click "Generate bid output →" on Tab 6 to get the agent's recommendation.
       </div>`;
@@ -616,7 +597,7 @@ function renderAgentTab() {
       </label>`;
   }).join('');
 
-  page.innerHTML = hdr + setup + `
+  page.innerHTML = hdr + `
     <div class="section-block">
       <div class="section-label">Bid options</div>
       <div style="display:flex;gap:12px;align-items:flex-end">
