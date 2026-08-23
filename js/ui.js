@@ -17,6 +17,18 @@ let _lastCalcMarkup    = null;
 let _selectedBidOption = 'recommended';
 let _lastAgentResult   = null;
 
+// renderAgentTab()/runAgentIfNeeded() short-circuit on _lastAgentResult
+// before ever checking which draft is active — reasonable when there was
+// only ever one bid, a real cross-draft leak once there are several (see
+// Phase 2 handover brief). Called from js/forms.js wherever the active
+// draft changes out from under Tab 8's cache. Idempotent — safe to call
+// redundantly (e.g. a fresh page load with nothing cached yet).
+function _resetAgentCache() {
+  _agentResult     = null;
+  _lastAgentResult = null;
+  _agentLoading    = false;
+}
+
 // ── RATES RUNNING TOTAL ───────────────────────────────────────────────
 
 function fmt(n) { return n > 0 ? '$' + Math.round(n).toLocaleString() : '—'; }
@@ -303,6 +315,10 @@ function submitBid() {
   const markupResult = applyMarkup(summary, state.markupInputs);
   const saved        = saveBid(buildBidRecord(state, summary, markupResult));
 
+  // The finalized draft now lives permanently in dirigo_bids — clear it out
+  // of dirigo_drafts so "New Bid" never shows stale, already-submitted data.
+  clearFinalizedDraft();
+
   const bidEl = document.getElementById('output-bid');
   if (bidEl) {
     bidEl.innerHTML = `
@@ -487,6 +503,74 @@ function deleteBidRecord(bid_id) {
   if (!confirm('Delete this bid record? This cannot be undone.')) return;
   deleteBid(bid_id);
   renderHistory();
+}
+
+// ── DASHBOARD RENDER ─────────────────────────────────────────────────
+// Deliberately no computed cost shown — running the calculator against
+// every draft just for a list preview would be scope creep; that's what
+// Tab 7 is for. Draft CRUD itself (createDraft/switchToDraft/
+// duplicateDraft/deleteDraft) lives in js/forms.js and stays DOM/dialog
+// -free, same split as history.js vs. this file's renderHistory().
+
+function renderDashboard() {
+  const page   = document.getElementById('page-dashboard');
+  if (!page) return;
+
+  const drafts = Object.values(getAllDrafts())
+    .sort((a, b) => new Date(b.lastModifiedAt) - new Date(a.lastModifiedAt));
+
+  const rows = !drafts.length
+    ? `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text3)">No drafts yet — click "New Bid" to start one.</td></tr>`
+    : drafts.map(d => {
+        const name     = (d.project && d.project.name) || 'Untitled bid';
+        const type     = (d.project && d.project.buildingType) || '—';
+        const modified = d.lastModifiedAt ? new Date(d.lastModifiedAt).toLocaleString() : '—';
+        return `
+        <tr>
+          <td style="font-weight:500">${name}</td>
+          <td style="color:var(--text2)">${type}</td>
+          <td style="white-space:nowrap;color:var(--text2)">${modified}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-primary btn-sm" onclick="switchToDraft('${d.id}')">Open</button>
+            <button class="btn btn-ghost btn-sm" style="margin-left:4px" onclick="duplicateDraftAndRefresh('${d.id}')">Duplicate</button>
+            <button class="btn btn-ghost btn-sm" style="color:#e85c4a;margin-left:4px" onclick="confirmDeleteDraft('${d.id}')">×</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+  page.innerHTML = `
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Every bid currently in progress</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="createDraft()">+ New Bid</button>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Project</th><th>Building type</th><th>Last modified</th><th></th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function duplicateDraftAndRefresh(id) {
+  duplicateDraft(id);
+  renderDashboard();
+}
+
+function confirmDeleteDraft(id) {
+  if (!confirm('Delete this draft? This cannot be undone.')) return;
+  deleteDraft(id);
+  renderDashboard();
 }
 
 // ── BID AGENT RENDER ──────────────────────────────────────────────────

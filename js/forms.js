@@ -88,7 +88,7 @@ function calcCeil(el) {
 // ── POPULATE FORM ─────────────────────────────────────────────────────
 // Inverse of collectFormData() — reads a state object and writes values
 // back into all form DOM elements. Used by loadSeedData() and
-// resumeFromStorage(). Foundation for the save-and-resume workflow.
+// resumeActiveDraft(). Foundation for the save-and-resume workflow.
 
 function populateForm(state) {
   function set(id, val) {
@@ -274,15 +274,258 @@ function populateForm(state) {
   }
 }
 
-// ── RESUME FROM STORAGE ───────────────────────────────────────────────
+// ── DRAFTS DATA LAYER ────────────────────────────────────────────────
+// dirigo_drafts: { [id]: draftRecord }, draftRecord shaped by
+// buildDraftRecord() in js/drafts.js. dirigo_active_draft_id: which one
+// is currently open in the workflow form. activeDraftId mirrors that
+// key in memory (same pattern as hasUnsavedChanges below).
 
-function resumeFromStorage() {
+const DRAFTS_KEY       = 'dirigo_drafts';
+const ACTIVE_DRAFT_KEY = 'dirigo_active_draft_id';
+const LEGACY_BID_KEY   = 'dirigo_current_bid';
+
+let activeDraftId = null;
+
+function getAllDrafts() {
   try {
-    const saved = JSON.parse(localStorage.getItem('dirigo_current_bid') || 'null');
-    if (saved) populateForm(migrateSchema(saved));
+    return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '{}');
   } catch (e) {
-    // Corrupt or missing — start fresh
+    return {};
   }
+}
+
+function _saveDraftsMap(map) {
+  try {
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(map));
+  } catch (e) {
+    _setIndicator('error');
+  }
+}
+
+function setActiveDraftId(id) {
+  activeDraftId = id;
+  if (id) localStorage.setItem(ACTIVE_DRAFT_KEY, id);
+  else localStorage.removeItem(ACTIVE_DRAFT_KEY);
+}
+
+function _generateDraftId() {
+  return 'draft_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+// ── LEGACY MIGRATION ─────────────────────────────────────────────────
+// One-time: wraps a pre-Phase-2 dirigo_current_bid value into a draft.
+// Must run exactly once — migrateLegacyBidToDrafts() itself no-ops
+// (returns null) whenever dirigo_drafts already exists, so a corrupt or
+// already-migrated state can never be double-wrapped.
+
+function _runLegacyMigrationIfNeeded() {
+  const draftsAlreadyExist = localStorage.getItem(DRAFTS_KEY) !== null;
+  let currentBidState = null;
+  try {
+    currentBidState = JSON.parse(localStorage.getItem(LEGACY_BID_KEY) || 'null');
+  } catch (e) {
+    currentBidState = null; // corrupt legacy value — start clean rather than crash
+  }
+
+  const result = migrateLegacyBidToDrafts({
+    currentBidState,
+    draftsAlreadyExist,
+    id:  _generateDraftId(),
+    now: new Date().toISOString()
+  });
+  if (result === null) return; // already migrated — no-op
+
+  _saveDraftsMap(result.drafts);
+  setActiveDraftId(result.activeDraftId);
+  localStorage.removeItem(LEGACY_BID_KEY);
+}
+
+// ── RESUME ACTIVE DRAFT ──────────────────────────────────────────────
+// Invariant: the workflow view is never shown without an active draft.
+// If none exists yet (fresh install) or the referenced record is
+// missing (corrupt state), _createAndActivateBlankDraft() creates one
+// on the spot rather than leaving activeDraftId null under an editable
+// form — that state would make _autosave() (which no longer has, or
+// needs, a no-op guard) write into dirigo_drafts[null] the moment
+// someone typed a single character on their very first visit.
+
+function resumeActiveDraft() {
+  const id      = localStorage.getItem(ACTIVE_DRAFT_KEY);
+  const drafts  = getAllDrafts();
+  const record  = id ? drafts[id] : null;
+
+  if (!record) {
+    _createAndActivateBlankDraft();
+    return;
+  }
+
+  activeDraftId = id;
+  populateForm(migrateSchema(record));
+  hasUnsavedChanges = false;
+  _setIndicator('saved', new Date(record.lastModifiedAt));
+}
+
+// ── RESET FORM FIELDS ────────────────────────────────────────────────
+// Inverse of populateForm() — blanks every field back to the same state
+// a truly fresh page load starts in. Used whenever a blank draft
+// becomes active. Doesn't touch Tab 7/Tab 8 output — goto() already
+// unconditionally calls runCalculation()/renderAgentTab() on every
+// visit to those tabs, so they self-refresh from whatever draft is
+// active by the time the user gets there.
+
+function resetFormFields() {
+  function clear(id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+
+  // ── Project ──
+  ['proj-name', 'proj-gc', 'proj-bid', 'proj-addr', 'proj-type', 'proj-drawings',
+   'proj-start', 'proj-dur', 'proj-floors', 'proj-exclusions'].forEach(clear);
+
+  // Scope pills — back to the two static HTML defaults
+  document.querySelectorAll('.pills .pill').forEach(pill => {
+    const scope = pill.dataset.scope || pill.textContent.trim();
+    pill.classList.toggle('on', scope === 'Metal framing' || scope === 'Drywall');
+  });
+
+  const badge = document.querySelector('.proj-badge span');
+  if (badge) badge.textContent = 'New bid';
+
+  // ── Conditions ──
+  ['cond-maxht', 'cond-sf12', 'cond-sf20', 'f-exterior', 'f-access', 'f-parking',
+   'cond-waste', 'cond-trips', 'cond-notes'].forEach(clear);
+
+  clear('f-curved');
+  const curvedLF = document.getElementById('f-curved-lf');
+  if (curvedLF) { curvedLF.style.display = 'none'; curvedLF.value = ''; }
+
+  clear('f-phase');
+  const phaseN = document.getElementById('f-phase-n');
+  if (phaseN) { phaseN.style.display = 'none'; phaseN.value = ''; }
+
+  setConf('');
+
+  // ── Intelligence ──
+  ['intel-crew', 'intel-pipeline', 'intel-material-trend', 'intel-gc-rel',
+   'intel-gc-price', 'intel-competition', 'intel-competitors', 'intel-edge'].forEach(clear);
+
+  // ── Rates ──
+  ['rate-frame', 'rate-hang', 'rate-burden', 'rate-super',
+   'rate-fin1', 'rate-fin2', 'rate-fin3', 'rate-fin4', 'rate-fin5',
+   'rate-add12', 'rate-add20',
+   'rate-stud158', 'rate-stud212', 'rate-stud358', 'rate-stud4', 'rate-stud6',
+   'rate-brd-std', 'rate-brd-typex', 'rate-brd-moist', 'rate-brd-imp',
+   'rate-tape', 'rate-insul', 'rate-fasten', 'rate-delivery', 'rate-disposal', 'rate-lift'
+  ].forEach(clear);
+  calc(); // refresh rates running totals bar to zero, mirroring populateForm()
+
+  // ── Markup ──
+  ['markup-overhead', 'markup-contingency', 'markup-profit', 'markup-escalation'].forEach(clear);
+
+  // ── Assemblies / Walls / Ceilings — clear and rebuild one default row each ──
+  const asmBody = document.getElementById('asm-body');
+  if (asmBody) { asmBody.innerHTML = ''; asmCount = 0; addAsm(); }
+
+  const wallBody = document.getElementById('wall-body');
+  if (wallBody) { wallBody.innerHTML = ''; addWall(); }
+
+  const ceilBody = document.getElementById('ceil-body');
+  if (ceilBody) { ceilBody.innerHTML = ''; addCeil(); }
+}
+
+// ── DRAFT LIFECYCLE ──────────────────────────────────────────────────
+
+// Shared guard for every path about to hand the visible form to a
+// *different existing* draft: flushes the outgoing draft's pending
+// autosave synchronously — not via the debounced wrapper, and not a
+// confirm() interrupt — so no keystroke is ever lost (resolves the
+// mid-debounce-switch edge case the same way import-overwrite is
+// already gated by hasUnsavedChanges, just as a flush instead of a
+// prompt, since there's nothing external to validate here). Also
+// resets Tab 8's cached agent result so it can't leak across drafts.
+function _flushAndSwitch() {
+  if (hasUnsavedChanges) _autosave();
+  _resetAgentCache();
+}
+
+// The only place any code path creates/activates a blank draft — the
+// shared primitive behind createDraft(), the "no active draft" auto-heal
+// in resumeActiveDraft() above, deleteDraft()'s active-branch, and
+// clearFinalizedDraft() below. Always resets the Tab 8 agent cache
+// itself (rather than trusting every caller to remember the pairing) —
+// idempotent, so the redundant call from _flushAndSwitch() in the
+// createDraft() path is harmless. Does not navigate.
+function _createAndActivateBlankDraft({ announce } = {}) {
+  resetFormFields();
+  const id  = _generateDraftId();
+  const now = new Date().toISOString();
+  const drafts = getAllDrafts();
+  drafts[id] = buildDraftRecord(collectFormData(), id, now, now);
+  _saveDraftsMap(drafts);
+  setActiveDraftId(id);
+  hasUnsavedChanges = false;
+  _setIndicator('idle');
+  _resetAgentCache();
+  if (announce) _showFormToast('Started a new bid', 'success');
+  return id;
+}
+
+function createDraft() {
+  _flushAndSwitch();
+  _createAndActivateBlankDraft();
+  goto('project');
+}
+
+function switchToDraft(id) {
+  const drafts = getAllDrafts();
+  const record = drafts[id];
+  if (!record) return;
+
+  _flushAndSwitch();
+  populateForm(migrateSchema(record));
+  setActiveDraftId(id);
+  hasUnsavedChanges = false;
+  _setIndicator('saved', new Date(record.lastModifiedAt));
+  goto('project');
+}
+
+function duplicateDraft(id) {
+  const drafts = getAllDrafts();
+  const source = drafts[id];
+  if (!source) return;
+
+  const newId = _generateDraftId();
+  drafts[newId] = cloneDraftForDuplicate(source, newId, new Date().toISOString());
+  _saveDraftsMap(drafts);
+}
+
+// Dialog-free by design so it stays directly unit-testable — the
+// confirm() from the brief lives in the Dashboard's UI-layer wrapper
+// (confirmDeleteDraft(), js/ui.js), not here.
+function deleteDraft(id) {
+  const drafts = getAllDrafts();
+  const result = removeDraftAndClearActiveIfNeeded(drafts, id, activeDraftId);
+  _saveDraftsMap(result.drafts);
+  // Invariant: never leave activeDraftId null. removeDraftAndClearActiveIfNeeded()
+  // only returns null here when the deleted draft was the active one (or there
+  // already wasn't one, which shouldn't happen post-init) — either way, replace
+  // it immediately rather than leaving a draftless editable form.
+  if (result.activeDraftId === null) _createAndActivateBlankDraft({ announce: true });
+}
+
+// Called by submitBid() (js/ui.js) right after saveBid() succeeds — the
+// finalized draft now lives permanently in dirigo_bids, so it's removed
+// from dirigo_drafts and immediately replaced with a fresh blank active
+// draft (never a bare null — same invariant as deleteDraft() above).
+// The Tab 7 "Bid submitted ✓" confirmation screen currently on-screen
+// is untouched; resetFormFields() only affects Tabs 1–6 underneath it.
+function clearFinalizedDraft() {
+  if (!activeDraftId) return;
+  const drafts = getAllDrafts();
+  delete drafts[activeDraftId];
+  _saveDraftsMap(drafts);
+  _createAndActivateBlankDraft({ announce: true });
 }
 
 // ── CONFIDENCE ────────────────────────────────────────────────────────
@@ -344,8 +587,10 @@ function _showFormToast(message, kind) {
 
 function _autosave() {
   try {
-    const payload = buildExportPayload(collectFormData());
-    localStorage.setItem('dirigo_current_bid', JSON.stringify(payload));
+    const drafts = getAllDrafts();
+    drafts[activeDraftId] = buildDraftRecord(collectFormData(), activeDraftId,
+      drafts[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
+    _saveDraftsMap(drafts);
     hasUnsavedChanges = false;
     _setIndicator('saved');
   } catch (e) {
@@ -401,7 +646,17 @@ function handleImportFile(event) {
     const migrated = migrateSchema(result.data);
     populateForm(migrated);
     try {
-      localStorage.setItem('dirigo_current_bid', JSON.stringify(migrated));
+      // Imports replace the currently active draft's contents (same
+      // semantics as before Phase 2 — "import overwrites the current
+      // bid" — just repointed at dirigo_drafts[activeDraftId] instead
+      // of the old flat dirigo_current_bid key). The invariant that the
+      // workflow view is never shown without an active draft means
+      // activeDraftId is always set here, regardless of which view the
+      // Import button was clicked from.
+      const drafts = getAllDrafts();
+      drafts[activeDraftId] = buildDraftRecord(migrated, activeDraftId,
+        drafts[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
+      _saveDraftsMap(drafts);
       hasUnsavedChanges = false;
       _setIndicator('saved');
       _showFormToast('Bid imported ✓', 'success');
@@ -423,27 +678,30 @@ addAsm();
 addWall();
 addCeil();
 
-// resumeFromStorage() -> populateForm() calls calc(), which is defined in
+// resumeActiveDraft() -> populateForm() calls calc(), which is defined in
 // js/ui.js — loaded *after* this file. That was latent and harmless before
-// this phase (the only prior writer of dirigo_current_bid was loadSeedData(),
+// Phase 1 (the only prior writer of dirigo_current_bid was loadSeedData(),
 // whose populateForm() call happens after an async fetch(), well after every
-// script has loaded). Now that resumeFromStorage() finds real data on every
-// reload, calling it synchronously here would hit that ordering gap on
-// nearly every load and throw "calc is not defined", silently truncating
-// populateForm() before it reaches markup/assemblies/walls/ceilings (caught
-// by the try/catch above).
+// script has loaded). Once autosave made real data available on nearly
+// every reload, calling this synchronously here would hit that ordering gap
+// and throw "calc is not defined", silently truncating populateForm() before
+// it reaches markup/assemblies/walls/ceilings.
 //
-// DO NOT "simplify" this back to a bare `resumeFromStorage();` call — that
-// silently reintroduces the bug above. DOMContentLoaded (not `load`) is the
-// right event: every <script> tag in this app is a plain blocking
-// `<script src>` with no async/defer, so by the time the document finishes
-// parsing, every script — ui.js included — has already run. `load` would
-// also work but additionally waits on stylesheets/images, which buys
-// nothing here.
+// DO NOT "simplify" this back to a bare synchronous call — that silently
+// reintroduces the bug above. DOMContentLoaded (not `load`) is the right
+// event: every <script> tag in this app is a plain blocking `<script src>`
+// with no async/defer, so by the time the document finishes parsing, every
+// script — ui.js included — has already run. `load` would also work but
+// additionally waits on stylesheets/images, which buys nothing here.
+function _initDraftsAndResume() {
+  _runLegacyMigrationIfNeeded();
+  resumeActiveDraft();
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', resumeFromStorage, { once: true });
+  document.addEventListener('DOMContentLoaded', _initDraftsAndResume, { once: true });
 } else {
-  resumeFromStorage();
+  _initDraftsAndResume();
 }
 
 const _workflowArea = document.querySelector('.workflow-area');
