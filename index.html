@@ -26,7 +26,10 @@
     </div>
     <div class="header-actions">
       <div class="proj-badge">Project: <span>New bid</span></div>
-      <button class="btn btn-ghost btn-sm" onclick="saveDraft()">Save draft</button>
+      <span id="autosave-indicator" class="autosave-indicator"></span>
+      <button class="btn btn-ghost btn-sm" onclick="exportBid()">Export</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-file-input').click()">Import</button>
+      <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="handleImportFile(event)">
     </div>
   </header>
 
@@ -522,6 +525,7 @@
 
 </div><!-- /shell -->
 
+<script src="js/autosave.js"></script>
 <script src="js/state.js"></script>
 <script src="js/calculator.js"></script>
 <script src="js/history.js"></script>

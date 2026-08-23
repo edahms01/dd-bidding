@@ -53,6 +53,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-
 .btn-primary:hover{opacity:.88}
 .btn-sm{padding:5px 12px;font-size:11px}
 
+.autosave-indicator{font-size:11px;color:var(--text3);min-width:80px}
+.autosave-indicator.saving{color:var(--text2)}
+.autosave-indicator.saved{color:var(--green)}
+.autosave-indicator.error{color:#e85c4a}
+
 /* ── FORM ELEMENTS ── */
 .field{display:flex;flex-direction:column;gap:5px}
 .lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
