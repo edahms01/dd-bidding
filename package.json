@@ -1,0 +1,27 @@
+{
+  "name": "dirigo-bid-system",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edahms01/dd-bidding.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/edahms01/dd-bidding/issues"
+  },
+  "homepage": "https://github.com/edahms01/dd-bidding#readme",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "http-server": "^14.1.1",
+    "vitest": "^4.1.11"
+  }
+}

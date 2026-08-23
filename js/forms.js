@@ -279,7 +279,7 @@ function populateForm(state) {
 function resumeFromStorage() {
   try {
     const saved = JSON.parse(localStorage.getItem('dirigo_current_bid') || 'null');
-    if (saved) populateForm(saved);
+    if (saved) populateForm(migrateSchema(saved));
   } catch (e) {
     // Corrupt or missing — start fresh
   }
@@ -294,21 +294,127 @@ function setConf(v) {
   });
 }
 
-// ── SAVE DRAFT ────────────────────────────────────────────────────────
+// ── AUTOSAVE ─────────────────────────────────────────────────────────
+// Continuous debounced autosave to localStorage. Delegated on
+// .workflow-area rather than per-field, so rows added later by
+// addWall()/addCeil()/addAsm() are covered without rebinding.
 
-function saveDraft() {
-  const data = { project: {}, rates: {} };
-  data.project.name     = document.getElementById('proj-name')?.value || '';
-  data.project.gc       = document.getElementById('proj-gc')?.value || '';
-  data.project.bid_date = document.getElementById('proj-bid')?.value || '';
-  document.querySelectorAll('input[type=number]').forEach((el, i) => {
-    if (el.value) data.rates['r' + i] = el.value;
-  });
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+let hasUnsavedChanges = false;
+
+function _setIndicator(status, when) {
+  const el = document.getElementById('autosave-indicator');
+  if (!el) return;
+  el.className = 'autosave-indicator ' + status;
+  if (status === 'saving') {
+    el.textContent = 'Saving…';
+  } else if (status === 'saved') {
+    const t = (when || new Date()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    el.textContent = 'Saved ✓ ' + t;
+  } else if (status === 'error') {
+    el.textContent = 'Save failed — check storage';
+  } else {
+    el.textContent = '';
+  }
+}
+
+function _showFormToast(message, kind) {
+  const existing = document.getElementById('form-toast');
+  if (existing) existing.remove();
+
+  const isError = kind === 'error';
+  const toast = document.createElement('div');
+  toast.id = 'form-toast';
+  toast.style.cssText = [
+    'position:fixed', 'bottom:24px', 'right:24px',
+    'background:var(--surface)',
+    'border:1px solid ' + (isError ? 'rgba(232,92,74,.4)' : 'rgba(58,191,122,.35)'),
+    'border-radius:var(--rl)', 'padding:12px 18px',
+    'color:' + (isError ? '#e85c4a' : 'var(--green)'), 'font-size:13px', 'font-weight:500',
+    'box-shadow:0 4px 12px rgba(0,0,0,.3)', 'z-index:1100',
+    'transition:opacity .4s ease'
+  ].join(';');
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 400);
+  }, isError ? 5000 : 3000);
+}
+
+function _autosave() {
+  try {
+    const payload = buildExportPayload(collectFormData());
+    localStorage.setItem('dirigo_current_bid', JSON.stringify(payload));
+    hasUnsavedChanges = false;
+    _setIndicator('saved');
+  } catch (e) {
+    _setIndicator('error');
+  }
+}
+
+const _debouncedAutosave = debounce(_autosave, AUTOSAVE_DEBOUNCE_MS);
+
+function _handleFormChange() {
+  hasUnsavedChanges = true;
+  _setIndicator('saving');
+  _debouncedAutosave();
+}
+
+window.addEventListener('beforeunload', (e) => {
+  if (hasUnsavedChanges) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// ── EXPORT / IMPORT ──────────────────────────────────────────────────
+
+function exportBid() {
+  const payload = buildExportPayload(collectFormData());
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a    = document.createElement('a');
   a.href     = URL.createObjectURL(blob);
-  a.download = 'dirigo_bid_draft.json';
+  a.download = 'dirigo_bid_export.json';
   a.click();
+}
+
+function handleImportFile(event) {
+  const input = event.target;
+  const file  = input.files && input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = validateImportPayload(reader.result);
+    if (!result.valid) {
+      _showFormToast('Import failed — ' + result.error, 'error');
+      input.value = ''; // allow reselecting the same filename after fixing it
+      return;
+    }
+
+    if (hasUnsavedChanges && !confirm('Importing will overwrite your current unsaved changes. Continue?')) {
+      input.value = '';
+      return;
+    }
+
+    const migrated = migrateSchema(result.data);
+    populateForm(migrated);
+    try {
+      localStorage.setItem('dirigo_current_bid', JSON.stringify(migrated));
+      hasUnsavedChanges = false;
+      _setIndicator('saved');
+      _showFormToast('Bid imported ✓', 'success');
+    } catch (e) {
+      _setIndicator('error');
+    }
+    input.value = '';
+  };
+  reader.onerror = () => {
+    _showFormToast('Import failed — could not read the file.', 'error');
+    input.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────
@@ -316,4 +422,32 @@ function saveDraft() {
 addAsm();
 addWall();
 addCeil();
-resumeFromStorage();
+
+// resumeFromStorage() -> populateForm() calls calc(), which is defined in
+// js/ui.js — loaded *after* this file. That was latent and harmless before
+// this phase (the only prior writer of dirigo_current_bid was loadSeedData(),
+// whose populateForm() call happens after an async fetch(), well after every
+// script has loaded). Now that resumeFromStorage() finds real data on every
+// reload, calling it synchronously here would hit that ordering gap on
+// nearly every load and throw "calc is not defined", silently truncating
+// populateForm() before it reaches markup/assemblies/walls/ceilings (caught
+// by the try/catch above).
+//
+// DO NOT "simplify" this back to a bare `resumeFromStorage();` call — that
+// silently reintroduces the bug above. DOMContentLoaded (not `load`) is the
+// right event: every <script> tag in this app is a plain blocking
+// `<script src>` with no async/defer, so by the time the document finishes
+// parsing, every script — ui.js included — has already run. `load` would
+// also work but additionally waits on stylesheets/images, which buys
+// nothing here.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', resumeFromStorage, { once: true });
+} else {
+  resumeFromStorage();
+}
+
+const _workflowArea = document.querySelector('.workflow-area');
+if (_workflowArea) {
+  _workflowArea.addEventListener('input', _handleFormChange);
+  _workflowArea.addEventListener('change', _handleFormChange);
+}
