@@ -36,11 +36,6 @@ function goto(id) {
 
 // ── SECTION CONTROL ───────────────────────────────────────────────────
 
-// Called by the "New Bid" left nav item — restores the last active workflow tab
-function showWorkflow() {
-  goto(_lastWorkflowTab);
-}
-
 // Called by the "Bid History" left nav item
 function showHistory() {
   _navSetActive('history');
@@ -55,6 +50,21 @@ function showHistory() {
   if (histPage) histPage.classList.add('active');
 
   renderHistory();
+}
+
+// Called by the "Dashboard" left nav item — direct structural mirror of
+// showHistory() above.
+function showDashboard() {
+  _navSetActive('dashboard');
+
+  const tabsEl = document.getElementById('app-tabs');
+  if (tabsEl) tabsEl.style.display = 'none';
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const dashPage = document.getElementById('page-dashboard');
+  if (dashPage) dashPage.classList.add('active');
+
+  renderDashboard();
 }
 
 function _activateWorkflow() {

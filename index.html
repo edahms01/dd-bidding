@@ -40,7 +40,7 @@
     <nav class="leftnav" id="app-leftnav">
       <div class="nav-items">
 
-        <div class="nav-item active" data-nav="workflow" onclick="showWorkflow()" title="New Bid">
+        <div class="nav-item active" data-nav="workflow" onclick="createDraft()" title="New Bid">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6L9 2z"/>
             <path d="M9 2v4h4"/>
@@ -58,7 +58,7 @@
           <span class="nav-label">Bid History</span>
         </div>
 
-        <div class="nav-item nav-placeholder" title="Coming soon">
+        <div class="nav-item" data-nav="dashboard" onclick="showDashboard()" title="Dashboard">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="2" width="5" height="5" rx="1"/>
             <rect x="9" y="2" width="5" height="5" rx="1"/>
@@ -501,6 +501,11 @@
 
         </div>
 
+        <!-- ── PAGE: DASHBOARD ── -->
+        <div class="page" id="page-dashboard">
+          <div class="empty-state">Loading drafts…</div>
+        </div>
+
         <!-- ── PAGE 8: BID HISTORY ── -->
         <div class="page" id="page-history">
           <div class="empty-state">Loading bid history…</div>
@@ -526,6 +531,7 @@
 </div><!-- /shell -->
 
 <script src="js/autosave.js"></script>
+<script src="js/drafts.js"></script>
 <script src="js/state.js"></script>
 <script src="js/calculator.js"></script>
 <script src="js/history.js"></script>

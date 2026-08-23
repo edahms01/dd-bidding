@@ -17,8 +17,16 @@ async function loadSeedData() {
   // Populate all form fields from project_state
   populateForm(seed.project_state);
 
-  // Persist as the current bid so resumeFromStorage() restores it on reload
-  localStorage.setItem('dirigo_current_bid', JSON.stringify(seed.project_state));
+  // Wrap it into a draft and make it the active one, so resumeActiveDraft()
+  // restores it on reload — same as any other draft (Phase 2; dirigo_current_bid
+  // is retired).
+  const id  = _generateDraftId();
+  const now = new Date().toISOString();
+  const drafts = getAllDrafts();
+  drafts[id] = buildDraftRecord(seed.project_state, id, now, now);
+  _saveDraftsMap(drafts);
+  setActiveDraftId(id);
+  _resetAgentCache(); // clicking "Load seed data" over an existing session shouldn't leak Tab 8's prior cached result
 
   // Run the full calculation and navigate to the output tab
   runCalculation();
@@ -40,7 +48,9 @@ async function loadSeedData() {
 
 function clearSeedData() {
   localStorage.removeItem('dirigo_bids');
-  localStorage.removeItem('dirigo_current_bid');
+  localStorage.removeItem('dirigo_current_bid'); // legacy Phase 1 key — harmless if already absent
+  localStorage.removeItem('dirigo_drafts');
+  localStorage.removeItem('dirigo_active_draft_id');
   // 'dirigo_api_key' is intentionally preserved
   location.reload();
 }
