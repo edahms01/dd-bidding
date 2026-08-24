@@ -3,15 +3,14 @@
 // All Anthropic API interaction lives here — single swap point for
 // future model changes or proxy migration.
 //
-// Auth: reads 'dirigo_api_key' from localStorage. No key in source.
-// Production path: replace fetch() target with a backend proxy that
-// injects the key server-side and removes direct-browser-access header.
+// Live path (DEMO_MODE = false): POSTs the business-data payload to
+// /.netlify/functions/bid-agent, which holds ANTHROPIC_API_KEY, the
+// system prompt, and the response schema server-side (Track A). The
+// client never sees the key, the prompt, or the schema.
 // ─────────────────────────────────────────────────────────────────────
 
-// Set to false to enable live Anthropic API calls (requires API key in localStorage).
+// Set to false to enable live Anthropic API calls (via the server-side proxy).
 const DEMO_MODE = true;
-
-const AGENT_SYSTEM = `You are a bid strategy advisor for Dirigo Drywall, a commercial drywall subcontractor. You analyze bid data and market signals and always return exactly three bid options: competitive, recommended, and ambitious. You respond only in valid JSON matching the exact schema provided. Be direct and specific — your reasoning should reference the actual signals provided, not generic advice.`;
 
 const AGENT_FALLBACK = {
   options: [
@@ -19,9 +18,9 @@ const AGENT_FALLBACK = {
     { type: 'recommended', label: 'Recommended', bidAmount: null, margin: null, winLikelihood: 'Medium',      rationale: 'Agent unavailable — review signals manually.' },
     { type: 'ambitious',   label: 'Ambitious',   bidAmount: null, margin: null, winLikelihood: 'Low–Medium',  rationale: 'Agent unavailable — calculate an ambitious price manually.' }
   ],
-  reasoning:       'Agent unavailable — review signals manually.',
+  reasoning:       'Bid agent is temporarily unavailable — review signals manually.',
   signals:         [],
-  riskFlags:       [{ severity: 'high', message: 'Could not connect to bid agent. Submit bid based on your own judgment.' }],
+  riskFlags:       [{ severity: 'high', message: 'Could not reach the bid agent. Submit your bid based on your own judgment.' }],
   historicalNotes: []
 };
 
@@ -179,15 +178,7 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
     return _demoResponse(state, summary, markupResult, bidHistory);
   }
 
-  const apiKey = localStorage.getItem('dirigo_api_key') || '';
-  if (!apiKey) {
-    return Object.assign({}, AGENT_FALLBACK, {
-      reasoning:  'API key not configured. Enter your Anthropic API key in the setup panel on Tab 9.',
-      riskFlags: [{ severity: 'high', message: 'Anthropic API key required — see Tab 9 setup panel.' }]
-    });
-  }
-
-  const payload = JSON.stringify({
+  const payload = {
     project: {
       name:         state.project.name,
       gc:           state.project.gc,
@@ -213,47 +204,30 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
       durationWeeks: state.conditions.durationWeeks
     },
     intelligence: state.intelligence,
-    history: bidHistory,
-    schema: {
-      options: '[{ type: "competitive"|"recommended"|"ambitious", label: string, bidAmount: number, margin: number, winLikelihood: "Very High"|"High"|"Medium"|"Low–Medium"|"Low", rationale: string }] — always exactly 3 entries',
-      reasoning:       'string — 2-3 sentences directly referencing the signals provided; explains the overall read on this bid',
-      signals:         '[{ label: string, value: string, status: "positive"|"warning"|"neutral", note: string }] — one entry per intelligence field',
-      riskFlags:       '[{ severity: "high"|"medium"|"low", message: string }] — empty array if none',
-      historicalNotes: '[string] — observations from bid history; empty array if none'
-    }
-  }, null, 2);
+    history: bidHistory
+    // No `schema` key — the server-side function injects it (Track A).
+  };
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'x-api-key':     apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model:      'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system:     AGENT_SYSTEM,
-        messages:   [{ role: 'user', content: payload }]
-      })
+    const resp = await fetch('/.netlify/functions/bid-agent', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
     });
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       console.error('Bid agent API error:', resp.status, err);
-      return Object.assign({}, AGENT_FALLBACK, {
-        reasoning: 'API error (' + resp.status + ') — check your API key and try again.',
-        riskFlags: [{ severity: 'high', message: 'API error ' + resp.status + '. See browser console for details.' }]
-      });
+      if (err.error === 'not_configured') {
+        return Object.assign({}, AGENT_FALLBACK, {
+          reasoning: 'Bid agent is not configured on the server — contact your administrator.',
+          riskFlags: [{ severity: 'high', message: 'Bid agent not configured. Submit your bid based on your own judgment.' }]
+        });
+      }
+      return AGENT_FALLBACK;
     }
 
-    const data  = await resp.json();
-    const text  = data.content?.[0]?.text || '';
-    // Strip markdown code fences if the model wraps the JSON
-    const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(clean);
+    return await resp.json();
   } catch (e) {
     console.error('Bid agent error:', e);
     return AGENT_FALLBACK;

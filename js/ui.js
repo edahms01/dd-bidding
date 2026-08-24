@@ -1067,16 +1067,3 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') _closeFinalizeModal();
 });
 
-function saveApiKey() {
-  const key = (document.getElementById('agent-api-key')?.value || '').trim();
-  if (!key) return;
-  localStorage.setItem('dirigo_api_key', key);
-  if (_lastCalcState && _lastCalcSum && _lastCalcMarkup) {
-    _agentResult  = null;
-    _agentLoading = true;
-    renderAgentTab();
-    _launchBidAgent(_lastCalcState, _lastCalcSum, _lastCalcMarkup);
-  } else {
-    renderAgentTab();
-  }
-}
