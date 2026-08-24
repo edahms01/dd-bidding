@@ -5,7 +5,6 @@
 //
 // loadSeedData()  — called by the dev toolbar "Load seed data" button
 // clearSeedData() — called by the dev toolbar "Clear all data" button
-//                   NOTE: never clears 'dirigo_api_key'
 // ─────────────────────────────────────────────────────────────────────
 
 async function loadSeedData() {
@@ -74,6 +73,5 @@ async function clearSeedData() {
   localStorage.removeItem('dirigo_current_bid'); // legacy Phase 1 key — harmless if already absent
   localStorage.removeItem('dirigo_drafts');
   localStorage.removeItem('dirigo_active_draft_id');
-  // 'dirigo_api_key' is intentionally preserved
   location.reload();
 }
