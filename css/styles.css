@@ -73,6 +73,7 @@ textarea{resize:vertical;min-height:80px}
 .g3{grid-template-columns:1fr 1fr 1fr}
 .g4{grid-template-columns:1fr 1fr 1fr 1fr}
 .g5{grid-template-columns:repeat(5,1fr)}
+.g6{grid-template-columns:repeat(6,1fr)}
 
 /* ── SECTION BLOCK ── */
 .section-block{margin-bottom:32px}

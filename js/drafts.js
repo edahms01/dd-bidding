@@ -79,6 +79,17 @@ function removeDraftAndClearActiveIfNeeded(draftsMap, id, activeDraftId) {
   return { drafts: next, activeDraftId: nextActiveId };
 }
 
+// ── OPEN DRAFT COUNT ──────────────────────────────────────────────────
+// Pure — takes the drafts map and the currently-active draft id (both
+// read from localStorage by the caller, js/forms.js) and returns how
+// many *other* drafts are open. Excludes the active draft itself: the
+// meaningful number for "how much is competing with this bid" is other
+// open work, not including itself (Tier 1 scoping brief).
+
+function getOpenDraftCount(draftsMap, activeDraftId) {
+  return Object.keys(draftsMap || {}).filter(id => id !== activeDraftId).length;
+}
+
 // ── EXPORTS (Vitest / Node) ──────────────────────────────────────────
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -86,6 +97,7 @@ if (typeof module !== 'undefined' && module.exports) {
     buildDraftRecord,
     migrateLegacyBidToDrafts,
     cloneDraftForDuplicate,
-    removeDraftAndClearActiveIfNeeded
+    removeDraftAndClearActiveIfNeeded,
+    getOpenDraftCount
   };
 }

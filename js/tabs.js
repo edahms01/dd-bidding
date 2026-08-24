@@ -30,6 +30,7 @@ function goto(id) {
 
   _lastWorkflowTab = id;
 
+  if (id === 'conditions') _renderPipelineHint();
   if (id === 'output') runCalculation();
   if (id === 'agent')  renderAgentTab();
 }

@@ -3,7 +3,8 @@ import {
   buildDraftRecord,
   migrateLegacyBidToDrafts,
   cloneDraftForDuplicate,
-  removeDraftAndClearActiveIfNeeded
+  removeDraftAndClearActiveIfNeeded,
+  getOpenDraftCount
 } from '../../js/drafts.js';
 
 function sampleState(overrides = {}) {
@@ -112,5 +113,25 @@ describe('removeDraftAndClearActiveIfNeeded', () => {
     const drafts = { d1: {}, d2: {} };
     removeDraftAndClearActiveIfNeeded(drafts, 'd1', 'd1');
     expect(drafts).toEqual({ d1: {}, d2: {} });
+  });
+});
+
+describe('getOpenDraftCount', () => {
+  it('returns 0 for an empty drafts map', () => {
+    expect(getOpenDraftCount({}, null)).toBe(0);
+  });
+
+  it('returns 0 when the only draft is the active one', () => {
+    expect(getOpenDraftCount({ d1: {} }, 'd1')).toBe(0);
+  });
+
+  it('excludes the active draft from the count of several', () => {
+    const drafts = { d1: {}, d2: {}, d3: {} };
+    expect(getOpenDraftCount(drafts, 'd1')).toBe(2);
+  });
+
+  it('counts every draft when none of them is the active one', () => {
+    const drafts = { d1: {}, d2: {} };
+    expect(getOpenDraftCount(drafts, 'not-a-real-id')).toBe(2);
   });
 });
