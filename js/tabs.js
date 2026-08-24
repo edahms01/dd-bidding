@@ -37,19 +37,22 @@ function goto(id) {
 // ── SECTION CONTROL ───────────────────────────────────────────────────
 
 // Called by the "Bid History" left nav item
-function showHistory() {
+async function showHistory() {
   _navSetActive('history');
 
   // Hide the workflow tab bar
   const tabsEl = document.getElementById('app-tabs');
   if (tabsEl) tabsEl.style.display = 'none';
 
-  // Clear all page panels and activate the history page
+  // Clear all page panels and activate the history page. Its static
+  // "Loading bid history…" placeholder (index.html) stays visible until
+  // renderHistory()'s fetch resolves — Phase 3, renderHistory() is now a
+  // real network round trip, not an instant local read.
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const histPage = document.getElementById('page-history');
   if (histPage) histPage.classList.add('active');
 
-  renderHistory();
+  await renderHistory();
 }
 
 // Called by the "Dashboard" left nav item — direct structural mirror of

@@ -17,6 +17,14 @@ let _lastCalcMarkup    = null;
 let _selectedBidOption = 'recommended';
 let _lastAgentResult   = null;
 
+// Phase 3: set only when getHistorySummary() (a network call now) rejects
+// during an agent run — distinct from the pre-existing, legitimate case
+// where it resolves successfully but a GC/building type just has zero
+// prior bids (getHistorySummary()'s own documented `empty` shape). Never
+// set on that success path — _renderAgentResult() must not conflate "the
+// request failed" with "this GC is new" into the same visible notice.
+let _agentHistoryUnavailable = false;
+
 // renderAgentTab()/runAgentIfNeeded() short-circuit on _lastAgentResult
 // before ever checking which draft is active — reasonable when there was
 // only ever one bid, a real cross-draft leak once there are several (see
@@ -24,9 +32,10 @@ let _lastAgentResult   = null;
 // draft changes out from under Tab 8's cache. Idempotent — safe to call
 // redundantly (e.g. a fresh page load with nothing cached yet).
 function _resetAgentCache() {
-  _agentResult     = null;
-  _lastAgentResult = null;
-  _agentLoading    = false;
+  _agentResult             = null;
+  _lastAgentResult         = null;
+  _agentLoading            = false;
+  _agentHistoryUnavailable = false;
 }
 
 // ── RATES RUNNING TOTAL ───────────────────────────────────────────────
@@ -286,7 +295,21 @@ function runCalculation() {
 // ── AGENT LAUNCH ──────────────────────────────────────────────────────
 
 async function _launchBidAgent(state, summary, markupResult) {
-  const bidHistory = getHistorySummary(state.project.gc, state.project.buildingType);
+  let bidHistory;
+  try {
+    bidHistory = await getHistorySummary(state.project.gc, state.project.buildingType);
+    _agentHistoryUnavailable = false;
+  } catch (e) {
+    // Bid-storage fetch failed — don't take down the whole agent flow
+    // over a storage hiccup. Fall back to the same zeroed shape
+    // getHistorySummary() itself returns for "no bids yet" and let the
+    // agent run without historical context; _renderAgentResult() shows a
+    // visible notice for this case, driven only by this flag (never by
+    // the legitimate "GC has zero prior bids" success path — see the
+    // comment on _agentHistoryUnavailable's declaration above).
+    bidHistory = { totalBids: 0, winRate: 0, winsWithThisGC: 0, lossesWithThisGC: 0, winRateByBuildingType: 0, avgCostVariance: null };
+    _agentHistoryUnavailable = true;
+  }
   if (document.getElementById('page-agent')?.classList.contains('active')) {
     renderAgentTab();
   }
@@ -299,7 +322,7 @@ async function _launchBidAgent(state, summary, markupResult) {
 
 // ── SUBMIT BID ────────────────────────────────────────────────────────
 
-function submitBid() {
+async function submitBid() {
   // Same pre-fill logic as runCalculation — ensure contingency is set before reading
   const contingencyEl = document.getElementById('markup-contingency');
   if (contingencyEl && !contingencyEl.value) {
@@ -313,7 +336,32 @@ function submitBid() {
   const logistics    = calculateLogistics(state.conditions, state.rates);
   const summary      = buildCostSummary(wallCosts, ceilCosts, logistics);
   const markupResult = applyMarkup(summary, state.markupInputs);
-  const saved        = saveBid(buildBidRecord(state, summary, markupResult));
+
+  let saved;
+  try {
+    saved = await saveBid(buildBidRecord(state, summary, markupResult));
+  } catch (e) {
+    // A failed save must never show "Bid submitted ✓" — the draft stays
+    // in dirigo_drafts untouched (clearFinalizedDraft() below only runs
+    // on success), so nothing is lost and the user can retry Finalize.
+    const bidEl = document.getElementById('output-bid');
+    if (bidEl) {
+      bidEl.innerHTML = `
+        <div class="section-block">
+          <div style="background:var(--surface);border:2px solid #e85c4a;
+              border-radius:var(--rl);padding:28px;text-align:center">
+            <div style="font-size:24px;color:#e85c4a;margin-bottom:10px">✕</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submission failed</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
+              Nothing was saved — your draft is unchanged. Check your connection and try again.
+            </div>
+            <button class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Try again</button>
+          </div>
+        </div>
+      `;
+    }
+    throw e; // let _finalizeBid()'s catch re-enable the confirm button
+  }
 
   // The finalized draft now lives permanently in dirigo_bids — clear it out
   // of dirigo_drafts so "New Bid" never shows stale, already-submitted data.
@@ -340,9 +388,29 @@ function submitBid() {
 
 // ── BID HISTORY RENDER ────────────────────────────────────────────────
 
-function renderHistory() {
+async function renderHistory() {
   const page = document.getElementById('page-history');
-  const bids = getAllBids();
+  if (!page) return;
+
+  // page-history's static "Loading bid history…" placeholder markup
+  // (index.html) stays on screen for the duration of this fetch — it's
+  // a genuinely meaningful loading state now, not an instant flash.
+  let bids;
+  try {
+    bids = await getAllBids();
+  } catch (e) {
+    page.innerHTML = `
+      <div class="page-hdr">
+        <div>
+          <div class="page-title">Bid history</div>
+          <div class="page-sub">Track submitted bids and log outcomes for competitive analysis</div>
+        </div>
+      </div>
+      <div class="empty-state" style="color:#e85c4a">
+        Couldn't load bid history — check your connection and try again.
+      </div>`;
+    return;
+  }
 
   const total    = bids.length;
   const won      = bids.filter(b => b.outcome === 'won').length;
@@ -474,35 +542,44 @@ function toggleUpdate(bid_id) {
   if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
 }
 
-function saveUpdate(bid_id) {
+async function saveUpdate(bid_id) {
   const outcome = document.getElementById('uf-outcome-'    + bid_id)?.value || 'pending';
   const winner  = document.getElementById('uf-winner-'     + bid_id)?.value.trim() || null;
   const winBid  = parseFloat(document.getElementById('uf-winbid-'     + bid_id)?.value) || null;
   const actual  = parseFloat(document.getElementById('uf-actualcost-' + bid_id)?.value) || null;
   const notes   = document.getElementById('uf-notes-'      + bid_id)?.value.trim() || '';
 
-  // cost_variance = actual cost vs. original direct cost estimate
-  let costVariance = null;
-  if (actual !== null) {
-    const rec = getAllBids().find(b => b.bid_id === bid_id);
-    if (rec && rec.direct_cost) costVariance = Math.round(actual - rec.direct_cost);
-  }
+  try {
+    // cost_variance = actual cost vs. original direct cost estimate
+    let costVariance = null;
+    if (actual !== null) {
+      const bids = await getAllBids();
+      const rec  = bids.find(b => b.bid_id === bid_id);
+      if (rec && rec.direct_cost) costVariance = Math.round(actual - rec.direct_cost);
+    }
 
-  updateBid(bid_id, {
-    outcome,
-    competitor_who_won: winner || null,
-    winning_bid:        winBid  ? Math.round(winBid)  : null,
-    actual_cost:        actual  ? Math.round(actual)  : null,
-    cost_variance:      costVariance,
-    notes
-  });
-  renderHistory();
+    await updateBid(bid_id, {
+      outcome,
+      competitor_who_won: winner || null,
+      winning_bid:        winBid  ? Math.round(winBid)  : null,
+      actual_cost:        actual  ? Math.round(actual)  : null,
+      cost_variance:      costVariance,
+      notes
+    });
+    renderHistory();
+  } catch (e) {
+    alert('Failed to save update — check your connection and try again.');
+  }
 }
 
-function deleteBidRecord(bid_id) {
+async function deleteBidRecord(bid_id) {
   if (!confirm('Delete this bid record? This cannot be undone.')) return;
-  deleteBid(bid_id);
-  renderHistory();
+  try {
+    await deleteBid(bid_id);
+    renderHistory();
+  } catch (e) {
+    alert('Failed to delete bid — check your connection and try again.');
+  }
 }
 
 // ── DASHBOARD RENDER ─────────────────────────────────────────────────
@@ -689,7 +766,13 @@ function _renderAgentResult(page, r) {
       </div>`;
   }).join('');
 
-  page.innerHTML = hdr + `
+  const historyUnavailableNotice = _agentHistoryUnavailable ? `
+    <div style="background:rgba(232,124,42,.08);border:1px solid rgba(232,124,42,.3);
+        border-radius:var(--rl);padding:10px 16px;margin-bottom:20px;font-size:12px;color:var(--accent)">
+      Historical bid data unavailable — recommendation based on this bid only.
+    </div>` : '';
+
+  page.innerHTML = hdr + historyUnavailableNotice + `
     <div class="section-block">
       <div class="section-label">Agent analysis</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);
@@ -768,12 +851,22 @@ function _renderAgentResult(page, r) {
 function runAgentIfNeeded() {
   if (_lastAgentResult) return;
   const state = collectFormData();
-  const bidHistory = getHistorySummary(state.project.gc, state.project.buildingType);
-  runBidAgent(state, _lastCalcSum, _lastCalcMarkup, bidHistory).then(result => {
-    _lastAgentResult = result;
-    const page = document.getElementById('page-agent');
-    if (page) _renderAgentResult(page, result);
-  });
+  getHistorySummary(state.project.gc, state.project.buildingType)
+    .then(bidHistory => runBidAgent(state, _lastCalcSum, _lastCalcMarkup, bidHistory))
+    .then(result => {
+      _lastAgentResult = result;
+      const page = document.getElementById('page-agent');
+      if (page) _renderAgentResult(page, result);
+    })
+    .catch(e => {
+      // Best-effort background pre-run (demo seed-load path, before the
+      // user has necessarily visited any tab) — a bid-storage hiccup here
+      // shouldn't surface as an unhandled rejection. Not rendered anywhere
+      // (there's no guaranteed active #page-agent to render into yet);
+      // self-heals the next time the user actually reaches Tab 7/8, which
+      // goes through _launchBidAgent()'s own handled error path instead.
+      console.warn('runAgentIfNeeded: pre-run failed, will retry on next Tab 7/8 visit', e);
+    });
 }
 
 function _selectBidOption(type) {
@@ -812,6 +905,9 @@ function _initFinalizeModal() {
         <button class="modal-close" onclick="_closeFinalizeModal()">×</button>
       </div>
       <div id="finalize-modal-body"></div>
+      <div id="finalize-modal-error" style="display:none;margin:0 20px 12px;padding:10px 14px;
+          background:rgba(232,92,74,.08);border:1px solid rgba(232,92,74,.3);border-radius:var(--r);
+          color:#e85c4a;font-size:12px"></div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="_closeFinalizeModal()">Cancel</button>
         <button class="btn btn-primary" id="finalize-confirm-btn" onclick="_finalizeBid()" disabled>
@@ -855,6 +951,10 @@ function _showFinalizeModal(agentOptions) {
   const recRow = body.querySelector('[data-modal-opt="recommended"]');
   if (recRow) _modalSelectRow(recRow);
 
+  // Fresh open — clear any error left over from a previous failed attempt.
+  const errEl = document.getElementById('finalize-modal-error');
+  if (errEl) errEl.style.display = 'none';
+
   document.getElementById('finalize-modal-overlay').classList.add('open');
 }
 
@@ -887,7 +987,7 @@ function _modalCustomInput(input) {
   }
 }
 
-function _finalizeBid() {
+async function _finalizeBid() {
   const selected = document.querySelector('input[name="finalize-modal-option"]:checked');
   if (!selected) return;
   const decision = selected.value;
@@ -905,9 +1005,31 @@ function _finalizeBid() {
 
   if (!amount) return;
 
-  submitBid();
-  _closeFinalizeModal();
-  _showBidToast(label, amount);
+  // Phase 3: Finalize is now a real network round trip (saveBid() awaits
+  // a fetch), not an instant synchronous action — guard against a
+  // double-click or a slow connection firing saveBid() twice before the
+  // first response lands and creating two records for one submission.
+  const confirmBtn = document.getElementById('finalize-confirm-btn');
+  if (confirmBtn) confirmBtn.disabled = true;
+
+  try {
+    await submitBid();
+    _closeFinalizeModal();
+    _showBidToast(label, amount);
+  } catch (e) {
+    // submitBid() also rendered a failure panel into #output-bid, but that
+    // page is hidden behind this still-open modal (Tab 8, not Tab 7) —
+    // confirmed via a real Playwright run that a locator finding that
+    // panel isn't the same as the user actually seeing it. Show the
+    // failure here too, where the user is actually looking, and
+    // re-enable the button so they can retry without leaving the modal.
+    const errEl = document.getElementById('finalize-modal-error');
+    if (errEl) {
+      errEl.textContent = 'Bid submission failed — check your connection and try again.';
+      errEl.style.display = 'block';
+    }
+    if (confirmBtn) confirmBtn.disabled = false;
+  }
 }
 
 function _showBidToast(label, amount) {

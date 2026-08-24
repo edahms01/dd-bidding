@@ -3,3 +3,5 @@ node_modules/
 *.json.bak
 test-results/
 playwright-report/
+.netlify/
+deno.lock
