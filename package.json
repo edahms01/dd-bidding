@@ -19,9 +19,13 @@
   },
   "homepage": "https://github.com/edahms01/dd-bidding#readme",
   "private": true,
+  "dependencies": {
+    "@netlify/blobs": "^11.0.1"
+  },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "http-server": "^14.1.1",
+    "netlify-cli": "^27.1.2",
     "vitest": "^4.1.11"
   }
 }

@@ -1,0 +1,6 @@
+[build]
+  # Static publish, no build step — same as before Phase 3, just now
+  # explicit so `netlify dev` (local) and the deployed site both know
+  # where the app and the functions live.
+  publish   = "."
+  functions = "netlify/functions"

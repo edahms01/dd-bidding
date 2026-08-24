@@ -11,8 +11,20 @@
 async function loadSeedData() {
   const seed = await fetch('./data/seed.json').then(r => r.json());
 
-  // Write history directly to preserve seed bid_ids (saveBid() would generate new ones)
-  localStorage.setItem('dirigo_bids', JSON.stringify(seed.bid_history));
+  // Write history via the dev-only seed function to preserve seed bid_ids
+  // (bids.js's POST would generate new ones, same reason saveBid() was
+  // bypassed here before Phase 3 moved storage server-side).
+  try {
+    const res = await fetch('/.netlify/functions/dev-seed-bids', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(seed.bid_history)
+    });
+    if (!res.ok) throw new Error('dev-seed-bids failed: ' + res.status);
+  } catch (e) {
+    alert('Failed to load seed bid history — check your connection and try again.');
+    return;
+  }
 
   // Populate all form fields from project_state
   populateForm(seed.project_state);
@@ -46,8 +58,19 @@ async function loadSeedData() {
   }
 }
 
-function clearSeedData() {
-  localStorage.removeItem('dirigo_bids');
+async function clearSeedData() {
+  // Bid history now lives server-side (Phase 3) — clear it via the
+  // dev-only function and WAIT for that to resolve before reloading, or
+  // a slow/failed clear could lose the race with location.reload() below
+  // and the page would come back showing stale bid history.
+  try {
+    const res = await fetch('/.netlify/functions/dev-clear-bids', { method: 'POST' });
+    if (!res.ok) throw new Error('dev-clear-bids failed: ' + res.status);
+  } catch (e) {
+    alert('Failed to clear bid history — check your connection and try again.');
+    return;
+  }
+
   localStorage.removeItem('dirigo_current_bid'); // legacy Phase 1 key — harmless if already absent
   localStorage.removeItem('dirigo_drafts');
   localStorage.removeItem('dirigo_active_draft_id');

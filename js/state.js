@@ -168,7 +168,9 @@ function collectFormData() {
   return { assemblies, walls, ceilings, conditions, rates, markupInputs, intelligence, project };
 }
 
-// Assembles a bid record ready for saveBid(). bid_id and date_submitted are set by saveBid().
+// Assembles a bid record ready for saveBid(). bid_id and date_submitted are
+// assigned server-side (netlify/functions/bids-core.js's stampNewBid(),
+// Phase 3) — not present on the object this function returns.
 function buildBidRecord(state, summary, markupResult) {
   const markupPct = summary.directCostTotal > 0
     ? Math.round((markupResult.totalMarkup / summary.directCostTotal) * 1000) / 10
