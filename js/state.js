@@ -162,7 +162,12 @@ function collectFormData() {
     gcPriceSensitivity: sel('intel-gc-price'),
     competitionLevel:   sel('intel-competition'),
     knownCompetitors:   document.getElementById('intel-competitors')?.value.trim() || '',
-    dirigoEdge:         sel('intel-edge')
+    dirigoEdge:         sel('intel-edge'),
+    // Computed count of *other* open drafts, alongside (not replacing) the
+    // subjective pipelinePressure dropdown above — the UI shows this as a
+    // hint next to the dropdown so the estimator sees it while still making
+    // their own call. getAllDrafts()/activeDraftId are js/forms.js globals.
+    openDraftCount:     getOpenDraftCount(getAllDrafts(), activeDraftId)
   };
 
   return { assemblies, walls, ceilings, conditions, rates, markupInputs, intelligence, project };
@@ -176,21 +181,35 @@ function buildBidRecord(state, summary, markupResult) {
     ? Math.round((markupResult.totalMarkup / summary.directCostTotal) * 1000) / 10
     : 0;
   return {
-    project_name:       state.project.name,
-    gc:                 state.project.gc,
-    building_type:      state.project.buildingType,
-    bid_date:           state.project.bidDate,
-    start_date:         state.project.startDate,
-    direct_cost:        Math.round(summary.directCostTotal),
-    markup_pct:         markupPct,
-    final_bid:          Math.round(markupResult.finalBidPrice),
-    confidence:         state.conditions.confidence,
-    intelligence:       state.intelligence,
-    outcome:            'pending',
-    competitor_who_won: null,
-    winning_bid:        null,
-    actual_cost:        null,
-    cost_variance:      null,
-    notes:              ''
+    project_name:           state.project.name,
+    gc:                     state.project.gc,
+    building_type:          state.project.buildingType,
+    bid_date:               state.project.bidDate,
+    start_date:             state.project.startDate,
+    direct_cost:            Math.round(summary.directCostTotal),
+    // Split captured at submission time — the labor/material split
+    // already exists in memory when a bid is finalized (buildCostSummary()),
+    // it just didn't survive past this point before. Feeds Tier 2's
+    // future labor-burden recalibration report once enough bids
+    // accumulate; not read by anything yet.
+    estimated_labor_cost:   Math.round(summary.laborTotal),
+    estimated_material_cost: Math.round(summary.materialTotal),
+    markup_pct:             markupPct,
+    final_bid:              Math.round(markupResult.finalBidPrice),
+    confidence:             state.conditions.confidence,
+    intelligence:           state.intelligence,
+    outcome:                'pending',
+    competitor_who_won:     null,
+    winning_bid:            null,
+    actual_cost:            null,
+    cost_variance:          null,
+    // Nullable — populated later via the Update form's split-cost fields
+    // (saveUpdate(), js/ui.js), alongside actual_cost/cost_variance above,
+    // not replacing them.
+    actual_labor_cost:      null,
+    actual_material_cost:   null,
+    labor_cost_variance:    null,
+    material_cost_variance: null,
+    notes:                  ''
   };
 }

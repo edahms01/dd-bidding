@@ -38,6 +38,21 @@ function _resetAgentCache() {
   _agentHistoryUnavailable = false;
 }
 
+// ── PIPELINE COUNT HINT ─────────────────────────────────────────────────
+// Shows the computed "other open drafts" count next to the subjective
+// Pipeline pressure dropdown (Conditions tab) — informs the estimator's
+// own call, doesn't replace it. Recomputed on every visit to the tab
+// (goto('conditions'), js/tabs.js), same pattern as runCalculation()/
+// renderAgentTab() self-refreshing on their own tab visits.
+function _renderPipelineHint() {
+  const el = document.getElementById('pipeline-count-hint');
+  if (!el) return;
+  const count = getOpenDraftCount(getAllDrafts(), activeDraftId);
+  el.textContent = count > 0
+    ? count + (count === 1 ? ' other bid' : ' other bids') + ' currently open'
+    : 'No other bids currently open';
+}
+
 // ── RATES RUNNING TOTAL ───────────────────────────────────────────────
 
 function fmt(n) { return n > 0 ? '$' + Math.round(n).toLocaleString() : '—'; }
@@ -307,7 +322,13 @@ async function _launchBidAgent(state, summary, markupResult) {
     // visible notice for this case, driven only by this flag (never by
     // the legitimate "GC has zero prior bids" success path — see the
     // comment on _agentHistoryUnavailable's declaration above).
-    bidHistory = { totalBids: 0, winRate: 0, winsWithThisGC: 0, lossesWithThisGC: 0, winRateByBuildingType: 0, avgCostVariance: null };
+    bidHistory = {
+      totalBids: 0, winRate: 0, winsWithThisGC: 0, lossesWithThisGC: 0, winRateByBuildingType: 0, avgCostVariance: null,
+      // Same shape computeMarginOutcomeCurve([])/computeSeasonality([]) return
+      // for zero bids — a storage failure looks exactly like "no data yet" to
+      // the agent, not a third, distinct shape (js/history-analytics.js).
+      marginOutcomeCurve: { available: false, count: 0, minRequired: MIN_BIDS_FOR_MARGIN_CURVE }, seasonality: []
+    };
     _agentHistoryUnavailable = true;
   }
   if (document.getElementById('page-agent')?.classList.contains('active')) {
@@ -455,7 +476,7 @@ async function renderHistory() {
         </tr>
         <tr id="uprow-${id}" style="display:none;background:var(--surface2)">
           <td colspan="8" style="padding:14px 12px">
-            <div class="grid g5" style="margin-bottom:12px">
+            <div class="grid g6" style="margin-bottom:12px">
               <div class="field">
                 <span class="lbl">Outcome</span>
                 <select id="uf-outcome-${id}">
@@ -473,8 +494,12 @@ async function renderHistory() {
                 <input type="number" id="uf-winbid-${id}" value="${b.winning_bid||''}" placeholder="0">
               </div>
               <div class="field">
-                <span class="lbl">Actual cost ($)</span>
-                <input type="number" id="uf-actualcost-${id}" value="${b.actual_cost||''}" placeholder="0">
+                <span class="lbl">Actual labor cost ($)</span>
+                <input type="number" id="uf-actuallabor-${id}" value="${b.actual_labor_cost||''}" placeholder="0">
+              </div>
+              <div class="field">
+                <span class="lbl">Actual material cost ($)</span>
+                <input type="number" id="uf-actualmaterial-${id}" value="${b.actual_material_cost||''}" placeholder="0">
               </div>
               <div class="field">
                 <span class="lbl">Notes</span>
@@ -543,27 +568,34 @@ function toggleUpdate(bid_id) {
 }
 
 async function saveUpdate(bid_id) {
-  const outcome = document.getElementById('uf-outcome-'    + bid_id)?.value || 'pending';
-  const winner  = document.getElementById('uf-winner-'     + bid_id)?.value.trim() || null;
-  const winBid  = parseFloat(document.getElementById('uf-winbid-'     + bid_id)?.value) || null;
-  const actual  = parseFloat(document.getElementById('uf-actualcost-' + bid_id)?.value) || null;
-  const notes   = document.getElementById('uf-notes-'      + bid_id)?.value.trim() || '';
+  const outcome        = document.getElementById('uf-outcome-'        + bid_id)?.value || 'pending';
+  const winner         = document.getElementById('uf-winner-'         + bid_id)?.value.trim() || null;
+  const winBid         = parseFloat(document.getElementById('uf-winbid-'         + bid_id)?.value) || null;
+  const actualLabor    = parseFloat(document.getElementById('uf-actuallabor-'    + bid_id)?.value);
+  const actualMaterial = parseFloat(document.getElementById('uf-actualmaterial-' + bid_id)?.value);
+  const notes          = document.getElementById('uf-notes-'          + bid_id)?.value.trim() || '';
 
   try {
-    // cost_variance = actual cost vs. original direct cost estimate
-    let costVariance = null;
-    if (actual !== null) {
-      const bids = await getAllBids();
-      const rec  = bids.find(b => b.bid_id === bid_id);
-      if (rec && rec.direct_cost) costVariance = Math.round(actual - rec.direct_cost);
-    }
+    const bids = await getAllBids();
+    const rec  = bids.find(b => b.bid_id === bid_id);
+
+    // computeCostVariances() (js/history-analytics.js) owns the
+    // baseline-vs-legacy branching and the "both actuals required before
+    // computing anything in the legacy path" rule — kept out of this
+    // function so that null-handling is directly unit-testable.
+    const variances = computeCostVariances({
+      record:        rec,
+      actualLabor:    isNaN(actualLabor)    ? null : actualLabor,
+      actualMaterial: isNaN(actualMaterial) ? null : actualMaterial
+    });
 
     await updateBid(bid_id, {
       outcome,
       competitor_who_won: winner || null,
-      winning_bid:        winBid  ? Math.round(winBid)  : null,
-      actual_cost:        actual  ? Math.round(actual)  : null,
-      cost_variance:      costVariance,
+      winning_bid:        winBid ? Math.round(winBid) : null,
+      actual_labor_cost:    isNaN(actualLabor)    ? null : Math.round(actualLabor),
+      actual_material_cost: isNaN(actualMaterial) ? null : Math.round(actualMaterial),
+      ...variances,
       notes
     });
     renderHistory();
