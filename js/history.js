@@ -65,7 +65,8 @@ async function getHistorySummary(gc, buildingType) {
   const bids  = await getAllBids();
   const empty = {
     totalBids: 0, winRate: 0, winsWithThisGC: 0, lossesWithThisGC: 0, winRateByBuildingType: 0, avgCostVariance: null,
-    marginOutcomeCurve: computeMarginOutcomeCurve([]), seasonality: computeSeasonality([])
+    marginOutcomeCurve: computeMarginOutcomeCurve([]), seasonality: computeSeasonality([]),
+    competitorPatterns: computeCompetitorPatterns([])
   };
   if (!bids.length) return empty;
 
@@ -90,6 +91,7 @@ async function getHistorySummary(gc, buildingType) {
 
   return {
     totalBids: total, winRate, winsWithThisGC: gcWins, lossesWithThisGC: gcLosses, winRateByBuildingType, avgCostVariance,
-    marginOutcomeCurve: computeMarginOutcomeCurve(bids), seasonality: computeSeasonality(bids)
+    marginOutcomeCurve: computeMarginOutcomeCurve(bids), seasonality: computeSeasonality(bids),
+    competitorPatterns: computeCompetitorPatterns(bids)
   };
 }

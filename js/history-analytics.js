@@ -109,6 +109,46 @@ function computeSeasonality(bids) {
     });
 }
 
+// Below this many losses-with-pricing-data to a specific competitor,
+// avgUndercutPct stays null rather than averaging 1 data point into
+// something that reads as a trend. Gated independently of timesLost —
+// a competitor lost to 5 times might only have pricing data on 1 of
+// those losses, and the raw timesLost count is still shown (a count is
+// never misleading on its own; an average of 1 value can be).
+const MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2;
+
+// Sparse per-competitor array, not a single available:false gate like
+// computeMarginOutcomeCurve() — competitors are independent groups
+// (rich data on one, none on another, simultaneously), so an
+// all-or-nothing gate would be wrong here. Deliberately does no fuzzy
+// matching against intelligence.knownCompetitors — both go to the
+// agent as separate fields; AGENT_SYSTEM tells the model to
+// cross-reference them itself.
+function computeCompetitorPatterns(bids) {
+  const losses = bids.filter(b => b.outcome === 'lost' && b.competitor_who_won);
+  const groups = {};
+
+  losses.forEach(b => {
+    const key = b.competitor_who_won.trim().toLowerCase();
+    if (!groups[key]) groups[key] = { name: b.competitor_who_won.trim(), timesLost: 0, undercuts: [] };
+    groups[key].timesLost++;
+    if (b.winning_bid && b.final_bid > 0) {
+      groups[key].undercuts.push((b.final_bid - b.winning_bid) / b.final_bid * 100);
+    }
+  });
+
+  return Object.values(groups)
+    .map(g => ({
+      name: g.name,
+      timesLost: g.timesLost,
+      avgUndercutPct: g.undercuts.length >= MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE
+        ? Math.round(g.undercuts.reduce((s, v) => s + v, 0) / g.undercuts.length * 10) / 10
+        : null
+    }))
+    .sort((a, b) => b.timesLost - a.timesLost)
+    .slice(0, 5);
+}
+
 // Update-form cost-variance computation (Tier 2 data capture), pulled
 // out of js/ui.js's saveUpdate() so the null-handling below is directly
 // unit-testable rather than only reachable through a full browser round
@@ -166,6 +206,8 @@ if (typeof module !== 'undefined' && module.exports) {
     MIN_BIDS_FOR_MARGIN_CURVE,
     computeMarginOutcomeCurve,
     computeSeasonality,
+    MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE,
+    computeCompetitorPatterns,
     computeCostVariances
   };
 }
