@@ -9,8 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────
 
 function calculateWallCosts(walls, assemblies, rates, conditions) {
-  const wasteMult = 1 + conditions.wastePct / 100;
-  const asmMap    = Object.fromEntries(assemblies.map(a => [a.id, a]));
+  const asmMap = Object.fromEntries(assemblies.map(a => [a.id, a]));
 
   return walls.map(w => {
     const asm = asmMap[w.typeId];
@@ -20,14 +19,21 @@ function calculateWallCosts(walls, assemblies, rates, conditions) {
       laborTotal: 0, materialTotal: 0, total: 0
     };
 
-    const framingLabor   = w.lf    * rates.framing;
-    const hangingLabor   = w.netSF * asm.layers * rates.hanging;
-    const finishingLabor = w.netSF * (rates.finish[asm.finishLevel] || 0);
-    const studMaterial   = w.lf    * (rates.stud[asm.studSize] || 0);
-    const boardMaterial  = w.netSF * asm.layers * (rates.board[asm.boardType] || 0) * wasteMult;
-    const tapeMaterial   = w.netSF * rates.tape;
-    const fastenMaterial = w.netSF * rates.fasten;
-    const insulMaterial  = asm.acoustic === 'Yes' ? w.netSF * rates.insul : 0;
+    // Per-assembly waste override (Tier 3) falls back to the job-wide
+    // default — ?? not || so an explicit 0% override isn't mistaken
+    // for "not set" (see js/state.js's collectFormData()).
+    const effectiveWaste = asm.wastePctOverride ?? conditions.wastePct;
+    const wasteMult       = 1 + effectiveWaste / 100;
+
+    const framingLabor      = w.lf    * rates.framing;
+    const hangingLabor      = w.netSF * asm.layers * rates.hanging;
+    const finishingLabor    = w.netSF * (rates.finish[asm.finishLevel] || 0);
+    const studMaterial      = w.lf    * (rates.stud[asm.studSize] || 0);
+    const boardMaterialBase = w.netSF * asm.layers * (rates.board[asm.boardType] || 0);
+    const boardMaterial     = boardMaterialBase * wasteMult;
+    const tapeMaterial      = w.netSF * rates.tape;
+    const fastenMaterial    = w.netSF * rates.fasten;
+    const insulMaterial     = asm.acoustic === 'Yes' ? w.netSF * rates.insul : 0;
 
     const laborTotal    = framingLabor + hangingLabor + finishingLabor;
     const materialTotal = studMaterial + boardMaterial + tapeMaterial + fastenMaterial + insulMaterial;
@@ -36,15 +42,14 @@ function calculateWallCosts(walls, assemblies, rates, conditions) {
       location: w.location, typeId: w.typeId, lf: w.lf, netSF: w.netSF,
       layers: asm.layers, finishLevel: asm.finishLevel,
       framingLabor, hangingLabor, finishingLabor,
-      studMaterial, boardMaterial, tapeMaterial, fastenMaterial, insulMaterial,
+      studMaterial, boardMaterialBase, boardMaterial, tapeMaterial, fastenMaterial, insulMaterial,
       laborTotal, materialTotal, total: laborTotal + materialTotal
     };
   });
 }
 
 function calculateCeilingCosts(ceilings, assemblies, rates, conditions) {
-  const wasteMult = 1 + conditions.wastePct / 100;
-  const asmMap    = Object.fromEntries(assemblies.map(a => [a.id, a]));
+  const asmMap = Object.fromEntries(assemblies.map(a => [a.id, a]));
 
   return ceilings.map(c => {
     const asm = asmMap[c.typeId];
@@ -54,13 +59,18 @@ function calculateCeilingCosts(ceilings, assemblies, rates, conditions) {
       laborTotal: 0, materialTotal: 0, total: 0
     };
 
-    const framingLabor   = c.netSF * rates.framing; // ceilings use SF-based framing rate
-    const hangingLabor   = c.netSF * asm.layers * rates.hanging;
-    const finishingLabor = c.netSF * (rates.finish[asm.finishLevel] || 0);
-    const boardMaterial  = c.netSF * asm.layers * (rates.board[asm.boardType] || 0) * wasteMult;
-    const tapeMaterial   = c.netSF * rates.tape;
-    const fastenMaterial = c.netSF * rates.fasten;
-    const insulMaterial  = asm.acoustic === 'Yes' ? c.netSF * rates.insul : 0;
+    // Per-assembly waste override (Tier 3) — see calculateWallCosts() above.
+    const effectiveWaste = asm.wastePctOverride ?? conditions.wastePct;
+    const wasteMult       = 1 + effectiveWaste / 100;
+
+    const framingLabor      = c.netSF * rates.framing; // ceilings use SF-based framing rate
+    const hangingLabor      = c.netSF * asm.layers * rates.hanging;
+    const finishingLabor    = c.netSF * (rates.finish[asm.finishLevel] || 0);
+    const boardMaterialBase = c.netSF * asm.layers * (rates.board[asm.boardType] || 0);
+    const boardMaterial     = boardMaterialBase * wasteMult;
+    const tapeMaterial      = c.netSF * rates.tape;
+    const fastenMaterial    = c.netSF * rates.fasten;
+    const insulMaterial     = asm.acoustic === 'Yes' ? c.netSF * rates.insul : 0;
 
     const laborTotal    = framingLabor + hangingLabor + finishingLabor;
     const materialTotal = boardMaterial + tapeMaterial + fastenMaterial + insulMaterial;
@@ -69,7 +79,7 @@ function calculateCeilingCosts(ceilings, assemblies, rates, conditions) {
       location: c.location, typeId: c.typeId, netSF: c.netSF,
       layers: asm.layers, finishLevel: asm.finishLevel,
       framingLabor, hangingLabor, finishingLabor,
-      boardMaterial, tapeMaterial, fastenMaterial, insulMaterial,
+      boardMaterialBase, boardMaterial, tapeMaterial, fastenMaterial, insulMaterial,
       laborTotal, materialTotal, total: laborTotal + materialTotal
     };
   });
@@ -99,7 +109,26 @@ function calculateLogistics(conditions, rates) {
   };
 }
 
-function buildCostSummary(wallCosts, ceilingCosts, logistics) {
+// Weighted-average waste percentage actually applied across board
+// material in the given wall/ceiling cost rows — total waste dollars
+// over total base (pre-waste) board dollars, NOT a naive average of
+// each row's own rate (Tier 3: per-assembly waste overrides mean rows
+// can carry different effective rates, and a big low-waste run should
+// outweigh a small high-waste run in the displayed blend). Falls back
+// to fallbackPct when there's no board material to weight against
+// (every row errored, or zero net SF everywhere) to avoid a 0/0 divide.
+function computeWeightedWastePct(rows, fallbackPct) {
+  let base = 0, waste = 0;
+  rows.forEach(r => {
+    const b = r.boardMaterialBase || 0;
+    const m = r.boardMaterial     || 0;
+    base  += b;
+    waste += (m - b);
+  });
+  return base > 0 ? (waste / base) * 100 : fallbackPct;
+}
+
+function buildCostSummary(wallCosts, ceilingCosts, logistics, fallbackWastePct) {
   const laborTotal    = wallCosts.reduce((s, r)    => s + (r.laborTotal    || 0), 0)
                       + ceilingCosts.reduce((s, r) => s + (r.laborTotal    || 0), 0);
   const materialTotal = wallCosts.reduce((s, r)    => s + (r.materialTotal || 0), 0)
@@ -108,7 +137,8 @@ function buildCostSummary(wallCosts, ceilingCosts, logistics) {
     laborTotal,
     materialTotal,
     logisticsTotal:  logistics.total,
-    directCostTotal: laborTotal + materialTotal + logistics.total
+    directCostTotal: laborTotal + materialTotal + logistics.total,
+    weightedWastePct: computeWeightedWastePct([...wallCosts, ...ceilingCosts], fallbackWastePct)
   };
 }
 
@@ -128,5 +158,12 @@ function applyMarkup(summary, markupInputs) {
     directCostTotal: summary.directCostTotal,
     overhead, contingency, profit, escalation,
     totalMarkup, finalBidPrice, effectiveMargin
+  };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    calculateWallCosts, calculateCeilingCosts, calculateLogistics,
+    applyLaborBurden, buildCostSummary, applyMarkup, computeWeightedWastePct
   };
 }

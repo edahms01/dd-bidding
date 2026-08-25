@@ -202,7 +202,7 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
           border-radius:var(--rl);padding:4px 20px 12px">
         ${subtotalRow('Labor (raw)', fmtCost(summary.laborTotal), 'var(--teal)')}
         ${subtotalRow(
-            'Materials (incl. ' + fmtPct(state.conditions.wastePct) + ' waste)',
+            'Materials (incl. ' + fmtPct(summary.weightedWastePct) + ' waste)',
             fmtCost(summary.materialTotal)
           )}
         ${subtotalRow(
@@ -294,7 +294,7 @@ function runCalculation() {
   const wallCosts    = calculateWallCosts(state.walls, state.assemblies, state.rates, state.conditions);
   const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, state.rates, state.conditions);
   const logistics    = calculateLogistics(state.conditions, state.rates);
-  const summary      = buildCostSummary(wallCosts, ceilCosts, logistics);
+  const summary      = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct);
   const markupResult = applyMarkup(summary, state.markupInputs);
   renderOutput(state, wallCosts, ceilCosts, summary, markupResult);
 
@@ -355,7 +355,7 @@ async function submitBid() {
   const wallCosts    = calculateWallCosts(state.walls, state.assemblies, state.rates, state.conditions);
   const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, state.rates, state.conditions);
   const logistics    = calculateLogistics(state.conditions, state.rates);
-  const summary      = buildCostSummary(wallCosts, ceilCosts, logistics);
+  const summary      = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct);
   const markupResult = applyMarkup(summary, state.markupInputs);
 
   let saved;

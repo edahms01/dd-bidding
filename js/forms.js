@@ -35,6 +35,7 @@ function addAsm() {
     <td><select style="width:58px"><option>No</option><option>Yes</option></select></td>
     <td><select style="width:54px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></td>
     <td><input type="text" placeholder="notes" style="width:110px"></td>
+    <td><input type="number" min="0" class="asm-waste" placeholder="def." style="width:56px"></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
   document.getElementById('asm-body').appendChild(tr);
 }
@@ -232,6 +233,10 @@ function populateForm(state) {
       if (sels[6]) sels[6].value = asm.acoustic    || 'No';
       if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
       if (inps[1]) inps[1].value = asm.notes       || '';
+      // ?? not || — an explicit 0% override must render as "0", not
+      // fall back to a blank input (which collectFormData() would then
+      // re-read as "not set" on the next pass, silently reverting it).
+      if (inps[2]) inps[2].value = String(asm.wastePctOverride ?? '');
     });
   }
 
