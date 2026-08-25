@@ -25,6 +25,16 @@ function collectFormData() {
   function sel(id) {
     return document.getElementById(id)?.value || '';
   }
+  // For the Intelligence tab's judgment-signal fields only (see the 8
+  // usages below) — a blank field must reach the agent payload as an
+  // explicit "not provided" null, not an ambiguous ''. sel() itself stays
+  // untouched: it's also used for project.buildingType/bidDate/startDate,
+  // none of which are agent-facing judgment signals, and buildingType
+  // specifically feeds getHistorySummary(gc, buildingType) lookups that
+  // depend on its existing '' fallback.
+  function selOrNull(id) {
+    return document.getElementById(id)?.value || null;
+  }
 
   const project = {
     name:          document.getElementById('proj-name')?.value.trim()     || '',
@@ -172,14 +182,14 @@ function collectFormData() {
   };
 
   const intelligence = {
-    crewAvailability:   sel('intel-crew'),
-    pipelinePressure:   sel('intel-pipeline'),
-    materialTrend:      sel('intel-material-trend'),
-    gcRelationship:     sel('intel-gc-rel'),
-    gcPriceSensitivity: sel('intel-gc-price'),
-    competitionLevel:   sel('intel-competition'),
-    knownCompetitors:   document.getElementById('intel-competitors')?.value.trim() || '',
-    dirigoEdge:         sel('intel-edge'),
+    crewAvailability:   selOrNull('intel-crew'),
+    pipelinePressure:   selOrNull('intel-pipeline'),
+    materialTrend:      selOrNull('intel-material-trend'),
+    gcRelationship:     selOrNull('intel-gc-rel'),
+    gcPriceSensitivity: selOrNull('intel-gc-price'),
+    competitionLevel:   selOrNull('intel-competition'),
+    knownCompetitors:   document.getElementById('intel-competitors')?.value.trim() || null,
+    dirigoEdge:         selOrNull('intel-edge'),
     // Computed count of *other* open drafts, alongside (not replacing) the
     // subjective pipelinePressure dropdown above — the UI shows this as a
     // hint next to the dropdown so the estimator sees it while still making

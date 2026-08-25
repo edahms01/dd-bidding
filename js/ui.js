@@ -79,6 +79,24 @@ function calc() {
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(n)  { return (+n).toFixed(1) + '%'; }
 
+// Escapes the 5 characters that matter for safe interpolation into
+// innerHTML (as text content or as a quoted attribute value) — used at
+// every spot in this file that writes a dynamic string into markup.
+// Not a fix for the separate inline-onclick JS-string-context case (see
+// _renderAgentResult()'s optCards) — HTML-entity decoding happens before
+// the browser evaluates an inline event handler's JS source, so escaping
+// quotes here doesn't close that path the way it does for text content
+// or a plain attribute value.
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── BID OUTPUT RENDER ─────────────────────────────────────────────────
 // renderOutput(state, wallCosts, ceilCosts, summary, markupResult)
 //   state        — full form snapshot from collectFormData()
@@ -98,13 +116,13 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
     if (r.error) {
       return `<tr>
         <td colspan="6" style="padding:8px;color:#e85c4a;font-style:italic">
-          ${r.location || '(unnamed)'} — ${r.error}
+          ${escapeHtml(r.location) || '(unnamed)'} — ${escapeHtml(r.error)}
         </td>
       </tr>`;
     }
     return `<tr>
-      <td>${r.location || '—'}</td>
-      <td style="color:var(--text2)">${r.typeId}${r.layers > 1 ? ' ×' + r.layers : ''}</td>
+      <td>${escapeHtml(r.location) || '—'}</td>
+      <td style="color:var(--text2)">${escapeHtml(r.typeId)}${r.layers > 1 ? ' ×' + r.layers : ''}</td>
       <td style="font-family:monospace;color:var(--text2)">${qty}</td>
       <td style="font-family:monospace">${fmtCost(r.laborTotal)}</td>
       <td style="font-family:monospace">${fmtCost(r.materialTotal)}</td>
@@ -387,7 +405,7 @@ async function submitBid() {
           <div style="font-size:24px;color:var(--green);margin-bottom:10px">✓</div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submitted</div>
           <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
-            ${saved.project_name || '(unnamed project)'} &mdash; ${fmtCost(saved.final_bid)}
+            ${escapeHtml(saved.project_name) || '(unnamed project)'} &mdash; ${fmtCost(saved.final_bid)}
           </div>
           <button class="btn btn-primary" onclick="goto('history')">View bid history →</button>
           <button class="btn btn-ghost" onclick="runCalculation()" style="margin-left:8px">Back to output</button>
@@ -453,9 +471,9 @@ async function renderHistory() {
         return `
         <tr>
           <td style="white-space:nowrap;color:var(--text2)">${b.date_submitted || '—'}</td>
-          <td style="font-weight:500">${b.project_name || '—'}</td>
-          <td style="color:var(--text2)">${b.gc || '—'}</td>
-          <td style="color:var(--text2)">${b.building_type || '—'}</td>
+          <td style="font-weight:500">${escapeHtml(b.project_name) || '—'}</td>
+          <td style="color:var(--text2)">${escapeHtml(b.gc) || '—'}</td>
+          <td style="color:var(--text2)">${escapeHtml(b.building_type) || '—'}</td>
           <td style="font-family:monospace;font-weight:600;color:var(--green)">${b.final_bid ? fmtCost(b.final_bid) : '—'}</td>
           <td>${confLabel(b.confidence)}</td>
           <td>${outcomePill(b.outcome)}</td>
@@ -477,7 +495,7 @@ async function renderHistory() {
               </div>
               <div class="field">
                 <span class="lbl">Competitor who won</span>
-                <input type="text" id="uf-winner-${id}" value="${(b.competitor_who_won||'').replace(/"/g,'&quot;')}" placeholder="Company name">
+                <input type="text" id="uf-winner-${id}" value="${escapeHtml(b.competitor_who_won)}" placeholder="Company name">
               </div>
               <div class="field">
                 <span class="lbl">Winning bid ($)</span>
@@ -493,7 +511,7 @@ async function renderHistory() {
               </div>
               <div class="field">
                 <span class="lbl">Notes</span>
-                <input type="text" id="uf-notes-${id}" value="${(b.notes||'').replace(/"/g,'&quot;')}" placeholder="Post-bid notes">
+                <input type="text" id="uf-notes-${id}" value="${escapeHtml(b.notes)}" placeholder="Post-bid notes">
               </div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="saveUpdate('${id}')">Save</button>
@@ -632,7 +650,7 @@ async function renderRateTemplateSelect() {
 
   sel.disabled  = false;
   sel.innerHTML = _rateTemplatesCache.map(t =>
-    `<option value="${t.id}">${t.name}</option>`
+    `<option value="${t.id}">${escapeHtml(t.name)}</option>`
   ).join('');
 }
 
@@ -716,8 +734,8 @@ function renderDashboard() {
         const modified = d.lastModifiedAt ? new Date(d.lastModifiedAt).toLocaleString() : '—';
         return `
         <tr>
-          <td style="font-weight:500">${name}</td>
-          <td style="color:var(--text2)">${type}</td>
+          <td style="font-weight:500">${escapeHtml(name)}</td>
+          <td style="color:var(--text2)">${escapeHtml(type)}</td>
           <td style="white-space:nowrap;color:var(--text2)">${modified}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-primary btn-sm" onclick="switchToDraft('${d.id}')">Open</button>
@@ -834,7 +852,7 @@ function _renderAgentResult(page, r) {
       'Low–Medium': 'background:rgba(232,92,74,.10);border:1px solid rgba(232,92,74,.25);color:#e85c4a',
       'Low':        'background:rgba(232,92,74,.15);border:1px solid rgba(232,92,74,.35);color:#e85c4a'
     }[val] || 'background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--text3)';
-    return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;${s}">${val || '—'}</span>`;
+    return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;${s}">${escapeHtml(val) || '—'}</span>`;
   }
 
   const hdr = `
@@ -854,10 +872,10 @@ function _renderAgentResult(page, r) {
     const isRec = opt.type === 'recommended';
     const isSel = _selectedBidOption === opt.type;
     return `
-      <div data-bid-opt="${opt.type}"
+      <div data-bid-opt="${escapeHtml(opt.type)}"
            data-default-border="${oc.border}"
            data-default-bg="${oc.bg}"
-           onclick="_selectBidOption('${opt.type}')"
+           onclick="_selectBidOption('${escapeHtml(opt.type)}')"
            style="flex:1;background:${isSel ? 'var(--accent-dim)' : oc.bg};
                   border:1px solid ${isSel ? 'var(--accent-border)' : oc.border};
                   border-radius:var(--rl);padding:18px 16px;cursor:pointer;position:relative;
@@ -866,7 +884,7 @@ function _renderAgentResult(page, r) {
             padding:2px 7px;border-radius:4px;background:rgba(58,191,122,.12);
             border:1px solid rgba(58,191,122,.3);color:var(--green);letter-spacing:.03em">Agent pick</span>` : ''}
         <div style="font-size:10px;font-weight:700;color:${oc.color};text-transform:uppercase;
-            letter-spacing:.08em;margin-bottom:12px">${opt.label}</div>
+            letter-spacing:.08em;margin-bottom:12px">${escapeHtml(opt.label)}</div>
         <div style="font-family:monospace;font-size:26px;font-weight:700;color:${oc.color};
             line-height:1;margin-bottom:3px">${fmtCost(opt.bidAmount)}</div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:12px">${opt.margin}% margin</div>
@@ -874,7 +892,7 @@ function _renderAgentResult(page, r) {
           <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.08em;margin-bottom:5px;text-transform:uppercase">WIN LIKELIHOOD</div>
           ${winLikelihoodPill(opt.winLikelihood)}
         </div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:12px">${opt.rationale}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:12px">${escapeHtml(opt.rationale)}</div>
       </div>`;
   }).join('');
 
@@ -889,7 +907,7 @@ function _renderAgentResult(page, r) {
       <div class="section-label">Agent analysis</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);
           padding:16px 18px;font-size:14px;color:var(--text2);line-height:1.7">
-        ${r.reasoning || 'No analysis provided.'}
+        ${escapeHtml(r.reasoning) || 'No analysis provided.'}
       </div>
     </div>
 
@@ -913,8 +931,8 @@ function _renderAgentResult(page, r) {
           <thead><tr><th>Signal</th><th>Value</th><th>Status</th></tr></thead>
           <tbody>
             ${r.signals.map(s => `<tr>
-              <td style="font-weight:500">${s.label}</td>
-              <td style="color:var(--text2)">${s.value}${s.note ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">${s.note}</div>` : ''}</td>
+              <td style="font-weight:500">${escapeHtml(s.label)}</td>
+              <td style="color:var(--text2)">${escapeHtml(s.value)}${s.note ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">${escapeHtml(s.note)}</div>` : ''}</td>
               <td>${statusPill(s.status)}</td>
             </tr>`).join('')}
           </tbody>
@@ -932,8 +950,8 @@ function _renderAgentResult(page, r) {
                 ${flagDot(f.severity)}
                 <div>
                   <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;
-                      letter-spacing:.05em;margin-right:8px">${f.severity}</span>
-                  <span style="font-size:13px;color:var(--text2)">${f.message}</span>
+                      letter-spacing:.05em;margin-right:8px">${escapeHtml(f.severity)}</span>
+                  <span style="font-size:13px;color:var(--text2)">${escapeHtml(f.message)}</span>
                 </div>
               </div>`).join('')}
           </div>`}
@@ -950,7 +968,7 @@ function _renderAgentResult(page, r) {
             ${r.historicalNotes.map(note => `
               <li style="padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;
                   color:var(--text2);padding-left:16px;position:relative">
-                <span style="position:absolute;left:0;color:var(--text3)">›</span>${note}
+                <span style="position:absolute;left:0;color:var(--text3)">›</span>${escapeHtml(note)}
               </li>`).join('')}
           </ul>`}
     </div>
@@ -1036,10 +1054,10 @@ function _showFinalizeModal(agentOptions) {
   const body = document.getElementById('finalize-modal-body');
 
   const optRows = (agentOptions || []).map(opt => `
-    <div class="bid-option-row" data-modal-opt="${opt.type}" onclick="_modalSelectRow(this)">
-      <input type="radio" name="finalize-modal-option" value="${opt.type}" class="bid-option-radio">
+    <div class="bid-option-row" data-modal-opt="${escapeHtml(opt.type)}" onclick="_modalSelectRow(this)">
+      <input type="radio" name="finalize-modal-option" value="${escapeHtml(opt.type)}" class="bid-option-radio">
       <div style="flex:1">
-        <div class="bid-option-label">${opt.label}</div>
+        <div class="bid-option-label">${escapeHtml(opt.label)}</div>
         <div class="bid-option-note">${opt.margin}% margin</div>
       </div>
       <div class="bid-option-amount">${fmtCost(opt.bidAmount)}</div>
@@ -1175,7 +1193,23 @@ function _showBidToast(label, amount) {
   }, 3000);
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') _closeFinalizeModal();
-});
+// Guarded — this file's only other top-level (module-load-time) DOM side
+// effect, unlike calculator.js/drafts.js which never touch `document` at
+// all. Without this guard, requiring this file under Vitest's plain
+// 'node' environment (no jsdom, per vitest.config.mjs) to reach
+// escapeHtml() below would throw at load time before the export block is
+// ever reached.
+if (typeof document !== 'undefined') {
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') _closeFinalizeModal();
+  });
+}
+
+// Dual browser-global/CommonJS export, same convention as js/calculator.js
+// and js/drafts.js — added specifically so escapeHtml() (the one genuinely
+// pure function in this otherwise DOM-only file) is directly importable
+// by the Vitest suite without a DOM.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { escapeHtml };
+}
 
