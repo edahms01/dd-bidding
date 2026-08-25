@@ -58,11 +58,28 @@
       "disposal": 420,
       "lift": 650
     },
+    "rateEscalation": {
+      "stud": {
+        "1-5/8\"": null,
+        "2-1/2\"": 5,
+        "3-5/8\"": null,
+        "4\"": null,
+        "6\"": null
+      },
+      "board": {
+        "Standard": null,
+        "Type-X": 5,
+        "Moisture": null,
+        "Impact": null
+      },
+      "tape": null,
+      "insul": null,
+      "fasten": null
+    },
     "markupInputs": {
       "overheadPct": 12,
       "contingencyPct": 8,
-      "profitPct": 10,
-      "escalationPct": 3
+      "profitPct": 10
     },
     "intelligence": {
       "crewAvailability": "full",

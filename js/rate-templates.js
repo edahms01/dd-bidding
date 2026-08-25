@@ -17,12 +17,12 @@ async function getAllRateTemplates() {
   return res.json();
 }
 
-async function saveRateTemplate(name, rates) {
+async function saveRateTemplate(name, rates, rateEscalation) {
   const res = await fetch(RATE_TEMPLATES_ENDPOINT, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     cache:   'no-store',
-    body:    JSON.stringify({ name, rates })
+    body:    JSON.stringify({ name, rates, rateEscalation })
   });
   if (!res.ok) throw new Error('saveRateTemplate failed: ' + res.status);
   return res.json();

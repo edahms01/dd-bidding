@@ -16,11 +16,18 @@
 // Assigns id/createdAt the same way stampNewBid() assigns bid_id/
 // date_submitted, so template records get a consistent shape without
 // the caller (rate-templates.js) needing to know the id format.
-function stampNewTemplate(name, rates) {
+//
+// rateEscalation (Tier 5, Part 2) defaults to null, not required — a
+// template saved before Part 2 shipped (or a caller that only ever knew
+// about `rates`) still produces a valid record; applyRateTemplate() and
+// applyRateEscalation() both already treat a missing rateEscalation as
+// "no escalation set anywhere," not an error.
+function stampNewTemplate(name, rates, rateEscalation) {
   return {
     id:        'rt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
     name,
     rates,
+    rateEscalation: rateEscalation || null,
     createdAt: new Date().toISOString()
   };
 }
