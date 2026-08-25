@@ -3,6 +3,8 @@ import {
   MIN_BIDS_FOR_MARGIN_CURVE,
   computeMarginOutcomeCurve,
   computeSeasonality,
+  MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE,
+  computeCompetitorPatterns,
   computeCostVariances
 } from '../../js/history-analytics.js';
 
@@ -105,6 +107,86 @@ describe('computeSeasonality', () => {
 
   it('returns an empty array for an empty bid list', () => {
     expect(computeSeasonality([])).toEqual([]);
+  });
+});
+
+describe('computeCompetitorPatterns', () => {
+  function lostBid(overrides = {}) {
+    return decidedBid({
+      outcome: 'lost',
+      competitor_who_won: 'Northeast Drywall Inc.',
+      winning_bid: 108000, // 10% under a 120000 final_bid, by default
+      final_bid: 120000,
+      ...overrides
+    });
+  }
+
+  it('returns an empty array when there are no lost bids at all', () => {
+    expect(computeCompetitorPatterns([])).toEqual([]);
+    expect(computeCompetitorPatterns([decidedBid({ outcome: 'won' })])).toEqual([]);
+  });
+
+  it('excludes lost bids with no competitor_who_won recorded', () => {
+    expect(computeCompetitorPatterns([lostBid({ competitor_who_won: null })])).toEqual([]);
+  });
+
+  it('a single loss with pricing data below the confidence threshold reports timesLost but null avgUndercutPct', () => {
+    const result = computeCompetitorPatterns([lostBid()]);
+    expect(result).toEqual([
+      { name: 'Northeast Drywall Inc.', timesLost: 1, avgUndercutPct: null }
+    ]);
+  });
+
+  it('groups by competitor name case-insensitively, keeping the first-seen casing for display', () => {
+    const result = computeCompetitorPatterns([
+      lostBid({ competitor_who_won: 'Summit Drywall' }),
+      lostBid({ competitor_who_won: 'summit drywall' }),
+      lostBid({ competitor_who_won: 'SUMMIT DRYWALL' })
+    ]);
+    expect(result).toEqual([
+      { name: 'Summit Drywall', timesLost: 3, avgUndercutPct: 10 }
+    ]);
+  });
+
+  it('reaching exactly MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE with pricing data produces a real avgUndercutPct', () => {
+    expect(MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE).toBe(2);
+    const belowThreshold = computeCompetitorPatterns(
+      Array.from({ length: MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE - 1 }, () => lostBid())
+    );
+    expect(belowThreshold[0].avgUndercutPct).toBeNull();
+
+    const atThreshold = computeCompetitorPatterns(
+      Array.from({ length: MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE }, () => lostBid())
+    );
+    expect(atThreshold[0].timesLost).toBe(MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE);
+    expect(atThreshold[0].avgUndercutPct).toBe(10); // (120000-108000)/120000 * 100
+  });
+
+  it('avgUndercutPct gates on losses with pricing data, not on timesLost overall — a competitor lost to 3 times with pricing on only 1 stays null', () => {
+    const result = computeCompetitorPatterns([
+      lostBid(),
+      lostBid({ winning_bid: null }),
+      lostBid({ final_bid: 0 }) // invalid final_bid — also excluded from pricing data
+    ]);
+    expect(result).toEqual([
+      { name: 'Northeast Drywall Inc.', timesLost: 3, avgUndercutPct: null }
+    ]);
+  });
+
+  it('sorts descending by timesLost and caps the result at the top 5 competitors', () => {
+    const bids = [];
+    // 6 distinct competitors, decreasing frequency: 6,5,4,3,2,1 losses.
+    for (let i = 6; i >= 1; i--) {
+      for (let j = 0; j < i; j++) {
+        bids.push(lostBid({ competitor_who_won: 'Competitor ' + i }));
+      }
+    }
+    const result = computeCompetitorPatterns(bids);
+    expect(result).toHaveLength(5);
+    expect(result.map(r => r.name)).toEqual([
+      'Competitor 6', 'Competitor 5', 'Competitor 4', 'Competitor 3', 'Competitor 2'
+    ]);
+    expect(result[0].timesLost).toBe(6);
   });
 });
 
