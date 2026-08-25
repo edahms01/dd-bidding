@@ -17,6 +17,17 @@ describe('stampNewTemplate', () => {
     const b = stampNewTemplate('B', {});
     expect(a.id).not.toBe(b.id);
   });
+
+  it('carries a passed rateEscalation through to the returned record (Tier 5, Part 2)', () => {
+    const rateEscalation = { stud: { '2-1/2"': 5 }, board: { 'Type-X': 5 }, tape: null, insul: null, fasten: null };
+    const record = stampNewTemplate('Steel up 5%', {}, rateEscalation);
+    expect(record.rateEscalation).toEqual(rateEscalation);
+  });
+
+  it('defaults rateEscalation to null when the third argument is omitted, not an error', () => {
+    const record = stampNewTemplate('Standard commercial', {});
+    expect(record.rateEscalation).toBeNull();
+  });
 });
 
 describe('removeTemplate', () => {
