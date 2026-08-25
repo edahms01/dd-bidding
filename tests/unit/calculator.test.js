@@ -5,7 +5,8 @@ import {
   calculateLogistics,
   buildCostSummary,
   applyMarkup,
-  computeWeightedWastePct
+  computeWeightedWastePct,
+  applyRateEscalation
 } from '../../js/calculator.js';
 import seedData from '../../data/seed.json';
 
@@ -189,29 +190,92 @@ describe('computeWeightedWastePct', () => {
   });
 });
 
-describe('golden-bid regression — Harborview Plaza (data/seed.json), no overrides set anywhere', () => {
-  // These numbers were captured by running the pre-Tier-3 calculator.js
-  // against this exact fixture before any change in this phase was made,
-  // then pinned here as a fixed regression target -- not hand-derived.
-  // See the Tier 3 plan's Step 0 finding #10 for why hand-deriving these
-  // would be unsafe (several rate fields, e.g. burdenPct/superPct, look
-  // relevant but have zero consumer in these functions).
-  it('produces byte-for-byte identical totals to the pre-change baseline', () => {
+describe('applyRateEscalation', () => {
+  function rates() {
+    return {
+      stud:  { '1-5/8"': 0.38, '2-1/2"': 0.44, '3-5/8"': 0.52, '4"': 0.61, '6"': 0.78 },
+      board: { Standard: 0.48, 'Type-X': 0.58, Moisture: 0.64, Impact: 0.72 },
+      tape: 0.14, insul: 0.32, fasten: 0.11,
+      framing: 4.20, hanging: 0.95, burdenPct: 34, superPct: 9
+    };
+  }
+
+  it('with no escalation set anywhere, every material rate is unchanged', () => {
+    const r = rates();
+    const result = applyRateEscalation(r, {});
+    expect(result.stud).toEqual(r.stud);
+    expect(result.board).toEqual(r.board);
+    expect(result.tape).toBe(r.tape);
+    expect(result.insul).toBe(r.insul);
+    expect(result.fasten).toBe(r.fasten);
+  });
+
+  it('escalates a single stud size and a single board type, leaving every other material line untouched', () => {
+    const r = rates();
+    const result = applyRateEscalation(r, { stud: { '2-1/2"': 5 }, board: { 'Type-X': 10 } });
+
+    expect(result.stud['2-1/2"']).toBeCloseTo(0.44 * 1.05, 6);
+    expect(result.board['Type-X']).toBeCloseTo(0.58 * 1.10, 6);
+
+    // Every other stud size and board type is unaffected.
+    expect(result.stud['1-5/8"']).toBe(r.stud['1-5/8"']);
+    expect(result.stud['3-5/8"']).toBe(r.stud['3-5/8"']);
+    expect(result.stud['4"']).toBe(r.stud['4"']);
+    expect(result.stud['6"']).toBe(r.stud['6"']);
+    expect(result.board.Standard).toBe(r.board.Standard);
+    expect(result.board.Moisture).toBe(r.board.Moisture);
+    expect(result.board.Impact).toBe(r.board.Impact);
+
+    // Non-material lines are untouched.
+    expect(result.tape).toBe(r.tape);
+    expect(result.insul).toBe(r.insul);
+    expect(result.fasten).toBe(r.fasten);
+    expect(result.framing).toBe(r.framing);
+    expect(result.hanging).toBe(r.hanging);
+  });
+
+  it('does not mutate its input rates object', () => {
+    const r = rates();
+    const snapshot = JSON.parse(JSON.stringify(r));
+    applyRateEscalation(r, { stud: { '2-1/2"': 5 }, board: { 'Type-X': 10 }, tape: 8, insul: 3, fasten: 2 });
+    expect(r).toEqual(snapshot);
+  });
+
+  it('a totally absent rateEscalation argument is treated the same as no escalation set', () => {
+    const r = rates();
+    const result = applyRateEscalation(r, undefined);
+    expect(result.stud).toEqual(r.stud);
+    expect(result.board).toEqual(r.board);
+  });
+});
+
+describe('golden-bid regression — Harborview Plaza (data/seed.json), current shipped rate/escalation values', () => {
+  // These numbers were captured by running the current (Tier 5, Part 2)
+  // calculator.js -- with applyRateEscalation() wired in exactly the way
+  // js/ui.js's runCalculation()/submitBid() call it -- against the current
+  // data/seed.json fixture, then pinned here as a fixed regression target,
+  // not hand-derived. The fixture is no longer "no overrides anywhere":
+  // seed.json now carries a real 5% escalation on 2-1/2" stud and Type-X
+  // board (see Seed data, Tier 5 Part 2 plan), so these numbers reflect
+  // that escalation actually being applied, same as the live app would
+  // compute for this exact fixture.
+  it('produces byte-for-byte identical totals to the pinned baseline', () => {
     const seed = seedData.project_state;
-    const wallCosts  = calculateWallCosts(seed.walls, seed.assemblies, seed.rates, seed.conditions);
-    const ceilCosts  = calculateCeilingCosts(seed.ceilings, seed.assemblies, seed.rates, seed.conditions);
+    const escalatedRates = applyRateEscalation(seed.rates, seed.rateEscalation);
+    const wallCosts  = calculateWallCosts(seed.walls, seed.assemblies, escalatedRates, seed.conditions);
+    const ceilCosts  = calculateCeilingCosts(seed.ceilings, seed.assemblies, escalatedRates, seed.conditions);
     const logistics  = calculateLogistics(seed.conditions, seed.rates);
     const summary    = buildCostSummary(wallCosts, ceilCosts, logistics, seed.conditions.wastePct);
     const markup     = applyMarkup(summary, seed.markupInputs);
 
     expect(summary.laborTotal).toBeCloseTo(76956, 3);
-    expect(summary.materialTotal).toBeCloseTo(21089.164, 3);
-    expect(summary.directCostTotal).toBeCloseTo(109425.164, 3);
-    expect(markup.finalBidPrice).toBeCloseTo(145535.46812, 3);
-    expect(markup.effectiveMargin).toBeCloseTo(24.81203007518797, 6);
+    expect(summary.materialTotal).toBeCloseTo(21490.6168, 3);
+    expect(summary.directCostTotal).toBeCloseTo(109826.6168, 3);
+    expect(markup.finalBidPrice).toBeCloseTo(142774.60184, 3);
+    expect(markup.effectiveMargin).toBeCloseTo(23.076923076923084, 6);
 
-    // No override on any seed assembly -> weighted average must equal the
-    // job-wide conditions.wastePct exactly (float noise aside).
+    // No waste override on any seed assembly -> weighted average must
+    // equal the job-wide conditions.wastePct exactly (float noise aside).
     expect(summary.weightedWastePct).toBeCloseTo(seed.conditions.wastePct, 6);
   });
 });

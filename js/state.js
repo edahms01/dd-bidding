@@ -143,19 +143,32 @@ function collectFormData() {
     lift:     num('rate-lift')
   };
 
-  // Escalation: zero if start date is within 60 days of bid date
-  const bidDateStr   = document.getElementById('proj-bid')?.value   || '';
-  const startDateStr = document.getElementById('proj-start')?.value || '';
-  let escalationPct  = num('markup-escalation');
-  if (bidDateStr && startDateStr) {
-    const days = (new Date(startDateStr) - new Date(bidDateStr)) / 86400000;
-    if (days < 60) escalationPct = 0;
-  }
   const markupInputs = {
     overheadPct:    num('markup-overhead'),
     contingencyPct: num('markup-contingency'),
-    profitPct:      num('markup-profit'),
-    escalationPct
+    profitPct:      num('markup-profit')
+  };
+
+  // Per-line-item rate escalation (Tier 5, Part 2) — purely optional,
+  // purely estimator judgment, no automatic proximity rule. Number.isNaN,
+  // not ||, since an explicit 0% escalation is a real value distinct from
+  // "not set" (same convention as Tier 3's wastePctOverride, above).
+  function escPct(id) {
+    const v = parseFloat(document.getElementById(id)?.value);
+    return Number.isNaN(v) ? null : v;
+  }
+  const rateEscalation = {
+    stud: {
+      '1-5/8"': escPct('esc-stud158'), '2-1/2"': escPct('esc-stud212'),
+      '3-5/8"': escPct('esc-stud358'), '4"': escPct('esc-stud4'), '6"': escPct('esc-stud6')
+    },
+    board: {
+      'Standard': escPct('esc-brd-std'), 'Type-X':  escPct('esc-brd-typex'),
+      'Moisture': escPct('esc-brd-moist'), 'Impact': escPct('esc-brd-imp')
+    },
+    tape:   escPct('esc-tape'),
+    insul:  escPct('esc-insul'),
+    fasten: escPct('esc-fasten')
   };
 
   const intelligence = {
@@ -174,7 +187,7 @@ function collectFormData() {
     openDraftCount:     getOpenDraftCount(getAllDrafts(), activeDraftId)
   };
 
-  return { assemblies, walls, ceilings, conditions, rates, markupInputs, intelligence, project };
+  return { assemblies, walls, ceilings, conditions, rates, rateEscalation, markupInputs, intelligence, project };
 }
 
 // Assembles a bid record ready for saveBid(). bid_id and date_submitted are

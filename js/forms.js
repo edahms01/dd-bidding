@@ -203,6 +203,25 @@ function populateForm(state) {
   set('rate-delivery', r.delivery);
   set('rate-disposal', r.disposal);
   set('rate-lift',     r.lift);
+
+  // ── Rate escalation (Tier 5, Part 2) ──
+  const re = state.rateEscalation || {};
+  if (re.stud) {
+    set('esc-stud158', re.stud['1-5/8"']);
+    set('esc-stud212', re.stud['2-1/2"']);
+    set('esc-stud358', re.stud['3-5/8"']);
+    set('esc-stud4',   re.stud['4"']);
+    set('esc-stud6',   re.stud['6"']);
+  }
+  if (re.board) {
+    set('esc-brd-std',   re.board['Standard']);
+    set('esc-brd-typex', re.board['Type-X']);
+    set('esc-brd-moist', re.board['Moisture']);
+    set('esc-brd-imp',   re.board['Impact']);
+  }
+  set('esc-tape',   re.tape);
+  set('esc-insul',  re.insul);
+  set('esc-fasten', re.fasten);
   calc(); // refresh rates running totals bar
 
   // ── Markup ──
@@ -210,7 +229,6 @@ function populateForm(state) {
   set('markup-overhead',    mu.overheadPct);
   set('markup-contingency', mu.contingencyPct);
   set('markup-profit',      mu.profitPct);
-  set('markup-escalation',  mu.escalationPct);
 
   // ── Assemblies ──
   const asmBody = document.getElementById('asm-body');
@@ -296,7 +314,7 @@ function populateForm(state) {
 //      handleImportFile()'s immediate-save path below: build the draft
 //      record right now and save it, so a reload immediately after
 //      loading a template reflects the change, not a race against a timer.
-function applyRateTemplate(rates) {
+function applyRateTemplate(rates, rateEscalation) {
   function set(id, val) {
     const el = document.getElementById(id);
     if (el !== null && val !== undefined && val !== null) el.value = val;
@@ -335,6 +353,27 @@ function applyRateTemplate(rates) {
   set('rate-delivery', r.delivery);
   set('rate-disposal', r.disposal);
   set('rate-lift',     r.lift);
+
+  // A template saved before Tier 5 Part 2 shipped has no rateEscalation
+  // field at all — re || {} below treats that exactly like "no escalation
+  // set anywhere," not an error, same as applyRateEscalation() itself does.
+  const re = rateEscalation || {};
+  if (re.stud) {
+    set('esc-stud158', re.stud['1-5/8"']);
+    set('esc-stud212', re.stud['2-1/2"']);
+    set('esc-stud358', re.stud['3-5/8"']);
+    set('esc-stud4',   re.stud['4"']);
+    set('esc-stud6',   re.stud['6"']);
+  }
+  if (re.board) {
+    set('esc-brd-std',   re.board['Standard']);
+    set('esc-brd-typex', re.board['Type-X']);
+    set('esc-brd-moist', re.board['Moisture']);
+    set('esc-brd-imp',   re.board['Impact']);
+  }
+  set('esc-tape',   re.tape);
+  set('esc-insul',  re.insul);
+  set('esc-fasten', re.fasten);
   calc(); // refresh rates running totals bar
 
   // Immediate save — see comment above. Same pattern as handleImportFile().
@@ -492,12 +531,15 @@ function resetFormFields() {
    'rate-add12', 'rate-add20',
    'rate-stud158', 'rate-stud212', 'rate-stud358', 'rate-stud4', 'rate-stud6',
    'rate-brd-std', 'rate-brd-typex', 'rate-brd-moist', 'rate-brd-imp',
-   'rate-tape', 'rate-insul', 'rate-fasten', 'rate-delivery', 'rate-disposal', 'rate-lift'
+   'rate-tape', 'rate-insul', 'rate-fasten', 'rate-delivery', 'rate-disposal', 'rate-lift',
+   'esc-stud158', 'esc-stud212', 'esc-stud358', 'esc-stud4', 'esc-stud6',
+   'esc-brd-std', 'esc-brd-typex', 'esc-brd-moist', 'esc-brd-imp',
+   'esc-tape', 'esc-insul', 'esc-fasten'
   ].forEach(clear);
   calc(); // refresh rates running totals bar to zero, mirroring populateForm()
 
   // ── Markup ──
-  ['markup-overhead', 'markup-contingency', 'markup-profit', 'markup-escalation'].forEach(clear);
+  ['markup-overhead', 'markup-contingency', 'markup-profit'].forEach(clear);
 
   // ── Assemblies / Walls / Ceilings — clear and rebuild one default row each ──
   const asmBody = document.getElementById('asm-body');

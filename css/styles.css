@@ -157,6 +157,15 @@ td input:focus,td select:focus{border-color:var(--accent);outline:none}
 .spfx{padding:5px 7px;font-size:11px;color:var(--text3);background:var(--bg);border-right:1px solid var(--border);flex-shrink:0}
 .si{flex:1;background:transparent;border:none;outline:none;padding:5px 7px;font-size:13px;font-weight:500;color:var(--text);font-family:'Courier New',monospace;width:100%;text-align:center;min-width:0}
 .si::placeholder{color:var(--text3);font-size:11px}
+/* Optional per-line rate escalation (Tier 5, Part 2) — a compact
+   secondary row inside each existing rate card/stud-card, not a
+   parallel grid of new cards; this field is optional and rarely used,
+   so it stays visually subordinate to the primary $ rate above it. */
+.esc-row{display:flex;align-items:center;gap:5px;margin-top:7px;font-size:10px;color:var(--text3)}
+.stud-card .esc-row{justify-content:center}
+.esc-input{width:42px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 5px;font-size:11px;color:var(--text);font-family:'Courier New',monospace;text-align:center}
+.esc-input:focus{outline:none;border-color:var(--accent)}
+.esc-input::placeholder{color:var(--text3)}
 .adder-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .acard{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px}
 .acard:focus-within{border-color:var(--accent)}

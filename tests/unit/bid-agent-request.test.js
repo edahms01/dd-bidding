@@ -3,7 +3,7 @@ import { AGENT_SYSTEM, AGENT_SCHEMA, buildAnthropicRequest } from '../../netlify
 
 const REPRESENTATIVE_PAYLOAD = {
   project: { name: 'Harborview Plaza', gc: 'Callahan Construction Group', buildingType: 'retail', startDate: '2026-11-01', bidDate: '2026-08-20' },
-  costs: { directCost: 200000, overhead: 20000, contingency: 10000, profit: 30000, escalation: 4500, totalMarkup: 64500, finalBidPrice: 284500, effectiveMargin: 28.4 },
+  costs: { directCost: 200000, overhead: 20000, contingency: 10000, profit: 30000, totalMarkup: 60000, finalBidPrice: 260000, effectiveMargin: 23.1 },
   conditions: { confidence: 'medium', wastePct: 12, sfAbove12: 1000, sfAbove20: 200, durationWeeks: 8 },
   intelligence: { gcRelationship: 'strong', gcPriceSensitivity: 'quality', competitionLevel: 'moderate', dirigoEdge: 'strong' },
   history: { totalBids: 4, winRate: 0.5, winsWithThisGC: 2, lossesWithThisGC: 1, winRateByBuildingType: 0.6, avgCostVariance: 3.2 }

@@ -142,28 +142,57 @@ function buildCostSummary(wallCosts, ceilingCosts, logistics, fallbackWastePct) 
   };
 }
 
-// markupInputs: { overheadPct, contingencyPct, profitPct, escalationPct }
-// escalationPct is already zeroed by collectFormData() if start date < 60 days out.
+// markupInputs: { overheadPct, contingencyPct, profitPct }
+// No escalationPct — escalation (Tier 5, Part 2) is purely optional and
+// per-material-rate-line now, resolved by applyRateEscalation() below,
+// before calculateWallCosts()/calculateCeilingCosts() ever run. There is
+// no whole-job escalation figure left to apply here.
 function applyMarkup(summary, markupInputs) {
   const overhead    = summary.directCostTotal * (markupInputs.overheadPct    / 100);
   const contingency = summary.directCostTotal * (markupInputs.contingencyPct / 100);
   const profit      = summary.directCostTotal * (markupInputs.profitPct      / 100);
-  const escalation  = summary.directCostTotal * (markupInputs.escalationPct  / 100);
-  const totalMarkup   = overhead + contingency + profit + escalation;
+  const totalMarkup   = overhead + contingency + profit;
   const finalBidPrice = summary.directCostTotal + totalMarkup;
   const effectiveMargin = finalBidPrice > 0
     ? ((finalBidPrice - summary.directCostTotal) / finalBidPrice) * 100
     : 0;
   return {
     directCostTotal: summary.directCostTotal,
-    overhead, contingency, profit, escalation,
+    overhead, contingency, profit,
     totalMarkup, finalBidPrice, effectiveMargin
+  };
+}
+
+// Resolves escalation once, before any row-level calculation — every
+// existing rates.board[x]/rates.stud[x] lookup inside calculateWallCosts()/
+// calculateCeilingCosts() picks up the escalated value automatically, with
+// zero changes to either function's internals. Material lines only (stud,
+// board, tape, insul, fasten) — labor rates, burden/supervision %, and
+// logistics (delivery/disposal/lift) don't have commodity-price risk the
+// way material rates do; escalating them would be conceptually confused,
+// not just out of scope. Does not mutate its input rates object.
+function applyRateEscalation(rates, rateEscalation) {
+  const esc = rateEscalation || {};
+  const scaled = (base, pct) => (pct ? base * (1 + pct / 100) : base);
+
+  const stud = {};
+  Object.keys(rates.stud).forEach(k => { stud[k] = scaled(rates.stud[k], esc.stud?.[k]); });
+  const board = {};
+  Object.keys(rates.board).forEach(k => { board[k] = scaled(rates.board[k], esc.board?.[k]); });
+
+  return {
+    ...rates,
+    stud, board,
+    tape:   scaled(rates.tape,   esc.tape),
+    insul:  scaled(rates.insul,  esc.insul),
+    fasten: scaled(rates.fasten, esc.fasten)
   };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     calculateWallCosts, calculateCeilingCosts, calculateLogistics,
-    applyLaborBurden, buildCostSummary, applyMarkup, computeWeightedWastePct
+    applyLaborBurden, buildCostSummary, applyMarkup, computeWeightedWastePct,
+    applyRateEscalation
   };
 }

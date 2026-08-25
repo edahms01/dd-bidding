@@ -125,7 +125,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         label:  'Material price trend',
         value:  'Stable',
         status: 'positive',
-        note:   'No escalation risk flagged beyond the standard 3% already included in markup.'
+        note:   'Overall material pricing is stable, but 2-1/2" stud and Type-X board are individually flagged with a 5% rate escalation on this bid — estimator judgment on specific commodity risk, not a blanket markup.'
       },
       {
         label:  "Dirigo's edge",
@@ -156,7 +156,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
       },
       {
         severity: 'low',
-        message:  'Start date is 90 days out. Material prices are currently stable but monitor steel stud pricing over the next 30 days before locking supplier quotes.'
+        message:  'Start date is 90 days out. A 5% escalation is already flagged on 2-1/2" stud pricing — confirm it still tracks current supplier quotes before locking them in.'
       },
       {
         severity: 'low',
@@ -191,7 +191,6 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
       overhead:        Math.round(markupResult.overhead),
       contingency:     Math.round(markupResult.contingency),
       profit:          Math.round(markupResult.profit),
-      escalation:      Math.round(markupResult.escalation),
       totalMarkup:     Math.round(markupResult.totalMarkup),
       finalBidPrice:   Math.round(markupResult.finalBidPrice),
       effectiveMargin: +markupResult.effectiveMargin.toFixed(1)

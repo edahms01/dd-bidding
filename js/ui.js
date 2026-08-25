@@ -85,7 +85,7 @@ function fmtPct(n)  { return (+n).toFixed(1) + '%'; }
 //   wallCosts    — array from calculateWallCosts()
 //   ceilCosts    — array from calculateCeilingCosts()
 //   summary      — { laborTotal, materialTotal, logisticsTotal, directCostTotal }
-//   markupResult — { directCostTotal, overhead, contingency, profit, escalation,
+//   markupResult — { directCostTotal, overhead, contingency, profit,
 //                    totalMarkup, finalBidPrice, effectiveMargin }
 
 function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
@@ -220,23 +220,6 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
     </div>
   `;
 
-  // ── Escalation field disable (display only — zeroing is in collectFormData) ──
-
-  const bidDateVal    = document.getElementById('proj-bid')?.value   || '';
-  const startDateVal  = document.getElementById('proj-start')?.value || '';
-  const escalationEl  = document.getElementById('markup-escalation');
-  const escalationCard = document.getElementById('escl-rcard');
-  if (escalationEl) {
-    let esclDisabled = false;
-    if (bidDateVal && startDateVal) {
-      const days = (new Date(startDateVal) - new Date(bidDateVal)) / 86400000;
-      esclDisabled = days < 60;
-    }
-    escalationEl.disabled = esclDisabled;
-    escalationEl.title    = esclDisabled ? 'Start date within 60 days — escalation zeroed' : '';
-    if (escalationCard) escalationCard.style.opacity = esclDisabled ? '0.5' : '';
-  }
-
   // ── Phase 4: pricing breakdown + final bid ──
 
   const mu = state.markupInputs;
@@ -250,7 +233,6 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
         ${subtotalRow('Company overhead (' + fmtPct(mu.overheadPct) + ')', fmtCost(markupResult.overhead))}
         ${subtotalRow('Risk / contingency (' + fmtPct(mu.contingencyPct) + ')', fmtCost(markupResult.contingency))}
         ${subtotalRow('Profit margin (' + fmtPct(mu.profitPct) + ')', fmtCost(markupResult.profit))}
-        ${subtotalRow('Material escalation (' + fmtPct(mu.escalationPct) + ')', fmtCost(markupResult.escalation))}
         <div style="display:flex;justify-content:space-between;align-items:center;
             padding:14px 0 6px;margin-top:4px">
           <span style="font-size:14px;font-weight:600;color:var(--text)">Total markup</span>
@@ -291,8 +273,13 @@ function runCalculation() {
   }
 
   const state        = collectFormData();
-  const wallCosts    = calculateWallCosts(state.walls, state.assemblies, state.rates, state.conditions);
-  const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, state.rates, state.conditions);
+  // Resolved once, before any row-level calculation — see js/calculator.js's
+  // applyRateEscalation() doc comment. Only the wall/ceiling calls receive
+  // the escalated rates; calculateLogistics() below keeps state.rates
+  // unescalated (delivery/disposal/lift aren't material-price-risk lines).
+  const escalatedRates = applyRateEscalation(state.rates, state.rateEscalation);
+  const wallCosts    = calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions);
+  const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, escalatedRates, state.conditions);
   const logistics    = calculateLogistics(state.conditions, state.rates);
   const summary      = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct);
   const markupResult = applyMarkup(summary, state.markupInputs);
@@ -354,8 +341,9 @@ async function submitBid() {
   }
 
   const state        = collectFormData();
-  const wallCosts    = calculateWallCosts(state.walls, state.assemblies, state.rates, state.conditions);
-  const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, state.rates, state.conditions);
+  const escalatedRates = applyRateEscalation(state.rates, state.rateEscalation);
+  const wallCosts    = calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions);
+  const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, escalatedRates, state.conditions);
   const logistics    = calculateLogistics(state.conditions, state.rates);
   const summary      = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct);
   const markupResult = applyMarkup(summary, state.markupInputs);
@@ -664,7 +652,8 @@ async function saveRateTemplateFromForm() {
   }
 
   try {
-    await saveRateTemplate(trimmed, collectFormData().rates);
+    const data = collectFormData();
+    await saveRateTemplate(trimmed, data.rates, data.rateEscalation);
     await renderRateTemplateSelect();
     _showFormToast('Template saved ✓', 'success');
   } catch (e) {
@@ -684,7 +673,7 @@ function loadSelectedRateTemplate() {
   const tmpl = _rateTemplatesCache.find(t => t.id === id);
   if (!tmpl) return;
 
-  applyRateTemplate(tmpl.rates);
+  applyRateTemplate(tmpl.rates, tmpl.rateEscalation);
   _showFormToast('Template loaded ✓', 'success');
 }
 

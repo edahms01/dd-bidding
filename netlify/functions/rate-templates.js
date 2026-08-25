@@ -46,7 +46,7 @@ exports.handler = async (event) => {
     } else if (method === 'POST') {
       const body      = JSON.parse(event.body || '{}');
       const templates = await readTemplates(store);
-      const record    = stampNewTemplate(body.name, body.rates);
+      const record    = stampNewTemplate(body.name, body.rates, body.rateEscalation);
       templates.unshift(record);
       await store.setJSON(ALL_KEY, templates);
       result = { statusCode: 200, body: JSON.stringify(record) };

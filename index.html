@@ -238,7 +238,7 @@
                 <option value="rising">Rising</option>
                 <option value="falling">Falling</option>
               </select>
-              <div class="rhint">Supplements escalation % — rising trend may warrant higher contingency</div>
+              <div class="rhint">Rising trend may warrant per-line rate escalation or higher contingency</div>
             </div>
             <div class="flag-card">
               <span class="lbl">GC relationship</span>
@@ -355,23 +355,23 @@
             </div>
             <div class="sub-lbl">Stud + track by size ($/LF)</div>
             <div class="rgrid g5" style="margin-bottom:14px">
-              <div class="stud-card"><div class="stud-sz">1-5/8"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud158" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
-              <div class="stud-card"><div class="stud-sz">2-1/2"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud212" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
-              <div class="stud-card"><div class="stud-sz">3-5/8"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud358" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
-              <div class="stud-card"><div class="stud-sz">4"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud4" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
-              <div class="stud-card"><div class="stud-sz">6"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud6" class="si M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+              <div class="stud-card"><div class="stud-sz">1-5/8"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud158" class="si M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-stud158" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="stud-card"><div class="stud-sz">2-1/2"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud212" class="si M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-stud212" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="stud-card"><div class="stud-sz">3-5/8"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud358" class="si M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-stud358" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="stud-card"><div class="stud-sz">4"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud4" class="si M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-stud4" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="stud-card"><div class="stud-sz">6"</div><div class="stud-sub">incl. track</div><div class="siw"><span class="spfx">$</span><input id="rate-stud6" class="si M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-stud6" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
             </div>
             <div class="sub-lbl">Drywall board by type ($/SF)</div>
             <div class="rgrid g4" style="margin-bottom:14px">
-              <div class="rcard"><div class="rcard-lbl">Standard <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-std" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
-              <div class="rcard"><div class="rcard-lbl">Type-X <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-typex" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
-              <div class="rcard"><div class="rcard-lbl">Moisture-resistant <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-moist" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
-              <div class="rcard"><div class="rcard-lbl">Impact-resistant <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-imp" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div></div>
+              <div class="rcard"><div class="rcard-lbl">Standard <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-std" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-brd-std" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="rcard"><div class="rcard-lbl">Type-X <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-typex" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-brd-typex" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="rcard"><div class="rcard-lbl">Moisture-resistant <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-moist" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-brd-moist" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="rcard"><div class="rcard-lbl">Impact-resistant <span class="badge b-sf">$/SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-brd-imp" class="ri M" type="number" placeholder="0.00" oninput="calc()"></div><div class="esc-row"><span>Esc</span><input id="esc-brd-imp" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
             </div>
             <div class="rgrid g3">
-              <div class="rcard"><div class="rcard-lbl">Tape + compound <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-tape" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Flat allowance across all finished SF.</div></div>
-              <div class="rcard"><div class="rcard-lbl">Insulation <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-insul" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Applied to assemblies with insulation flagged.</div></div>
-              <div class="rcard"><div class="rcard-lbl">Fasteners + adhesives <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-fasten" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Flat allowance. Typically $0.08–$0.15/SF.</div></div>
+              <div class="rcard"><div class="rcard-lbl">Tape + compound <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-tape" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Flat allowance across all finished SF.</div><div class="esc-row"><span>Esc</span><input id="esc-tape" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="rcard"><div class="rcard-lbl">Insulation <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-insul" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Applied to assemblies with insulation flagged.</div><div class="esc-row"><span>Esc</span><input id="esc-insul" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
+              <div class="rcard"><div class="rcard-lbl">Fasteners + adhesives <span class="badge b-sf">per SF</span></div><div class="iw"><span class="ipfx">$</span><input id="rate-fasten" class="ri M" type="number" placeholder="0.00" oninput="calc()"><span class="isfx">/SF</span></div><div class="rhint">Flat allowance. Typically $0.08–$0.15/SF.</div><div class="esc-row"><span>Esc</span><input id="esc-fasten" class="esc-input" type="number" placeholder="—" oninput="calc()"><span>%</span></div></div>
             </div>
           </div>
 
@@ -476,7 +476,7 @@
           <div class="section-block">
             <div class="section-label">Markup</div>
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px 20px 8px">
-              <div class="rgrid g4">
+              <div class="rgrid g3">
                 <div class="rcard">
                   <div class="rcard-lbl">Company overhead <span class="badge b-pct">%</span></div>
                   <div class="iw"><input id="markup-overhead" class="ri" type="number" min="0" step="0.1" placeholder="10.0"><span class="isfx">%</span></div>
@@ -491,11 +491,6 @@
                   <div class="rcard-lbl">Profit margin <span class="badge b-pct">%</span></div>
                   <div class="iw"><input id="markup-profit" class="ri" type="number" min="0" step="0.1" placeholder="8.0"><span class="isfx">%</span></div>
                   <div class="rhint">Target profit on direct costs</div>
-                </div>
-                <div class="rcard" id="escl-rcard">
-                  <div class="rcard-lbl">Material escalation <span class="badge b-pct">%</span></div>
-                  <div class="iw"><input id="markup-escalation" class="ri" type="number" min="0" step="0.1" placeholder="0.0"><span class="isfx">%</span></div>
-                  <div class="rhint">Applied if start date &gt; 60 days out</div>
                 </div>
               </div>
             </div>
