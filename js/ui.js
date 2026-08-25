@@ -324,10 +324,12 @@ async function _launchBidAgent(state, summary, markupResult) {
     // comment on _agentHistoryUnavailable's declaration above).
     bidHistory = {
       totalBids: 0, winRate: 0, winsWithThisGC: 0, lossesWithThisGC: 0, winRateByBuildingType: 0, avgCostVariance: null,
-      // Same shape computeMarginOutcomeCurve([])/computeSeasonality([]) return
-      // for zero bids — a storage failure looks exactly like "no data yet" to
-      // the agent, not a third, distinct shape (js/history-analytics.js).
-      marginOutcomeCurve: { available: false, count: 0, minRequired: MIN_BIDS_FOR_MARGIN_CURVE }, seasonality: []
+      // Same shape computeMarginOutcomeCurve([])/computeSeasonality([])/
+      // computeCompetitorPatterns([]) return for zero bids — a storage
+      // failure looks exactly like "no data yet" to the agent, not a
+      // third, distinct shape (js/history-analytics.js).
+      marginOutcomeCurve: { available: false, count: 0, minRequired: MIN_BIDS_FOR_MARGIN_CURVE }, seasonality: [],
+      competitorPatterns: []
     };
     _agentHistoryUnavailable = true;
   }
