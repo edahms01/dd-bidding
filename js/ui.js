@@ -616,6 +616,95 @@ async function deleteBidRecord(bid_id) {
   }
 }
 
+// ── RATE TEMPLATES (Tier 5, Part 1) ─────────────────────────────────
+// Save/Load controls on the Rates tab header. renderRateTemplateSelect()
+// lives here rather than js/forms.js — this file owns page-level render-
+// from-server-data orchestration (renderHistory(), renderDashboard()
+// below), while forms.js owns form field population/collection/autosave.
+// applyRateTemplate() itself (pure field hydration) stays in forms.js,
+// alongside populateForm()'s own rates-hydration logic.
+
+let _rateTemplatesCache = [];
+
+async function renderRateTemplateSelect() {
+  const sel = document.getElementById('rate-template-select');
+  if (!sel) return;
+
+  try {
+    _rateTemplatesCache = await getAllRateTemplates();
+  } catch (e) {
+    _rateTemplatesCache = [];
+  }
+
+  if (!_rateTemplatesCache.length) {
+    sel.innerHTML = '<option value="">No templates saved</option>';
+    sel.disabled  = true;
+    return;
+  }
+
+  sel.disabled  = false;
+  sel.innerHTML = _rateTemplatesCache.map(t =>
+    `<option value="${t.id}">${t.name}</option>`
+  ).join('');
+}
+
+async function saveRateTemplateFromForm() {
+  const name = prompt('Name this rate template:');
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+
+  // No update/rename path exists — POST always creates a new record, so
+  // saving under a name that already exists would silently produce two
+  // identically-named entries, distinguishable only by list position.
+  // Warn rather than block (blocking would need a rename path this phase
+  // deliberately excludes) or silently allow.
+  const isDuplicate = _rateTemplatesCache.some(t => t.name.trim().toLowerCase() === trimmed.toLowerCase());
+  if (isDuplicate && !confirm(`A template named "${trimmed}" already exists. Save another one with this name?`)) {
+    return;
+  }
+
+  try {
+    await saveRateTemplate(trimmed, collectFormData().rates);
+    await renderRateTemplateSelect();
+    _showFormToast('Template saved ✓', 'success');
+  } catch (e) {
+    alert('Failed to save template — check your connection and try again.');
+  }
+}
+
+function loadSelectedRateTemplate() {
+  const sel = document.getElementById('rate-template-select');
+  const id  = sel && sel.value;
+  if (!id) return;
+
+  if (hasUnsavedChanges && !confirm('Loading a template will overwrite your current unsaved changes. Continue?')) {
+    return;
+  }
+
+  const tmpl = _rateTemplatesCache.find(t => t.id === id);
+  if (!tmpl) return;
+
+  applyRateTemplate(tmpl.rates);
+  _showFormToast('Template loaded ✓', 'success');
+}
+
+async function deleteSelectedRateTemplate() {
+  const sel = document.getElementById('rate-template-select');
+  const id  = sel && sel.value;
+  if (!id) return;
+
+  const tmpl = _rateTemplatesCache.find(t => t.id === id);
+  if (!confirm(`Delete template "${tmpl ? tmpl.name : ''}"? This cannot be undone.`)) return;
+
+  try {
+    await deleteRateTemplate(id);
+    await renderRateTemplateSelect();
+    _showFormToast('Template deleted ✓', 'success');
+  } catch (e) {
+    alert('Failed to delete template — check your connection and try again.');
+  }
+}
+
 // ── DASHBOARD RENDER ─────────────────────────────────────────────────
 // Deliberately no computed cost shown — running the calculator against
 // every draft just for a list preview would be scope creep; that's what

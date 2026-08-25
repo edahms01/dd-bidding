@@ -299,6 +299,10 @@
           <div class="page-hdr">
             <div><div class="page-title">Rates</div><div class="page-sub">Current pricing for this project — labor, materials, and logistics</div></div>
             <div class="page-actions">
+              <select id="rate-template-select" style="min-width:150px" disabled><option value="">No templates saved</option></select>
+              <button class="btn btn-ghost btn-sm" onclick="deleteSelectedRateTemplate()" title="Delete selected template">🗑</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadSelectedRateTemplate()">Load</button>
+              <button class="btn btn-ghost btn-sm" onclick="saveRateTemplateFromForm()">Save as template</button>
               <button class="btn btn-ghost" onclick="goto('conditions')">← Back</button>
               <button class="btn btn-primary" onclick="goto('assemblies')">Next: Assemblies →</button>
             </div>
@@ -537,6 +541,7 @@
 <script src="js/calculator.js"></script>
 <script src="js/history-analytics.js"></script>
 <script src="js/history.js"></script>
+<script src="js/rate-templates.js"></script>
 <script src="js/agent.js"></script>
 <script src="js/forms.js"></script>
 <script src="js/tabs.js"></script>

@@ -279,6 +279,77 @@ function populateForm(state) {
   }
 }
 
+// Applies a saved rate template's rates object to the Rates tab fields —
+// the same set(id, val) calls populateForm()'s Rates section uses above,
+// pulled out so js/ui.js's Save/Load controls can invoke just the rates
+// hydration without touching project/conditions/assemblies/etc.
+//
+// Two things set() alone does NOT do, both required here:
+//   1. set() is a plain el.value = val — it does not fire the input/
+//      change events the totals bar and autosave delegation listen for.
+//      calc() at the end refreshes the totals bar the same way
+//      populateForm()'s own trailing calc() does.
+//   2. Setting fields programmatically doesn't flip hasUnsavedChanges or
+//      persist anything on its own. Rather than relying on the 700ms
+//      debounced autosave (_handleFormChange()) — which could lose this
+//      change if the page reloads before it fires — this mirrors
+//      handleImportFile()'s immediate-save path below: build the draft
+//      record right now and save it, so a reload immediately after
+//      loading a template reflects the change, not a race against a timer.
+function applyRateTemplate(rates) {
+  function set(id, val) {
+    const el = document.getElementById(id);
+    if (el !== null && val !== undefined && val !== null) el.value = val;
+  }
+
+  const r = rates || {};
+  set('rate-frame',   r.framing);
+  set('rate-hang',    r.hanging);
+  set('rate-burden',  r.burdenPct);
+  set('rate-super',   r.superPct);
+  if (r.finish) {
+    set('rate-fin1', r.finish[1]);
+    set('rate-fin2', r.finish[2]);
+    set('rate-fin3', r.finish[3]);
+    set('rate-fin4', r.finish[4]);
+    set('rate-fin5', r.finish[5]);
+  }
+  set('rate-add12', r.adder12Pct);
+  set('rate-add20', r.adder20Pct);
+  if (r.stud) {
+    set('rate-stud158', r.stud['1-5/8"']);
+    set('rate-stud212', r.stud['2-1/2"']);
+    set('rate-stud358', r.stud['3-5/8"']);
+    set('rate-stud4',   r.stud['4"']);
+    set('rate-stud6',   r.stud['6"']);
+  }
+  if (r.board) {
+    set('rate-brd-std',   r.board['Standard']);
+    set('rate-brd-typex', r.board['Type-X']);
+    set('rate-brd-moist', r.board['Moisture']);
+    set('rate-brd-imp',   r.board['Impact']);
+  }
+  set('rate-tape',     r.tape);
+  set('rate-insul',    r.insul);
+  set('rate-fasten',   r.fasten);
+  set('rate-delivery', r.delivery);
+  set('rate-disposal', r.disposal);
+  set('rate-lift',     r.lift);
+  calc(); // refresh rates running totals bar
+
+  // Immediate save — see comment above. Same pattern as handleImportFile().
+  try {
+    const drafts = getAllDrafts();
+    drafts[activeDraftId] = buildDraftRecord(collectFormData(), activeDraftId,
+      drafts[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
+    _saveDraftsMap(drafts);
+    hasUnsavedChanges = false;
+    _setIndicator('saved');
+  } catch (e) {
+    _setIndicator('error');
+  }
+}
+
 // ── DRAFTS DATA LAYER ────────────────────────────────────────────────
 // dirigo_drafts: { [id]: draftRecord }, draftRecord shaped by
 // buildDraftRecord() in js/drafts.js. dirigo_active_draft_id: which one
