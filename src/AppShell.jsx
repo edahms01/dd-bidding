@@ -22,6 +22,8 @@ import ProjectPage from './pages/ProjectPage.jsx';
 import ConditionsPage from './pages/ConditionsPage.jsx';
 import RatesPage from './pages/RatesPage.jsx';
 import AssembliesPage from './pages/AssembliesPage.jsx';
+import WallsPage from './pages/WallsPage.jsx';
+import CeilingsPage from './pages/CeilingsPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 
 const WORKFLOW_TABS = [
@@ -35,7 +37,7 @@ const WORKFLOW_TABS = [
   { id: 'agent',       num: 8, label: 'Agent Recommendation' }
 ];
 
-const LEGACY_WORKFLOW_PAGE_IDS = ['walls', 'ceilings', 'output', 'agent'];
+const LEGACY_WORKFLOW_PAGE_IDS = ['output', 'agent'];
 
 export default function AppShell() {
   const [state, dispatch] = useStore();
@@ -177,6 +179,8 @@ export default function AppShell() {
             ))}
             <RatesPage active={activeSection === 'workflow' && activeTab === 'rates'} />
             <AssembliesPage active={activeSection === 'workflow' && activeTab === 'assemblies'} />
+            <WallsPage active={activeSection === 'workflow' && activeTab === 'walls'} />
+            <CeilingsPage active={activeSection === 'workflow' && activeTab === 'ceilings'} />
             <LegacyPage id="dashboard" active={activeSection === 'dashboard'} />
             <HistoryPage active={activeSection === 'history'} />
           </div>

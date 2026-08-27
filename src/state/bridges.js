@@ -80,16 +80,16 @@ export function registerBridges(dispatch) {
 
   // ── Bid reset — replaces js/forms.js's resetFormFields() direct
   // el.value = '' writes for every React-owned bid section (project/
-  // conditions/intelligence/rates/rateEscalation/assemblies), same
-  // controlled-input hazard as the hydrate bridges above. See
-  // store.jsx's RESET_BID. flushSync — see __hydrateAssemblies below
-  // for why: resetFormFields() no longer does its own direct
-  // #asm-body DOM rebuild (AssembliesPage owns that list via .map()
-  // now, and manually mutating a list React also renders is a
-  // different, worse hazard than the leaf-value case — see CLAUDE.md),
-  // so this dispatch is the *only* thing that clears the assemblies
-  // table, and _createAndActivateBlankDraft() reads it back
-  // synchronously right after resetFormFields() returns.
+  // conditions/intelligence/rates/rateEscalation/assemblies/walls/
+  // ceilings), same controlled-input hazard as the hydrate bridges
+  // above. See store.jsx's RESET_BID. flushSync — see
+  // __hydrateAssemblies below for why: resetFormFields() no longer does
+  // its own direct #asm-body/#wall-body/#ceil-body DOM rebuild (each
+  // page owns its own list via .map() now, and manually mutating a list
+  // React also renders is a different, worse hazard than the leaf-value
+  // case — see CLAUDE.md), so this dispatch is the *only* thing that
+  // clears those three tables, and _createAndActivateBlankDraft() reads
+  // them back synchronously right after resetFormFields() returns.
   window.__resetBidState = () => flushSync(() => _dispatch({ type: 'RESET_BID' }));
 
   // ── Assemblies row hydration — replaces populateForm()'s
@@ -109,6 +109,12 @@ export function registerBridges(dispatch) {
   // Rates) sees the freshly-hydrated rows, not stale ones. Verified
   // directly, not assumed — see the AssembliesPage build report.
   window.__hydrateAssemblies = (rows) => flushSync(() => _dispatch({ type: 'LOAD_ASSEMBLY_ROWS', rows }));
+
+  // ── Walls/Ceilings row hydration — same reasoning/shape as
+  // __hydrateAssemblies above (WallsPage/CeilingsPage own their
+  // <tbody>s via .map() now too).
+  window.__hydrateWalls = (rows) => flushSync(() => _dispatch({ type: 'LOAD_WALL_ROWS', rows }));
+  window.__hydrateCeilings = (rows) => flushSync(() => _dispatch({ type: 'LOAD_CEILING_ROWS', rows }));
 }
 
 // ── Confidence read accessor ──

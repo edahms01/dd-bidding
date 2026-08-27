@@ -18,46 +18,6 @@
      for the full coexistence architecture. -->
 <div id="root"></div>
 
-<template id="legacy-tpl-walls">
-  <div class="page-hdr">
-    <div><div class="page-title">Wall quantities</div><div class="page-sub">One row per floor or zone. Net SF calculates automatically.</div></div>
-    <div class="page-actions">
-      <button class="btn btn-ghost" onclick="goto('assemblies')">← Back</button>
-      <button class="btn btn-primary" onclick="goto('ceilings')">Next: Ceilings →</button>
-    </div>
-  </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Location</th><th>Type ID</th><th>Height (ft)</th>
-        <th>LF framing</th><th>Gross SF board</th><th>Openings (SF)</th><th>Net SF</th><th></th>
-      </tr></thead>
-      <tbody id="wall-body"></tbody>
-    </table>
-  </div>
-  <button class="add-row-btn" onclick="addWall()">+ Add wall area</button>
-</template>
-
-<template id="legacy-tpl-ceilings">
-  <div class="page-hdr">
-    <div><div class="page-title">Ceiling + soffit quantities</div><div class="page-sub">One row per area. Net SF calculates automatically.</div></div>
-    <div class="page-actions">
-      <button class="btn btn-ghost" onclick="goto('walls')">← Back</button>
-      <button class="btn btn-primary" onclick="goto('output')">Generate bid output →</button>
-    </div>
-  </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Location</th><th>Type ID</th><th>Height (ft)</th>
-        <th>SF ceiling</th><th>Soffit LF</th><th>Openings (SF)</th><th>Net SF</th><th></th>
-      </tr></thead>
-      <tbody id="ceil-body"></tbody>
-    </table>
-  </div>
-  <button class="add-row-btn" onclick="addCeil()">+ Add ceiling area</button>
-</template>
-
 <template id="legacy-tpl-output">
   <div class="page-hdr">
     <div>

@@ -60,6 +60,23 @@ function blankAssemblyRow(num) {
   };
 }
 
+// Matches addWall()'s/addCeil()'s exact template defaults (js/forms.js)
+// — every field starts genuinely blank (placeholder text only, no
+// default value), unlike Assemblies' selects. No _num/id-auto-generation
+// concept here — Walls/Ceilings rows have no equivalent of Assemblies'
+// category-linked Type ID field, just a plain, always-manually-typed
+// typeId text input. netSF is deliberately NOT a stored field — it's
+// purely derived (Math.max(0, grossSF - openings), exactly matching
+// collectFormData()'s own computation) and rendered from grossSF/
+// openings directly; see WallsPage.jsx's/CeilingsPage.jsx's calcWall()/
+// calcCeil() ports for why it's a ref-driven DOM side effect, not state.
+function blankWallRow() {
+  return { location: '', typeId: '', height: '', lf: '', grossSF: '', openings: '', _key: freshRowKey() };
+}
+function blankCeilRow() {
+  return { location: '', typeId: '', height: '', grossSF: '', soffitLF: '', openings: '', _key: freshRowKey() };
+}
+
 export const initialState = {
   ui: {
     // 'workflow' | 'history' | 'dashboard' — mirrors js/tabs.js's
@@ -113,7 +130,12 @@ export const initialState = {
     // reducer-owned since AssembliesPage creates rows via dispatch, not
     // by calling addAsm() directly).
     assemblies: [blankAssemblyRow(1)],
-    asmCounter: 1
+    asmCounter: 1,
+    // Matches _initApp()'s unconditional addWall()/addCeil() calls on
+    // every fresh boot — a brand new app state always starts with one
+    // blank row in each table.
+    walls: [blankWallRow()],
+    ceilings: [blankCeilRow()]
   }
 };
 
@@ -214,22 +236,26 @@ export function reducer(state, action) {
       // of them together as one "back to a truly fresh page load" op.
       // Deep-cloned so the fresh state (esp. project.scope, an array)
       // isn't a shared reference future TOGGLE_SCOPE/SET_FIELD actions
-      // could mutate across resets. assemblies is NOT part of that clone
-      // — it's rebuilt fresh via blankAssemblyRow() instead, so its
-      // React key is newly minted every reset (see freshRowKey()'s
-      // comment above). Reusing initialState.bid.assemblies[0]'s frozen
-      // key here would mean every "New Bid" click after the first
-      // produces a row with the *same* key as the previous draft's first
-      // row — React would reuse that DOM node instead of unmounting it,
-      // and the uncontrolled inputs inside it (defaultValue only applies
-      // on first mount) would keep showing the old draft's stale typed
-      // values despite the state correctly reporting a blank row.
+      // could mutate across resets. assemblies/walls/ceilings are NOT
+      // part of that clone — each is rebuilt fresh via its blankXRow()
+      // factory instead, so its React key is newly minted every reset
+      // (see freshRowKey()'s comment above). Reusing initialState.bid's
+      // frozen row keys here would mean every "New Bid" click after the
+      // first produces a row with the *same* key as the previous draft's
+      // first row — React would reuse that DOM node instead of
+      // unmounting it, and the uncontrolled inputs inside it
+      // (defaultValue only applies on first mount) would keep showing
+      // the old draft's stale typed values despite the state correctly
+      // reporting a blank row. Reproduced directly on Assemblies before
+      // this was generalized — see CLAUDE.md checklist.
       return {
         ...state,
         bid: {
           ...JSON.parse(JSON.stringify(initialState.bid)),
           assemblies: [blankAssemblyRow(1)],
-          asmCounter: 1
+          asmCounter: 1,
+          walls: [blankWallRow()],
+          ceilings: [blankCeilRow()]
         }
       };
     case 'ADD_ASSEMBLY_ROW': {
@@ -243,6 +269,10 @@ export function reducer(state, action) {
         }
       };
     }
+    case 'ADD_WALL_ROW':
+      return { ...state, bid: { ...state.bid, walls: [...state.bid.walls, blankWallRow()] } };
+    case 'ADD_CEILING_ROW':
+      return { ...state, bid: { ...state.bid, ceilings: [...state.bid.ceilings, blankCeilRow()] } };
     case 'DELETE_ROW':
       // Generic across row-array sections (assemblies now; walls/
       // ceilings once they convert) — deletes by index, captured at
@@ -275,6 +305,30 @@ export function reducer(state, action) {
         _num: i + 1, _key: freshRowKey()
       }));
       return { ...state, bid: { ...state.bid, assemblies: rows, asmCounter: rows.length } };
+    }
+    case 'LOAD_WALL_ROWS': {
+      // Bridge target for populateForm()'s Walls section (window.
+      // __hydrateWalls). Same shape as LOAD_ASSEMBLY_ROWS — no _num
+      // here (Walls has no id-auto-generation concept), just a fresh
+      // _key per row.
+      const rows = (action.rows || []).map((w) => ({
+        location: w.location != null ? w.location : '', typeId: w.typeId != null ? w.typeId : '',
+        height: w.height != null ? w.height : '', lf: w.lf != null ? w.lf : '',
+        grossSF: w.grossSF != null ? w.grossSF : '', openings: w.openings != null ? w.openings : '',
+        _key: freshRowKey()
+      }));
+      return { ...state, bid: { ...state.bid, walls: rows } };
+    }
+    case 'LOAD_CEILING_ROWS': {
+      // Bridge target for populateForm()'s Ceilings section (window.
+      // __hydrateCeilings). Same shape as LOAD_WALL_ROWS.
+      const rows = (action.rows || []).map((c) => ({
+        location: c.location != null ? c.location : '', typeId: c.typeId != null ? c.typeId : '',
+        height: c.height != null ? c.height : '', grossSF: c.grossSF != null ? c.grossSF : '',
+        soffitLF: c.soffitLF != null ? c.soffitLF : '', openings: c.openings != null ? c.openings : '',
+        _key: freshRowKey()
+      }));
+      return { ...state, bid: { ...state.bid, ceilings: rows } };
     }
     case 'TOGGLE_SCOPE': {
       const scope = state.bid.project.scope;

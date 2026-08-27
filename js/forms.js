@@ -323,42 +323,59 @@ function populateForm(state) {
     }
   }
 
-  // ── Walls ──
-  const wallBody = document.getElementById('wall-body');
-  if (wallBody && state.walls !== undefined) {
-    wallBody.innerHTML = '';
-    (state.walls || []).forEach(w => {
-      addWall();
-      const tr   = wallBody.lastElementChild;
-      const inps = tr.querySelectorAll('input');
-      if (inps[0]) inps[0].value = w.location != null ? w.location : '';
-      if (inps[1]) inps[1].value = w.typeId   != null ? w.typeId   : '';
-      if (inps[2]) inps[2].value = w.height   != null ? w.height   : '';
-      if (inps[3]) inps[3].value = w.lf       != null ? w.lf       : '';
-      if (inps[4]) inps[4].value = w.grossSF  != null ? w.grossSF  : '';
-      if (inps[5]) inps[5].value = w.openings != null ? w.openings : '';
-      const gsf = tr.querySelector('.wgsf');
-      if (gsf) calcWall(gsf);
-    });
+  // ── Walls (WallsPage is now React-owned) ──
+  // window.__hydrateWalls dispatches into the reducer instead of
+  // rebuilding #wall-body's children directly — same structural
+  // hazard/fix as Assemblies (see CLAUDE.md's "Converting a page"
+  // checklist items 7–8): manually appending/replacing <tr> children
+  // there would fight WallsPage's own .map()-based ownership of that
+  // list, so this can't use the scalar sections' "plain write +
+  // dispatch" shape above. Falls back to the old addWall()-based
+  // rebuild only when the bridge isn't registered (Vitest/non-browser
+  // contexts, or before AppShell has mounted).
+  if (window.__hydrateWalls) {
+    if (state.walls !== undefined) window.__hydrateWalls(state.walls);
+  } else {
+    const wallBody = document.getElementById('wall-body');
+    if (wallBody && state.walls !== undefined) {
+      wallBody.innerHTML = '';
+      (state.walls || []).forEach(w => {
+        addWall();
+        const tr   = wallBody.lastElementChild;
+        const inps = tr.querySelectorAll('input');
+        if (inps[0]) inps[0].value = w.location != null ? w.location : '';
+        if (inps[1]) inps[1].value = w.typeId   != null ? w.typeId   : '';
+        if (inps[2]) inps[2].value = w.height   != null ? w.height   : '';
+        if (inps[3]) inps[3].value = w.lf       != null ? w.lf       : '';
+        if (inps[4]) inps[4].value = w.grossSF  != null ? w.grossSF  : '';
+        if (inps[5]) inps[5].value = w.openings != null ? w.openings : '';
+        const gsf = tr.querySelector('.wgsf');
+        if (gsf) calcWall(gsf);
+      });
+    }
   }
 
-  // ── Ceilings ──
-  const ceilBody = document.getElementById('ceil-body');
-  if (ceilBody && state.ceilings !== undefined) {
-    ceilBody.innerHTML = '';
-    (state.ceilings || []).forEach(ceil => {
-      addCeil();
-      const tr   = ceilBody.lastElementChild;
-      const inps = tr.querySelectorAll('input');
-      if (inps[0]) inps[0].value = ceil.location != null ? ceil.location : '';
-      if (inps[1]) inps[1].value = ceil.typeId   != null ? ceil.typeId   : '';
-      if (inps[2]) inps[2].value = ceil.height   != null ? ceil.height   : '';
-      if (inps[3]) inps[3].value = ceil.grossSF  != null ? ceil.grossSF  : '';
-      if (inps[4]) inps[4].value = ceil.soffitLF != null ? ceil.soffitLF : '';
-      if (inps[5]) inps[5].value = ceil.openings != null ? ceil.openings : '';
-      const gsf = tr.querySelector('.cgsf');
-      if (gsf) calcCeil(gsf);
-    });
+  // ── Ceilings (CeilingsPage is now React-owned) ── same shape as Walls above.
+  if (window.__hydrateCeilings) {
+    if (state.ceilings !== undefined) window.__hydrateCeilings(state.ceilings);
+  } else {
+    const ceilBody = document.getElementById('ceil-body');
+    if (ceilBody && state.ceilings !== undefined) {
+      ceilBody.innerHTML = '';
+      (state.ceilings || []).forEach(ceil => {
+        addCeil();
+        const tr   = ceilBody.lastElementChild;
+        const inps = tr.querySelectorAll('input');
+        if (inps[0]) inps[0].value = ceil.location != null ? ceil.location : '';
+        if (inps[1]) inps[1].value = ceil.typeId   != null ? ceil.typeId   : '';
+        if (inps[2]) inps[2].value = ceil.height   != null ? ceil.height   : '';
+        if (inps[3]) inps[3].value = ceil.grossSF  != null ? ceil.grossSF  : '';
+        if (inps[4]) inps[4].value = ceil.soffitLF != null ? ceil.soffitLF : '';
+        if (inps[5]) inps[5].value = ceil.openings != null ? ceil.openings : '';
+        const gsf = tr.querySelector('.cgsf');
+        if (gsf) calcCeil(gsf);
+      });
+    }
   }
 }
 
@@ -653,12 +670,11 @@ function resetFormFields() {
   // React), so this leaves #asm-body empty in that context — harmless,
   // since js/forms.js isn't imported by any Vitest test today.
 
-  // ── Walls / Ceilings — clear and rebuild one default row each ──
-  const wallBody = document.getElementById('wall-body');
-  if (wallBody) { wallBody.innerHTML = ''; addWall(); }
-
-  const ceilBody = document.getElementById('ceil-body');
-  if (ceilBody) { ceilBody.innerHTML = ''; addCeil(); }
+  // ── Walls / Ceilings — WallsPage/CeilingsPage now own #wall-body/
+  // #ceil-body's children via .map(); window.__resetBidState() above
+  // already reset both arrays to one blank row each (flushSync'd, same
+  // as Assemblies — see its comment above for why direct DOM rebuild
+  // here would fight React's ownership of those lists now).
 }
 
 // ── DRAFT LIFECYCLE ──────────────────────────────────────────────────
@@ -931,19 +947,24 @@ function handleImportFile(event) {
 // (children's effects fire before a parent's, in the same commit — by the
 // time AppShell's own effect dispatches this, every template is in).
 function _initApp() {
-  // addAsm() removed from this unconditional boot-time call — AssembliesPage
-  // now owns #asm-body via .map() over state.bid.assemblies, which already
-  // starts with one blank row (store.jsx's initialState, matching what
-  // addAsm() used to establish here). Calling addAsm() directly would
-  // append a second, rogue <tr> that React doesn't know about into a list
-  // it also renders — found by reproducing it directly (a debug test
-  // showed a leftover addAsm()-generated row, complete with its inline
+  // addAsm()/addWall()/addCeil() all removed from this unconditional
+  // boot-time call — AssembliesPage/WallsPage/CeilingsPage now each own
+  // their own <tbody> via .map() over state.bid.{assemblies,walls,
+  // ceilings}, which already start with one blank row apiece
+  // (store.jsx's initialState, matching what these calls used to
+  // establish here). Calling them directly would append a rogue <tr>
+  // that React doesn't know about into a list it also renders — found
+  // by reproducing it directly on Assemblies first (a debug read showed
+  // a leftover addAsm()-generated row, complete with its inline
   // style="width:...px" and onchange="updateAsmId(...)" attributes,
   // sitting in #asm-body despite AssembliesPage.jsx never rendering
-  // anything that looks like that). addWall()/addCeil() stay — Walls/
-  // Ceilings haven't converted yet, still need this the old way.
-  addWall();
-  addCeil();
+  // anything that looks like that) — audited every other addAsm()/
+  // addWall()/addCeil() call site across the whole app before starting
+  // Walls/Ceilings specifically because of that (duplicateDraft() only
+  // clones plain data via drafts.js, never touches the DOM;
+  // switchToDraft() only goes through populateForm(); this was the only
+  // other unconditional direct call site, for the same reason the
+  // addAsm() one was).
 
   // resumeActiveDraft() -> populateForm() calls calc(), which is defined
   // in js/ui.js — loaded *after* this file. That was latent and harmless
