@@ -272,32 +272,55 @@ function populateForm(state) {
   set('markup-contingency', mu.contingencyPct);
   set('markup-profit',      mu.profitPct);
 
-  // ── Assemblies ──
-  const asmBody = document.getElementById('asm-body');
-  if (asmBody && state.assemblies !== undefined) {
-    asmBody.innerHTML = '';
-    asmCount = 0;
-    (state.assemblies || []).forEach(asm => {
-      addAsm();
-      const tr   = asmBody.lastElementChild;
-      const inps = tr.querySelectorAll('input');
-      const sels = tr.querySelectorAll('select');
-      inps[0].value        = asm.id        || '';
-      inps[0].dataset.auto = asm.id        || '';
-      if (sels[0]) sels[0].value = asm.category   || 'Wall';
-      if (sels[1]) sels[1].value = asm.studSize    || '3-5/8"';
-      if (sels[2]) sels[2].value = asm.spacing     || '16"';
-      if (sels[3]) sels[3].value = String(asm.layers      ?? 1);
-      if (sels[4]) sels[4].value = asm.boardType   || 'Standard';
-      if (sels[5]) sels[5].value = asm.fireRating  || 'None';
-      if (sels[6]) sels[6].value = asm.acoustic    || 'No';
-      if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
-      if (inps[1]) inps[1].value = asm.notes       || '';
-      // ?? not || — an explicit 0% override must render as "0", not
-      // fall back to a blank input (which collectFormData() would then
-      // re-read as "not set" on the next pass, silently reverting it).
-      if (inps[2]) inps[2].value = String(asm.wastePctOverride ?? '');
-    });
+  // ── Assemblies (AssembliesPage is now React-owned) ──
+  // window.__hydrateAssemblies dispatches into the reducer instead of
+  // rebuilding #asm-body's children directly — that rebuild is what
+  // addAsm()/populateForm() used to do together, but AssembliesPage now
+  // owns that same list via .map(), and classic-script code manually
+  // appending/replacing <tr> children there would fight React's own
+  // reconciliation of it (a structural hazard, not the leaf-value one
+  // every other section's fallback handles — see CLAUDE.md's
+  // "Converting a page" checklist and bridges.js's
+  // window.__hydrateAssemblies comment for the full reasoning, and why
+  // this can't use the same "plain write + dispatch" shape as Project/
+  // Conditions/Rates above). Falls back to the old addAsm()-based
+  // rebuild only when the bridge isn't registered (Vitest/non-browser
+  // contexts, or before AppShell has mounted).
+  if (window.__hydrateAssemblies) {
+    // Same guard the original rebuild had (state.assemblies !==
+    // undefined) — every real caller always provides it, but preserve
+    // the "don't touch it if genuinely absent" behavior rather than
+    // silently wiping the table to empty on a state object that never
+    // mentions assemblies at all.
+    if (state.assemblies !== undefined) window.__hydrateAssemblies(state.assemblies);
+  } else {
+    const asmBody = document.getElementById('asm-body');
+    if (asmBody && state.assemblies !== undefined) {
+      asmBody.innerHTML = '';
+      asmCount = 0;
+      (state.assemblies || []).forEach(asm => {
+        addAsm();
+        const tr   = asmBody.lastElementChild;
+        const inps = tr.querySelectorAll('input');
+        const sels = tr.querySelectorAll('select');
+        inps[0].value        = asm.id        || '';
+        inps[0].dataset.auto = asm.id        || '';
+        if (sels[0]) sels[0].value = asm.category   || 'Wall';
+        if (sels[1]) sels[1].value = asm.studSize    || '3-5/8"';
+        if (sels[2]) sels[2].value = asm.spacing     || '16"';
+        if (sels[3]) sels[3].value = String(asm.layers      ?? 1);
+        if (sels[4]) sels[4].value = asm.boardType   || 'Standard';
+        if (sels[5]) sels[5].value = asm.fireRating  || 'None';
+        if (sels[6]) sels[6].value = asm.acoustic    || 'No';
+        if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
+        if (inps[1]) inps[1].value = asm.notes       || '';
+        // ?? not || — an explicit 0% override must render as "0", not
+        // fall back to a blank input (which collectFormData() would
+        // then re-read as "not set" on the next pass, silently
+        // reverting it).
+        if (inps[2]) inps[2].value = String(asm.wastePctOverride ?? '');
+      });
+    }
   }
 
   // ── Walls ──
@@ -616,10 +639,21 @@ function resetFormFields() {
   // ── Markup ──
   ['markup-overhead', 'markup-contingency', 'markup-profit'].forEach(clear);
 
-  // ── Assemblies / Walls / Ceilings — clear and rebuild one default row each ──
-  const asmBody = document.getElementById('asm-body');
-  if (asmBody) { asmBody.innerHTML = ''; asmCount = 0; addAsm(); }
+  // ── Assemblies — AssembliesPage now owns #asm-body's children via
+  // .map() over state.bid.assemblies; window.__resetBidState() above
+  // already resets that array to one blank row (store.jsx's RESET_BID),
+  // flushSync'd so it's already reflected in the DOM by the time this
+  // function returns. Directly rebuilding #asm-body here too — the way
+  // this used to, and the way Walls/Ceilings below still do — would
+  // fight React's own ownership of that list (a real, different hazard
+  // than the leaf-value case every other section's fallback branch
+  // handles; see CLAUDE.md's "Converting a page" checklist and
+  // bridges.js's window.__hydrateAssemblies comment). Non-browser
+  // fallback: window.__resetBidState won't exist (Vitest doesn't mount
+  // React), so this leaves #asm-body empty in that context — harmless,
+  // since js/forms.js isn't imported by any Vitest test today.
 
+  // ── Walls / Ceilings — clear and rebuild one default row each ──
   const wallBody = document.getElementById('wall-body');
   if (wallBody) { wallBody.innerHTML = ''; addWall(); }
 
@@ -897,7 +931,17 @@ function handleImportFile(event) {
 // (children's effects fire before a parent's, in the same commit — by the
 // time AppShell's own effect dispatches this, every template is in).
 function _initApp() {
-  addAsm();
+  // addAsm() removed from this unconditional boot-time call — AssembliesPage
+  // now owns #asm-body via .map() over state.bid.assemblies, which already
+  // starts with one blank row (store.jsx's initialState, matching what
+  // addAsm() used to establish here). Calling addAsm() directly would
+  // append a second, rogue <tr> that React doesn't know about into a list
+  // it also renders — found by reproducing it directly (a debug test
+  // showed a leftover addAsm()-generated row, complete with its inline
+  // style="width:...px" and onchange="updateAsmId(...)" attributes,
+  // sitting in #asm-body despite AssembliesPage.jsx never rendering
+  // anything that looks like that). addWall()/addCeil() stay — Walls/
+  // Ceilings haven't converted yet, still need this the old way.
   addWall();
   addCeil();
 

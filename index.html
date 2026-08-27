@@ -18,27 +18,6 @@
      for the full coexistence architecture. -->
 <div id="root"></div>
 
-<template id="legacy-tpl-assemblies">
-  <div class="page-hdr">
-    <div><div class="page-title">Assembly types</div><div class="page-sub">Define each wall and ceiling system. Each type ID is referenced in walls and ceilings.</div></div>
-    <div class="page-actions">
-      <button class="btn btn-ghost" onclick="goto('rates')">← Back</button>
-      <button class="btn btn-primary" onclick="goto('walls')">Next: Walls →</button>
-    </div>
-  </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Type ID</th><th>Category</th><th>Stud size</th><th>Spacing</th>
-        <th>Board layers</th><th>Board type</th><th>Fire rating</th>
-        <th>Acoustic</th><th>Finish level</th><th>Notes</th><th>Waste %</th><th></th>
-      </tr></thead>
-      <tbody id="asm-body"></tbody>
-    </table>
-  </div>
-  <button class="add-row-btn" onclick="addAsm()">+ Add assembly type</button>
-</template>
-
 <template id="legacy-tpl-walls">
   <div class="page-hdr">
     <div><div class="page-title">Wall quantities</div><div class="page-sub">One row per floor or zone. Net SF calculates automatically.</div></div>

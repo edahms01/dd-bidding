@@ -11,6 +11,7 @@
 // before any user interaction is possible — but fails quietly rather
 // than throwing if it somehow did).
 // ─────────────────────────────────────────────────────────────────────
+import { flushSync } from 'react-dom';
 
 let _dispatch = null;
 
@@ -79,9 +80,35 @@ export function registerBridges(dispatch) {
 
   // ── Bid reset — replaces js/forms.js's resetFormFields() direct
   // el.value = '' writes for every React-owned bid section (project/
-  // conditions/intelligence/rates/rateEscalation), same controlled-input
-  // hazard as the hydrate bridges above. See store.jsx's RESET_BID.
-  window.__resetBidState = () => _dispatch({ type: 'RESET_BID' });
+  // conditions/intelligence/rates/rateEscalation/assemblies), same
+  // controlled-input hazard as the hydrate bridges above. See
+  // store.jsx's RESET_BID. flushSync — see __hydrateAssemblies below
+  // for why: resetFormFields() no longer does its own direct
+  // #asm-body DOM rebuild (AssembliesPage owns that list via .map()
+  // now, and manually mutating a list React also renders is a
+  // different, worse hazard than the leaf-value case — see CLAUDE.md),
+  // so this dispatch is the *only* thing that clears the assemblies
+  // table, and _createAndActivateBlankDraft() reads it back
+  // synchronously right after resetFormFields() returns.
+  window.__resetBidState = () => flushSync(() => _dispatch({ type: 'RESET_BID' }));
+
+  // ── Assemblies row hydration — replaces populateForm()'s
+  // asmBody.innerHTML = ''; asmCount = 0; rows.forEach(() => addAsm())
+  // DOM rebuild (see store.jsx's LOAD_ASSEMBLY_ROWS). Structural, not a
+  // leaf-value write, so the dual-write trick the scalar bridges above
+  // use (plain DOM write + dispatch, see CLAUDE.md checklist item 4)
+  // does NOT apply here: AssembliesPage owns #asm-body's children via
+  // .map() now, and manually rebuilding that same subtree from classic-
+  // script code would fight React's own reconciliation of it (wrong
+  // hazard class — list/child-identity conflicts, not just a value
+  // getting silently reverted). flushSync forces React to apply the
+  // dispatch's DOM update synchronously, before this function returns,
+  // instead of the default batched/async commit — so a caller that
+  // reads collectFormData() immediately after (loadSeedData() ->
+  // runCalculation(), the same shape that caused Tab 7's "$0" flash for
+  // Rates) sees the freshly-hydrated rows, not stale ones. Verified
+  // directly, not assumed — see the AssembliesPage build report.
+  window.__hydrateAssemblies = (rows) => flushSync(() => _dispatch({ type: 'LOAD_ASSEMBLY_ROWS', rows }));
 }
 
 // ── Confidence read accessor ──

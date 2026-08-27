@@ -17,6 +17,49 @@
 // ─────────────────────────────────────────────────────────────────────
 import { createContext, useContext, useReducer } from 'react';
 
+// ── Row identity, for Assemblies (and later Walls/Ceilings) ──────────
+// React's `key` prop for a row MUST be stable per row *instance*, never
+// per row *position* — a real, reproduced bug, not a theoretical one:
+// with an uncontrolled <input defaultValue={row.notes}>, React only
+// applies defaultValue on first mount, never again. Delete the middle
+// row of three with position-based keys (0,1,2 -> 0,1) and React
+// reconciles by *reusing* the old key=1 DOM node for the new key=1 data
+// (what used to be row 2) rather than unmounting it — the uncontrolled
+// input keeps showing row 1's stale typed values, silently wrong.
+// _nextRowKey is a plain module-level counter, deliberately outside the
+// reducer's persisted state and never reset by RESET_BID/LOAD_*_ROWS
+// (unlike _num below) — every row ever created in this session, across
+// every draft switch and every "New Bid", gets a value nothing else in
+// this session will ever reuse. Confirmed no <React.StrictMode> wrapper
+// in main.jsx, so the reducer calling this (a technically-impure action)
+// never double-fires from dev-mode double-invocation.
+let _nextRowKey = 1;
+function freshRowKey() { return _nextRowKey++; }
+
+// Matches addAsm()'s exact template defaults (js/forms.js) — every
+// <select> in that markup has no `selected` attribute, so the real
+// default is each one's *first listed option*, not collectFormData()'s
+// defensive `|| 3`-style fallbacks (those exist for missing/corrupt
+// data, not what a freshly-added row actually contains). finishLevel's
+// true default is 1 (first of five options), not 3 — checked against
+// the literal template string, not assumed.
+// `_num` feeds the id-prefix auto-generation side effect (see
+// AssembliesPage.jsx's category onChange, porting updateAsmId()) and is
+// intentionally reset to each row's 1-indexed position on every
+// hydration (LOAD_ASSEMBLY_ROWS), exactly matching populateForm()'s
+// original asmCount = 0; rows.forEach(() => addAsm()) behavior. `_key`
+// is the separate, never-reset React key described above — the two
+// numbers coincide for a freshly-added row but diverge after the first
+// hydration or reset, on purpose.
+function blankAssemblyRow(num) {
+  return {
+    id: 'W' + num, category: 'Wall', studSize: '1-5/8"', spacing: '16"',
+    layers: 1, boardType: 'Standard', fireRating: 'None', acoustic: 'No',
+    finishLevel: 1, notes: '', wastePctOverride: null,
+    _num: num, _key: freshRowKey()
+  };
+}
+
 export const initialState = {
   ui: {
     // 'workflow' | 'history' | 'dashboard' — mirrors js/tabs.js's
@@ -62,7 +105,15 @@ export const initialState = {
       stud:  { '1-5/8"': '', '2-1/2"': '', '3-5/8"': '', '4"': '', '6"': '' },
       board: { 'Standard': '', 'Type-X': '', 'Moisture': '', 'Impact': '' },
       tape: '', insul: '', fasten: ''
-    }
+    },
+    // Matches _initApp()'s unconditional addAsm() call on every fresh
+    // boot — a brand new app state always starts with exactly one blank
+    // assembly row, "W1". asmCounter tracks the next id number to
+    // allocate (mirrors js/forms.js's module-level asmCount, now
+    // reducer-owned since AssembliesPage creates rows via dispatch, not
+    // by calling addAsm() directly).
+    assemblies: [blankAssemblyRow(1)],
+    asmCounter: 1
   }
 };
 
@@ -163,8 +214,68 @@ export function reducer(state, action) {
       // of them together as one "back to a truly fresh page load" op.
       // Deep-cloned so the fresh state (esp. project.scope, an array)
       // isn't a shared reference future TOGGLE_SCOPE/SET_FIELD actions
-      // could mutate across resets.
-      return { ...state, bid: JSON.parse(JSON.stringify(initialState.bid)) };
+      // could mutate across resets. assemblies is NOT part of that clone
+      // — it's rebuilt fresh via blankAssemblyRow() instead, so its
+      // React key is newly minted every reset (see freshRowKey()'s
+      // comment above). Reusing initialState.bid.assemblies[0]'s frozen
+      // key here would mean every "New Bid" click after the first
+      // produces a row with the *same* key as the previous draft's first
+      // row — React would reuse that DOM node instead of unmounting it,
+      // and the uncontrolled inputs inside it (defaultValue only applies
+      // on first mount) would keep showing the old draft's stale typed
+      // values despite the state correctly reporting a blank row.
+      return {
+        ...state,
+        bid: {
+          ...JSON.parse(JSON.stringify(initialState.bid)),
+          assemblies: [blankAssemblyRow(1)],
+          asmCounter: 1
+        }
+      };
+    case 'ADD_ASSEMBLY_ROW': {
+      const num = state.bid.asmCounter + 1;
+      return {
+        ...state,
+        bid: {
+          ...state.bid,
+          assemblies: [...state.bid.assemblies, blankAssemblyRow(num)],
+          asmCounter: num
+        }
+      };
+    }
+    case 'DELETE_ROW':
+      // Generic across row-array sections (assemblies now; walls/
+      // ceilings once they convert) — deletes by index, captured at
+      // render time in each row's own delete-button closure, so it
+      // always targets the row whose button was actually clicked
+      // regardless of how the array has shifted since that row mounted.
+      return {
+        ...state,
+        bid: {
+          ...state.bid,
+          [action.section]: state.bid[action.section].filter((_, i) => i !== action.index)
+        }
+      };
+    case 'LOAD_ASSEMBLY_ROWS': {
+      // Bridge target for js/forms.js's populateForm() (window.
+      // __hydrateAssemblies, see bridges.js) — replaces the old
+      // asmBody.innerHTML=''; asmCount=0; rows.forEach(() => addAsm())
+      // DOM-rebuild. Every loaded row gets BOTH a freshly-reset _num
+      // (1-indexed position, matching populateForm()'s original
+      // behavior — see blankAssemblyRow()'s comment) AND a brand new
+      // _key (freshRowKey(), never reused — see its comment above:
+      // reusing a key across a draft switch would let React silently
+      // carry the previous draft's stale uncontrolled-input values into
+      // the newly loaded row's DOM node).
+      const rows = (action.rows || []).map((asm, i) => ({
+        id: asm.id || '', category: asm.category || 'Wall', studSize: asm.studSize || '3-5/8"',
+        spacing: asm.spacing || '16"', layers: asm.layers ?? 1, boardType: asm.boardType || 'Standard',
+        fireRating: asm.fireRating || 'None', acoustic: asm.acoustic || 'No', finishLevel: asm.finishLevel ?? 3,
+        notes: asm.notes || '', wastePctOverride: asm.wastePctOverride ?? null,
+        _num: i + 1, _key: freshRowKey()
+      }));
+      return { ...state, bid: { ...state.bid, assemblies: rows, asmCounter: rows.length } };
+    }
     case 'TOGGLE_SCOPE': {
       const scope = state.bid.project.scope;
       const next = scope.includes(action.label)
