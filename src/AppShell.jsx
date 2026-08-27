@@ -18,6 +18,8 @@ import { Fragment, useEffect } from 'react';
 import { useStore } from './state/store.jsx';
 import { registerBridges } from './state/bridges.js';
 import LegacyPage from './pages/LegacyPage.jsx';
+import ProjectPage from './pages/ProjectPage.jsx';
+import ConditionsPage from './pages/ConditionsPage.jsx';
 import RatesPage from './pages/RatesPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 
@@ -32,7 +34,7 @@ const WORKFLOW_TABS = [
   { id: 'agent',       num: 8, label: 'Agent Recommendation' }
 ];
 
-const LEGACY_WORKFLOW_PAGE_IDS = ['project', 'conditions', 'assemblies', 'walls', 'ceilings', 'output', 'agent'];
+const LEGACY_WORKFLOW_PAGE_IDS = ['assemblies', 'walls', 'ceilings', 'output', 'agent'];
 
 export default function AppShell() {
   const [state, dispatch] = useStore();
@@ -167,6 +169,8 @@ export default function AppShell() {
           )}
 
           <div className="body">
+            <ProjectPage active={activeSection === 'workflow' && activeTab === 'project'} />
+            <ConditionsPage active={activeSection === 'workflow' && activeTab === 'conditions'} />
             {LEGACY_WORKFLOW_PAGE_IDS.map((id) => (
               <LegacyPage key={id} id={id} active={activeSection === 'workflow' && activeTab === id} />
             ))}

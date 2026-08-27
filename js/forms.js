@@ -97,77 +97,110 @@ function populateForm(state) {
     if (el !== null && val !== undefined && val !== null) el.value = val;
   }
 
-  // ── Project ──
+  // ── Project (A2: ProjectPage is now React-owned) ──
+  // Same reasoning/pattern as Rates below: window.__hydrateProject
+  // dispatches into the real reducer state instead of writing DOM
+  // .value directly, which would be silently overwritten on
+  // ProjectPage's next re-render. Falls back to the old set()-based
+  // path when it isn't registered yet (Vitest/non-browser contexts, or
+  // before AppShell has mounted).
   const p = state.project || {};
-  set('proj-name',     p.name);
-  set('proj-gc',       p.gc);
-  set('proj-bid',      p.bidDate);
-  set('proj-addr',     p.address);
-  set('proj-type',     p.buildingType);
-  set('proj-drawings', p.drawingsRef);
-  set('proj-start',    p.startDate);
-  // durationWeeks lives in project (new) or conditions (legacy) — try both
-  set('proj-dur',    p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks);
-  set('proj-floors', p.floors);
-
-  if (Array.isArray(p.scope)) {
-    document.querySelectorAll('.pills .pill').forEach(pill => {
-      pill.classList.toggle('on', p.scope.includes(pill.dataset.scope || pill.textContent.trim()));
+  if (window.__hydrateProject) {
+    window.__hydrateProject({
+      ...p,
+      // durationWeeks lives in project (new) or conditions (legacy) —
+      // try both, same fallback this function has always applied.
+      durationWeeks: p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks
     });
-  }
-  set('proj-exclusions', p.exclusions);
+  } else {
+    set('proj-name',     p.name);
+    set('proj-gc',       p.gc);
+    set('proj-bid',      p.bidDate);
+    set('proj-addr',     p.address);
+    set('proj-type',     p.buildingType);
+    set('proj-drawings', p.drawingsRef);
+    set('proj-start',    p.startDate);
+    set('proj-dur',    p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks);
+    set('proj-floors', p.floors);
 
-  // Update header badge
+    if (Array.isArray(p.scope)) {
+      document.querySelectorAll('.pills .pill').forEach(pill => {
+        pill.classList.toggle('on', p.scope.includes(pill.dataset.scope || pill.textContent.trim()));
+      });
+    }
+    set('proj-exclusions', p.exclusions);
+  }
+
+  // Update header badge — stays a direct DOM write regardless of
+  // hydration path above: the header's badge span is static JSX
+  // ProjectPage never touches (see CLAUDE.md's "static JSX = safe for
+  // external mutation" pattern), so mutating it here is safe whether
+  // Project has converted or not.
   const badge = document.querySelector('.proj-badge span');
   if (badge && p.name) badge.textContent = p.name;
 
-  // ── Conditions ──
+  // ── Conditions (A2: ConditionsPage is now React-owned) ──
+  // Curved-walls-LF/phase-count visibility becomes native React
+  // conditional rendering (curvedWalls === 'yes' / phasedWork === 'yes')
+  // instead of the imperative style.display toggling in the fallback
+  // branch below; confidence hydrates into the reducer instead of
+  // calling setConf() directly (setConf() itself is now dead code
+  // outside this fallback branch — see js/ui.js/ConditionsPage.jsx).
   const c = state.conditions || {};
-  set('cond-maxht', c.maxHt);
-  set('cond-sf12',  c.sfAbove12);
-  set('cond-sf20',  c.sfAbove20);
+  if (window.__hydrateConditions) {
+    window.__hydrateConditions(c);
+  } else {
+    set('cond-maxht', c.maxHt);
+    set('cond-sf12',  c.sfAbove12);
+    set('cond-sf20',  c.sfAbove20);
 
-  // Curved walls — sync LF field visibility
-  const curvedEl = document.getElementById('f-curved');
-  const curvedLF = document.getElementById('f-curved-lf');
-  if (curvedEl && c.curvedWalls) {
-    curvedEl.value = c.curvedWalls;
-    if (curvedLF) {
-      curvedLF.style.display = c.curvedWalls === 'yes' ? 'block' : 'none';
-      if (c.curvedWallsLF) curvedLF.value = c.curvedWallsLF;
+    // Curved walls — sync LF field visibility
+    const curvedEl = document.getElementById('f-curved');
+    const curvedLF = document.getElementById('f-curved-lf');
+    if (curvedEl && c.curvedWalls) {
+      curvedEl.value = c.curvedWalls;
+      if (curvedLF) {
+        curvedLF.style.display = c.curvedWalls === 'yes' ? 'block' : 'none';
+        if (c.curvedWallsLF) curvedLF.value = c.curvedWallsLF;
+      }
     }
+
+    set('f-exterior', c.exteriorExposure);
+
+    // Phased work — sync phase count visibility
+    const phaseEl = document.getElementById('f-phase');
+    const phaseN  = document.getElementById('f-phase-n');
+    if (phaseEl && c.phasedWork) {
+      phaseEl.value = c.phasedWork;
+      if (phaseN) {
+        phaseN.style.display = c.phasedWork === 'yes' ? 'block' : 'none';
+        if (c.phaseCount) phaseN.value = c.phaseCount;
+      }
+    }
+
+    set('f-access',    c.accessDifficulty);
+    set('f-parking',   c.parking);
+    set('cond-waste',  c.wastePct);
+    set('cond-trips',  c.trips);
+    set('cond-notes',  c.notes);
+    if (c.confidence) setConf(c.confidence);
   }
 
-  set('f-exterior', c.exteriorExposure);
-
-  // Phased work — sync phase count visibility
-  const phaseEl = document.getElementById('f-phase');
-  const phaseN  = document.getElementById('f-phase-n');
-  if (phaseEl && c.phasedWork) {
-    phaseEl.value = c.phasedWork;
-    if (phaseN) {
-      phaseN.style.display = c.phasedWork === 'yes' ? 'block' : 'none';
-      if (c.phaseCount) phaseN.value = c.phaseCount;
-    }
-  }
-
-  set('f-access',    c.accessDifficulty);
-  set('f-parking',   c.parking);
-  set('cond-waste',  c.wastePct);
-  set('cond-trips',  c.trips);
-  set('cond-notes',  c.notes);
-  if (c.confidence) setConf(c.confidence);
-
-  // ── Intelligence ──
+  // ── Intelligence (A2: part of ConditionsPage — same tab, same
+  // window.__hydrateX pattern) ──
   const intel = state.intelligence || {};
-  set('intel-crew',           intel.crewAvailability);
-  set('intel-pipeline',       intel.pipelinePressure);
-  set('intel-material-trend', intel.materialTrend);
-  set('intel-gc-rel',         intel.gcRelationship);
-  set('intel-gc-price',       intel.gcPriceSensitivity);
-  set('intel-competition',    intel.competitionLevel);
-  set('intel-competitors',    intel.knownCompetitors);
-  set('intel-edge',           intel.dirigoEdge);
+  if (window.__hydrateIntelligence) {
+    window.__hydrateIntelligence(intel);
+  } else {
+    set('intel-crew',           intel.crewAvailability);
+    set('intel-pipeline',       intel.pipelinePressure);
+    set('intel-material-trend', intel.materialTrend);
+    set('intel-gc-rel',         intel.gcRelationship);
+    set('intel-gc-price',       intel.gcPriceSensitivity);
+    set('intel-competition',    intel.competitionLevel);
+    set('intel-competitors',    intel.knownCompetitors);
+    set('intel-edge',           intel.dirigoEdge);
+  }
 
   // ── Rates (A2 spike: RatesPage is now React-owned) ──
   // Was a long run of set(id, val) calls writing straight into DOM
@@ -529,9 +562,6 @@ function resetFormFields() {
     pill.classList.toggle('on', scope === 'Metal framing' || scope === 'Drywall');
   });
 
-  const badge = document.querySelector('.proj-badge span');
-  if (badge) badge.textContent = 'New bid';
-
   // ── Conditions ──
   ['cond-maxht', 'cond-sf12', 'cond-sf20', 'f-exterior', 'f-access', 'f-parking',
    'cond-waste', 'cond-trips', 'cond-notes'].forEach(clear);
@@ -562,6 +592,28 @@ function resetFormFields() {
    'esc-tape', 'esc-insul', 'esc-fasten'
   ].forEach(clear);
   calc(); // refresh rates running totals bar to zero, mirroring populateForm()
+
+  // ── A2: also reset the React-owned copy of all four sections above ──
+  // The plain clear() calls above are still required, not superseded:
+  // _createAndActivateBlankDraft() calls collectFormData() (reads live
+  // DOM .value) immediately after this function returns, in the same
+  // tick, before React ever gets a chance to flush a dispatch — so the
+  // DOM has to already be correct synchronously. But a dispatch is
+  // *also* required, separately: React dispatches are batched/async, so
+  // without this, the next time anything re-renders ProjectPage/
+  // ConditionsPage/RatesPage (e.g. the goto('project') dispatch
+  // createDraft() issues right after this call), React would silently
+  // restore the OLD reducer values into the DOM, undoing every clear()
+  // above the instant the user looked at the screen. Reproduced
+  // directly, not assumed: fill #rate-frame, click New Bid, and find
+  // "77" still showing on the Rates tab afterward — that was the first
+  // version of this fix, dispatch-only, no plain clear() calls; fixed by
+  // keeping both, not by picking one. No-ops outside the browser
+  // (Vitest, or before AppShell has mounted).
+  window.__resetBidState?.();
+
+  const badge = document.querySelector('.proj-badge span');
+  if (badge) badge.textContent = 'New bid';
 
   // ── Markup ──
   ['markup-overhead', 'markup-contingency', 'markup-profit'].forEach(clear);

@@ -121,7 +121,12 @@ function collectFormData() {
     parking:          sel('f-parking'),
     wastePct:         wasteOverride >= 0 ? wasteOverride : 10,
     trips:            num('cond-trips'),
-    confidence:       STATE.conf,
+    // A2: Conditions converted to React — STATE.conf is folded into the
+    // reducer (conditions.confidence). window.__getConfidence() (set by
+    // ConditionsPage.jsx, see src/state/bridges.js) reads the live value
+    // from there; STATE.conf kept as a fallback for non-browser/pre-mount
+    // contexts (Vitest, or a moment before ConditionsPage first mounts).
+    confidence:       (typeof window !== 'undefined' && window.__getConfidence) ? window.__getConfidence() : STATE.conf,
     durationWeeks:    num('proj-dur', 1),
     notes:            document.getElementById('cond-notes')?.value || ''
   };

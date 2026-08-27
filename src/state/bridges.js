@@ -26,7 +26,9 @@ export function registerBridges(dispatch) {
     _dispatch({ type: 'GOTO_TAB', id });
     // Legacy side effects for still-vanilla pages — unchanged targets,
     // just no longer routed through goto()'s own class-toggling.
-    if (id === 'conditions') window._renderPipelineHint?.();
+    // 'conditions' removed: ConditionsPage now handles its own
+    // on-become-active side effect (_renderPipelineHint()) via its own
+    // effect, same pattern as RatesPage's template-list load.
     if (id === 'output') window.runCalculation?.();
     if (id === 'agent') window.renderAgentTab?.();
   };
@@ -68,4 +70,31 @@ export function registerBridges(dispatch) {
   window.__hydrateRates = function __hydrateRates(rates, rateEscalation) {
     _dispatch({ type: 'LOAD_RATES', rates, rateEscalation });
   };
+
+  // ── Project/Conditions/Intelligence hydration — same reasoning as
+  // __hydrateRates above, generic LOAD_SECTION action (see store.jsx).
+  window.__hydrateProject = (project) => _dispatch({ type: 'LOAD_SECTION', key: 'project', value: project });
+  window.__hydrateConditions = (conditions) => _dispatch({ type: 'LOAD_SECTION', key: 'conditions', value: conditions });
+  window.__hydrateIntelligence = (intelligence) => _dispatch({ type: 'LOAD_SECTION', key: 'intelligence', value: intelligence });
+
+  // ── Bid reset — replaces js/forms.js's resetFormFields() direct
+  // el.value = '' writes for every React-owned bid section (project/
+  // conditions/intelligence/rates/rateEscalation), same controlled-input
+  // hazard as the hydrate bridges above. See store.jsx's RESET_BID.
+  window.__resetBidState = () => _dispatch({ type: 'RESET_BID' });
+}
+
+// ── Confidence read accessor ──
+// STATE.conf (js/state.js) is folded into the reducer now that
+// Conditions has converted (conditions.confidence) — but
+// collectFormData() (js/state.js) still needs to read the CURRENT
+// confidence value for every caller that isn't ConditionsPage itself
+// (autosave, export, submitBid, the agent). This is the read-direction
+// counterpart to the hydrate bridges above: legacy code reading FROM
+// React state, not writing into it. Registered separately from
+// registerBridges() (called from ConditionsPage itself, not AppShell)
+// since it needs live access to conditions.confidence specifically, not
+// just a dispatch function.
+export function registerConfidenceReader(getConfidence) {
+  window.__getConfidence = getConfidence;
 }
