@@ -282,6 +282,20 @@ Severity is higher than it first appears, because it writes wrong data rather th
 
 Pinned by `finalize-modal-selection-not-persisted.spec.js`, which is an *inverted* spec — it passes because the code is broken and will fail when the bug is fixed. The file must state at the top that failure is the expected signal of a correct fix, and that the spec should be inverted rather than accommodated.
 
+**Plastering and External wall rates are never costed — found during the A2 spike, scheduling needs Eric's decision.**
+The Rates page has real, working `$/SF` inputs for Plastering and External wall, with hint text and badges identical to every other priced line. Neither ever reaches a bid total. Checked the actual code rather than assumed:
+
+- `calculateWallCosts()`/`calculateCeilingCosts()` (`js/calculator.js`) only ever read `rates.framing`, `rates.hanging`, `rates.finish[level]`, `rates.stud[size]`, `rates.board[type]`, `rates.tape`, `rates.fasten`, and (conditionally) `rates.insul` — `rates.plaster`/`rates.extwall` do not appear anywhere in the calculation engine.
+- There is no way to even specify a quantity for either: `boardType` is Standard/Type-X/Moisture/Impact only, `category` is Wall/Ceiling only — no assembly, wall, or ceiling row can be typed as "plaster" or "exterior," so there is no SF for either rate to multiply against even if the engine did read them.
+- `conditions.exteriorExposure` — the Conditions-page flag that reads as though it should gate the External-wall rate — is captured by `collectFormData()` and restored by `populateForm()`, but `calculator.js` never reads it either. The whole exterior-wall concept, flag and rate both, is disconnected from cost.
+- The canonical Harborview seed data (`data/seed.json`) — the company's own reference bid — has no `plaster` or `extwall` keys in its `rates` object at all. Even the tool's own "this is what a complete bid looks like" example doesn't populate them.
+
+This is genuinely inert, not a wiring bug with an assembly-level path that's merely broken — the feature was never finished. Plastering and External wall are two of Dirigo's real lines of business (both already appear as scope checkboxes on the Project page), so an estimator entering a rate here, reasonably expecting it to price real scope the way every other Rates-page field does, gets a bid silently short by that cost. Same category as the finalize-persistence defect above: user input discarded, undetectable without reading the code.
+
+**Not scheduling this myself** — unlike the finalize-persistence fix, there's no small mechanical patch here; it needs a real design decision (what quantity should these multiply against — a manual SF entry per project? A takeoff row category the way board type is? Something else?) that's a product call, not a code call. Flagging severity and evidence; scheduling and approach are Eric's to set.
+
+Pinned by `rates-plaster-extwall-not-costed.spec.js`, same inverted-spec pattern as the finalize-persistence defect above — passes today documenting that these two rates have zero effect on the direct cost total, flips (and should be deleted or rewritten as a positive assertion) the day someone wires them into the cost engine.
+
 **Finalize failure panel renders to the wrong tab — scheduled for Phase E (5.6).**
 The submitted and failure panels render into `#output-bid` on Tab 7 while finalize happens on Tab 8, so the durable confirmation is invisible and only the toast is seen. Preserved as-is through Phase A.
 
