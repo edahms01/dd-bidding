@@ -120,6 +120,25 @@ export const initialState = {
       customAmount: '',
       isSubmitting: false,
       error: null
+    },
+    // Bridge target for js/ui.js's renderAgentTab()/_renderAgentResult()
+    // (window.__renderAgentTab, see bridges.js) — mirrors the exact
+    // three-way branch renderAgentTab() always had: cachedResult truthy
+    // wins regardless of loading (the original's real behavior, not a
+    // simplification — a stale cachedResult is shown even if a *new*
+    // agent run is already in flight, since nothing clears it until
+    // _resetAgentCache() runs on a draft switch); else loading; else the
+    // empty state. selectedOption resets to 'recommended' every time
+    // cachedResult is (re-)dispatched truthy — matches
+    // _renderAgentResult()'s own unconditional `_selectedBidOption =
+    // 'recommended'`, which used to fire on *every* cache-hit render,
+    // i.e. every tab revisit, not just the first one. Card selection
+    // does not persist across tab switches; the underlying result does.
+    agent: {
+      cachedResult: null,
+      loading: false,
+      historyUnavailable: false,
+      selectedOption: 'recommended'
     }
   },
   bid: {
@@ -443,6 +462,48 @@ export function reducer(state, action) {
       return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, isSubmitting: action.value } } };
     case 'SET_FINALIZE_ERROR':
       return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, error: action.error } } };
+    case 'RENDER_AGENT_TAB':
+      // Bridge target for js/ui.js's renderAgentTab()/_renderAgentResult()
+      // — see the comment on initialState.ui.agent above for the full
+      // reasoning. Dispatched on every call (every tab revisit, every
+      // _launchBidAgent() step, runAgentIfNeeded()'s background pre-run),
+      // not just once — that repetition is what makes the selectedOption
+      // reset happen on every revisit, matching the original exactly.
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          agent: {
+            cachedResult: action.cachedResult,
+            loading: action.loading,
+            historyUnavailable: action.historyUnavailable,
+            selectedOption: action.cachedResult ? 'recommended' : state.ui.agent.selectedOption
+          }
+        }
+      };
+    case 'SELECT_AGENT_OPTION':
+      // Replaces _selectBidOption()'s direct DOM style writes on
+      // [data-bid-opt] cards — AgentPage.jsx derives each card's
+      // selected styling from this at render time instead. Only the
+      // first of _selectBidOption()'s three DOM-manipulation blocks
+      // (the cards themselves) ever did anything — the other two
+      // referenced elements (input[name="agent-bid-option"],
+      // #finalize-row-*) that don't exist anywhere in current markup;
+      // not reproduced here, since faithfully porting dead code isn't
+      // faithful to anything real. See CLAUDE.md.
+      return { ...state, ui: { ...state.ui, agent: { ...state.ui.agent, selectedOption: action.option } } };
+    case 'RESET_AGENT_CACHE':
+      // Bridge target for js/ui.js's _resetAgentCache() (window.
+      // __resetAgentCache) — called on every draft switch (_flushAndSwitch
+      // ()) and every blank-draft activation (_createAndActivateBlankDraft
+      // ()), so Tab 8's cache can't leak between drafts (see
+      // draft-switch-no-contamination.spec.js). Mirrors _resetAgentCache()'s
+      // own reset of _agentResult/_lastAgentResult/_agentLoading/
+      // _agentHistoryUnavailable exactly.
+      return {
+        ...state,
+        ui: { ...state.ui, agent: { cachedResult: null, loading: false, historyUnavailable: false, selectedOption: 'recommended' } }
+      };
     default:
       return state;
   }

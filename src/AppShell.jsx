@@ -25,6 +25,7 @@ import AssembliesPage from './pages/AssembliesPage.jsx';
 import WallsPage from './pages/WallsPage.jsx';
 import CeilingsPage from './pages/CeilingsPage.jsx';
 import OutputPage from './pages/OutputPage.jsx';
+import AgentPage from './pages/AgentPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 
@@ -38,8 +39,6 @@ const WORKFLOW_TABS = [
   { id: 'output',      num: 7, label: 'Initial Bid' },
   { id: 'agent',       num: 8, label: 'Agent Recommendation' }
 ];
-
-const LEGACY_WORKFLOW_PAGE_IDS = ['agent'];
 
 export default function AppShell() {
   const [state, dispatch] = useStore();
@@ -177,14 +176,12 @@ export default function AppShell() {
           <div className="body">
             <ProjectPage active={activeSection === 'workflow' && activeTab === 'project'} />
             <ConditionsPage active={activeSection === 'workflow' && activeTab === 'conditions'} />
-            {LEGACY_WORKFLOW_PAGE_IDS.map((id) => (
-              <LegacyPage key={id} id={id} active={activeSection === 'workflow' && activeTab === id} />
-            ))}
             <RatesPage active={activeSection === 'workflow' && activeTab === 'rates'} />
             <AssembliesPage active={activeSection === 'workflow' && activeTab === 'assemblies'} />
             <WallsPage active={activeSection === 'workflow' && activeTab === 'walls'} />
             <CeilingsPage active={activeSection === 'workflow' && activeTab === 'ceilings'} />
             <OutputPage active={activeSection === 'workflow' && activeTab === 'output'} />
+            <AgentPage active={activeSection === 'workflow' && activeTab === 'agent'} />
             <LegacyPage id="dashboard" active={activeSection === 'dashboard'} />
             <HistoryPage active={activeSection === 'history'} />
           </div>

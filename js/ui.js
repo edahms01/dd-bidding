@@ -51,6 +51,11 @@ function _resetAgentCache() {
   _lastAgentResult         = null;
   _agentLoading            = false;
   _agentHistoryUnavailable = false;
+  // A2: AgentPage is now React-owned — its own cache (state.ui.agent)
+  // needs the same reset, or Tab 8 would keep showing the previous
+  // draft's cached result even after these classic-script globals were
+  // correctly cleared (see draft-switch-no-contamination.spec.js).
+  window.__resetAgentCache?.();
 }
 
 // ── PIPELINE COUNT HINT ─────────────────────────────────────────────────
@@ -863,7 +868,39 @@ function confirmDeleteDraft(id) {
 
 // ── BID AGENT RENDER ──────────────────────────────────────────────────
 
+// A2: AgentPage is now React-owned. window.__renderAgentTab (src/state/
+// bridges.js) dispatches the current snapshot into the reducer instead
+// of this function's old four-way innerHTML branch — AgentPage.jsx
+// replicates the exact same branch order and priority (a cached result
+// wins even over a fresh load in flight — see store.jsx's
+// RENDER_AGENT_TAB). The legacy body's fourth, easy-to-miss branch:
+// when _lastAgentResult is empty and _agentLoading is false but
+// _agentResult *is* available, it falls through to
+// _renderAgentResult(page, _agentResult) — which both shows that result
+// AND caches it as _lastAgentResult for next time. Found by reproducing
+// two real test failures, not by re-reading carefully enough the first
+// time: dispatching only _lastAgentResult (skipping this fallback)
+// meant the very first render of a real result — right after the
+// agent call resolves, before anything else has ever cached it — fell
+// through to the empty state instead, in both
+// agent-history-fallback.spec.js and draft-switch-no-contamination.
+// spec.js. resultToShow below reconstructs the same fallback chain, and
+// caches it into _lastAgentResult exactly when the legacy branch would
+// have (via _renderAgentResult()'s own assignment). Falls back to
+// _renderAgentTabLegacy() (the exact original body) only when the
+// bridge isn't registered (Vitest/non-browser contexts, or before
+// AppShell has mounted).
 function renderAgentTab() {
+  if (window.__renderAgentTab) {
+    const resultToShow = _lastAgentResult || (!_agentLoading ? _agentResult : null);
+    if (resultToShow) _lastAgentResult = resultToShow;
+    window.__renderAgentTab({ cachedResult: resultToShow, loading: _agentLoading, historyUnavailable: _agentHistoryUnavailable });
+    return;
+  }
+  _renderAgentTabLegacy();
+}
+
+function _renderAgentTabLegacy() {
   const page = document.getElementById('page-agent');
   if (!page) return;
 
@@ -905,7 +942,21 @@ function renderAgentTab() {
 }
 
 function _renderAgentResult(page, r) {
+  // Always do this, regardless of render path below — other
+  // classic-script code (Agent's still-classic "Finalize bid →" button
+  // reading _lastAgentResult inline, window.__getLastAgentResult())
+  // depends on this being the real, current cache, not just a rendering
+  // concern.
   _lastAgentResult   = r;
+
+  // A2: bridge to AgentPage.jsx — see renderAgentTab()'s comment above.
+  // runAgentIfNeeded() calls this function directly (not through
+  // renderAgentTab()), so it needs its own bridge check too.
+  if (window.__renderAgentTab) {
+    window.__renderAgentTab({ cachedResult: r, loading: false, historyUnavailable: _agentHistoryUnavailable });
+    return;
+  }
+
   _selectedBidOption = 'recommended';
 
   const OPT_COLORS = {

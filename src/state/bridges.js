@@ -153,6 +153,26 @@ export function registerBridges(dispatch) {
   // see CLAUDE.md).
   window._showFinalizeModal = (options) => _dispatch({ type: 'OPEN_FINALIZE_MODAL', options });
   window._closeFinalizeModal = () => _dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
+
+  // ── Agent tab rendering — replaces js/ui.js's renderAgentTab()/
+  // _renderAgentResult() innerHTML writes (AgentPage.jsx). Both
+  // functions still exist and still run on every call site they always
+  // did (window.goto's 'agent' case, both calls inside
+  // _launchBidAgent(), runAgentIfNeeded()) — they still own reading the
+  // classic-script globals (_lastAgentResult/_agentLoading/
+  // _agentHistoryUnavailable) and writing _lastAgentResult, just dispatch
+  // a snapshot into the reducer instead of building HTML. See
+  // store.jsx's RENDER_AGENT_TAB for why cachedResult/loading/
+  // historyUnavailable are passed through as separate fields rather than
+  // pre-collapsed into one "mode" here — the component needs to
+  // replicate the exact same branch order the original had.
+  window.__renderAgentTab = (snapshot) => _dispatch({ type: 'RENDER_AGENT_TAB', ...snapshot });
+
+  // ── Agent cache reset — replaces js/ui.js's _resetAgentCache() direct
+  // global writes, called alongside them (not instead) on every draft
+  // switch/blank-draft activation, so Tab 8's cached result can't leak
+  // across drafts.
+  window.__resetAgentCache = () => _dispatch({ type: 'RESET_AGENT_CACHE' });
 }
 
 // ── Confidence read accessor ──
