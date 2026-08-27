@@ -85,7 +85,22 @@ export const initialState = {
     // which of the 8 workflow tabs, only meaningful when
     // activeSection === 'workflow'.
     activeTab: 'project',
-    navCollapsed: !!localStorage.getItem('dirigo_nav_collapsed')
+    navCollapsed: !!localStorage.getItem('dirigo_nav_collapsed'),
+    // Bridge target for js/ui.js's renderOutput() (window.__renderOutput,
+    // see bridges.js) — the derived calculation result runCalculation()
+    // computes (js/ui.js), not form input. null until the first
+    // calculation; OutputPage.jsx renders the "complete rates and
+    // calculate" empty state while it's null, matching the original
+    // template's static placeholder exactly.
+    output: null,
+    // Bridge target for submitBid() (window.__setSubmitResult) — replaces
+    // its old direct #output-bid.innerHTML writes for the post-finalize
+    // success/failure confirmation panel. null | {status:'success', saved}
+    // | {status:'error'}. Deliberately NOT cleared by RESET_BID — matches
+    // resetFormFields()'s own documented behavior of leaving Tab 7/8
+    // alone on a fresh draft, since goto('output') already unconditionally
+    // recalculates (and this clears) on every visit to that tab.
+    submitResult: null
   },
   bid: {
     project: {
@@ -135,7 +150,11 @@ export const initialState = {
     // every fresh boot — a brand new app state always starts with one
     // blank row in each table.
     walls: [blankWallRow()],
-    ceilings: [blankCeilRow()]
+    ceilings: [blankCeilRow()],
+    // Matches the original static markup's blank <input>s exactly —
+    // contingencyPct gets pre-filled from confidence by runCalculation()
+    // itself (js/ui.js's _currentConfidence()-driven logic), not here.
+    markupInputs: { overheadPct: '', contingencyPct: '', profitPct: '' }
   }
 };
 
@@ -343,6 +362,23 @@ export function reducer(state, action) {
       return { ...state, ui: { ...state.ui, activeSection: action.section } };
     case 'SET_NAV_COLLAPSED':
       return { ...state, ui: { ...state.ui, navCollapsed: action.value } };
+    case 'RENDER_OUTPUT':
+      // Bridge target for js/ui.js's runCalculation() (window.
+      // __renderOutput, see bridges.js) — replaces renderOutput()'s old
+      // direct #output-phase3/#output-bid.innerHTML writes. Clearing
+      // submitResult here matches the original's implicit behavior: any
+      // fresh calculation (a Recalculate click, a tab visit, the
+      // success panel's own "Back to output" button) overwrote
+      // #output-bid with the normal breakdown, erasing whatever
+      // success/failure panel was showing — not something to preserve
+      // as a *feature*, just the exact current behavior, bug (the
+      // wrong-tab one) included.
+      return { ...state, ui: { ...state.ui, output: action.output, submitResult: null } };
+    case 'SET_SUBMIT_RESULT':
+      // Bridge target for submitBid() (window.__setSubmitResult) —
+      // replaces its old direct #output-bid.innerHTML writes for the
+      // post-finalize success/failure panel.
+      return { ...state, ui: { ...state.ui, submitResult: action.result } };
     default:
       return state;
   }

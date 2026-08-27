@@ -266,11 +266,16 @@ function populateForm(state) {
 
   window.__hydrateRates?.(state.rates, state.rateEscalation);
 
-  // ── Markup ──
+  // ── Markup (part of OutputPage now) ── same dual-write shape as
+  // Project/Conditions/Intelligence/Rates above (checklist item 4) —
+  // both the plain writes (for any synchronous read right after this
+  // function returns) and the dispatch (so the next unrelated
+  // re-render doesn't revert them) are required.
   const mu = state.markupInputs || {};
   set('markup-overhead',    mu.overheadPct);
   set('markup-contingency', mu.contingencyPct);
   set('markup-profit',      mu.profitPct);
+  window.__hydrateMarkup?.(mu);
 
   // ── Assemblies (AssembliesPage is now React-owned) ──
   // window.__hydrateAssemblies dispatches into the reducer instead of

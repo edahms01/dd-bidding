@@ -77,6 +77,7 @@ export function registerBridges(dispatch) {
   window.__hydrateProject = (project) => _dispatch({ type: 'LOAD_SECTION', key: 'project', value: project });
   window.__hydrateConditions = (conditions) => _dispatch({ type: 'LOAD_SECTION', key: 'conditions', value: conditions });
   window.__hydrateIntelligence = (intelligence) => _dispatch({ type: 'LOAD_SECTION', key: 'intelligence', value: intelligence });
+  window.__hydrateMarkup = (markupInputs) => _dispatch({ type: 'LOAD_SECTION', key: 'markupInputs', value: markupInputs });
 
   // ── Bid reset — replaces js/forms.js's resetFormFields() direct
   // el.value = '' writes for every React-owned bid section (project/
@@ -115,6 +116,23 @@ export function registerBridges(dispatch) {
   // <tbody>s via .map() now too).
   window.__hydrateWalls = (rows) => flushSync(() => _dispatch({ type: 'LOAD_WALL_ROWS', rows }));
   window.__hydrateCeilings = (rows) => flushSync(() => _dispatch({ type: 'LOAD_CEILING_ROWS', rows }));
+
+  // ── Output — replaces js/ui.js's renderOutput() direct #output-phase3/
+  // #output-bid.innerHTML writes. No flushSync: nothing reads the DOM
+  // synchronously right after runCalculation() calls this (unlike the
+  // row-hydration bridges above) — plain dispatch is correct and
+  // preferred here (see CLAUDE.md's flushSync scoping caution: reach for
+  // it only for the one class of problem it actually fixes).
+  window.__renderOutput = (output) => _dispatch({ type: 'RENDER_OUTPUT', output });
+
+  // ── Submit result — replaces submitBid()'s (js/ui.js) direct
+  // #output-bid.innerHTML writes for the post-finalize success/failure
+  // panel. Deliberately preserves the wrong-tab bug exactly as it exists
+  // today (see CLAUDE.md/the A2 plan — not fixed in A2): this just
+  // dispatches into OutputPage's own state the same #output-bid write
+  // always targeted, regardless of which tab is actually active when
+  // submitBid() runs.
+  window.__setSubmitResult = (result) => _dispatch({ type: 'SET_SUBMIT_RESULT', result });
 }
 
 // ── Confidence read accessor ──

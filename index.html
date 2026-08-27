@@ -18,52 +18,6 @@
      for the full coexistence architecture. -->
 <div id="root"></div>
 
-<template id="legacy-tpl-output">
-  <div class="page-hdr">
-    <div>
-      <div class="page-title">Initial Bid</div>
-      <div class="page-sub">Direct cost breakdown and pricing</div>
-    </div>
-    <div class="page-actions">
-      <button class="btn btn-ghost" onclick="goto('ceilings')">← Back</button>
-      <button class="btn btn-ghost" onclick="runCalculation()">↻ Recalculate</button>
-      <button class="btn btn-primary" onclick="goto('agent')">Next: Agent Recommendation →</button>
-    </div>
-  </div>
-
-  <!-- Dynamic: Phase 3 direct cost output -->
-  <div id="output-phase3">
-    <div class="empty-state">Complete rates and click "Generate bid output →" to calculate.</div>
-  </div>
-
-  <!-- Static: Markup input panel -->
-  <div class="section-block">
-    <div class="section-label">Markup</div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px 20px 8px">
-      <div class="rgrid g3">
-        <div class="rcard">
-          <div class="rcard-lbl">Company overhead <span class="badge b-pct">%</span></div>
-          <div class="iw"><input id="markup-overhead" class="ri" type="number" min="0" step="0.1" placeholder="10.0"><span class="isfx">%</span></div>
-          <div class="rhint">Office, insurance, fleet — % of direct costs</div>
-        </div>
-        <div class="rcard">
-          <div class="rcard-lbl">Risk / contingency <span class="badge b-pct">%</span></div>
-          <div class="iw"><input id="markup-contingency" class="ri" type="number" min="0" step="0.1" placeholder="—"><span class="isfx">%</span></div>
-          <div class="rhint">Pre-filled from confidence level — editable</div>
-        </div>
-        <div class="rcard">
-          <div class="rcard-lbl">Profit margin <span class="badge b-pct">%</span></div>
-          <div class="iw"><input id="markup-profit" class="ri" type="number" min="0" step="0.1" placeholder="8.0"><span class="isfx">%</span></div>
-          <div class="rhint">Target profit on direct costs</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Dynamic: Phase 4 pricing breakdown + final bid price -->
-  <div id="output-bid"></div>
-</template>
-
 <template id="legacy-tpl-agent">
   <div class="empty-state">Generate a bid output (Tab 7) to get the agent's recommendation.</div>
 </template>

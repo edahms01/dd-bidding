@@ -16,6 +16,21 @@ let _lastCalcSum       = null;
 let _lastCalcMarkup    = null;
 let _selectedBidOption = 'recommended';
 let _lastAgentResult   = null;
+// A2: OutputPage.jsx's submit-failure panel needs this for its "Try
+// again" button — same gap class as js/forms.js's
+// window.__getHasUnsavedChanges: a top-level `let` doesn't become a
+// `window` property in a classic script, and a React onClick handler
+// (module scope) can't see it via bare identifier lookup either, unlike
+// the original inline onclick="..." attribute this button used to be
+// (classic-script global scope resolves bare `_lastAgentResult` fine;
+// window._lastAgentResult from a module does not — it's silently
+// undefined forever without this accessor). Guarded the same way as
+// this file's addEventListener('keydown', ...) below — tests/unit/
+// ui.test.js imports this module under Vitest's plain 'node'
+// environment (no window at all) specifically to test escapeHtml().
+if (typeof window !== 'undefined') {
+  window.__getLastAgentResult = () => _lastAgentResult;
+}
 
 // Phase 3: set only when getHistorySummary() (a network call now) rejects
 // during an agent run — distinct from the pre-existing, legitimate case
@@ -106,7 +121,24 @@ function escapeHtml(str) {
 //   markupResult — { directCostTotal, overhead, contingency, profit,
 //                    totalMarkup, finalBidPrice, effectiveMargin }
 
+// A2: OutputPage is now React-owned. window.__renderOutput (src/state/
+// bridges.js) dispatches the computed values into the reducer instead
+// of this function's old direct #output-phase3/#output-bid.innerHTML
+// writes — those elements are React-rendered now, and a direct write
+// would be silently overwritten (or fought) on the next unrelated
+// re-render, same reasoning as every other converted page. Falls back
+// to _renderOutputLegacy() (the exact original body, unmodified) only
+// when the bridge isn't registered (Vitest/non-browser contexts, or
+// before AppShell has mounted).
 function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
+  if (window.__renderOutput) {
+    window.__renderOutput({ state, wallCosts, ceilCosts, summary, markupResult });
+    return;
+  }
+  _renderOutputLegacy(state, wallCosts, ceilCosts, summary, markupResult);
+}
+
+function _renderOutputLegacy(state, wallCosts, ceilCosts, summary, markupResult) {
   const phase3El = document.getElementById('output-phase3');
   const bidEl    = document.getElementById('output-bid');
 
@@ -298,10 +330,22 @@ function _currentConfidence() {
 
 function runCalculation() {
   // Pre-fill contingency from confidence if field is empty (only fires on first calculate)
+  // A2: markup-contingency is a React-controlled input now (OutputPage.jsx)
+  // — the direct .value write below is still required (collectFormData(),
+  // called synchronously right after this, reads live DOM), but on its
+  // own it would be silently reverted the next time anything re-renders
+  // OutputPage (React re-asserts whatever state.bid.markupInputs.
+  // contingencyPct still holds — '', since this write never told the
+  // reducer). window.__hydrateMarkup's merge semantics (LOAD_SECTION,
+  // store.jsx) update just this one field without touching overheadPct/
+  // profitPct. Same dual-write shape as every other scalar hydration —
+  // checklist item 4.
   const contingencyEl = document.getElementById('markup-contingency');
   if (contingencyEl && !contingencyEl.value) {
     const conf = _currentConfidence();
-    contingencyEl.value = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
+    const prefill = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
+    contingencyEl.value = prefill;
+    window.__hydrateMarkup?.({ contingencyPct: prefill });
   }
 
   const state        = collectFormData();
@@ -365,11 +409,16 @@ async function _launchBidAgent(state, summary, markupResult) {
 // ── SUBMIT BID ────────────────────────────────────────────────────────
 
 async function submitBid() {
-  // Same pre-fill logic as runCalculation — ensure contingency is set before reading
+  // Same pre-fill logic as runCalculation — ensure contingency is set before
+  // reading. Same dual-write reasoning too (see runCalculation()'s comment) —
+  // the direct .value write alone would be silently reverted next time
+  // anything re-renders OutputPage's now-controlled markup-contingency input.
   const contingencyEl = document.getElementById('markup-contingency');
   if (contingencyEl && !contingencyEl.value) {
     const conf = _currentConfidence();
-    contingencyEl.value = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
+    const prefill = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
+    contingencyEl.value = prefill;
+    window.__hydrateMarkup?.({ contingencyPct: prefill });
   }
 
   const state        = collectFormData();
@@ -387,21 +436,35 @@ async function submitBid() {
     // A failed save must never show "Bid submitted ✓" — the draft stays
     // in dirigo_drafts untouched (clearFinalizedDraft() below only runs
     // on success), so nothing is lost and the user can retry Finalize.
-    const bidEl = document.getElementById('output-bid');
-    if (bidEl) {
-      bidEl.innerHTML = `
-        <div class="section-block">
-          <div style="background:var(--surface);border:2px solid #e85c4a;
-              border-radius:var(--rl);padding:28px;text-align:center">
-            <div style="font-size:24px;color:#e85c4a;margin-bottom:10px">✕</div>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submission failed</div>
-            <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
-              Nothing was saved — your draft is unchanged. Check your connection and try again.
+    //
+    // A2: OutputPage is now React-owned — window.__setSubmitResult
+    // dispatches into the reducer instead of this old direct
+    // #output-bid.innerHTML write. Deliberately preserves the wrong-tab
+    // bug exactly: this still targets the same conceptual "#output-bid
+    // content" regardless of which tab is actually active when
+    // submitBid() runs (Tab 8, via the finalize modal, in the case this
+    // bug is about) — not fixed here, see CLAUDE.md/the A2 plan. Falls
+    // back to the old direct write only when the bridge isn't
+    // registered (Vitest/non-browser contexts).
+    if (window.__setSubmitResult) {
+      window.__setSubmitResult({ status: 'error' });
+    } else {
+      const bidEl = document.getElementById('output-bid');
+      if (bidEl) {
+        bidEl.innerHTML = `
+          <div class="section-block">
+            <div style="background:var(--surface);border:2px solid #e85c4a;
+                border-radius:var(--rl);padding:28px;text-align:center">
+              <div style="font-size:24px;color:#e85c4a;margin-bottom:10px">✕</div>
+              <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submission failed</div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
+                Nothing was saved — your draft is unchanged. Check your connection and try again.
+              </div>
+              <button class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Try again</button>
             </div>
-            <button class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Try again</button>
           </div>
-        </div>
-      `;
+        `;
+      }
     }
     throw e; // let _finalizeBid()'s catch re-enable the confirm button
   }
@@ -410,22 +473,26 @@ async function submitBid() {
   // of dirigo_drafts so "New Bid" never shows stale, already-submitted data.
   clearFinalizedDraft();
 
-  const bidEl = document.getElementById('output-bid');
-  if (bidEl) {
-    bidEl.innerHTML = `
-      <div class="section-block">
-        <div style="background:var(--surface);border:2px solid var(--green);
-            border-radius:var(--rl);padding:28px;text-align:center">
-          <div style="font-size:24px;color:var(--green);margin-bottom:10px">✓</div>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submitted</div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
-            ${escapeHtml(saved.project_name) || '(unnamed project)'} &mdash; ${fmtCost(saved.final_bid)}
+  if (window.__setSubmitResult) {
+    window.__setSubmitResult({ status: 'success', saved });
+  } else {
+    const bidEl = document.getElementById('output-bid');
+    if (bidEl) {
+      bidEl.innerHTML = `
+        <div class="section-block">
+          <div style="background:var(--surface);border:2px solid var(--green);
+              border-radius:var(--rl);padding:28px;text-align:center">
+            <div style="font-size:24px;color:var(--green);margin-bottom:10px">✓</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submitted</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
+              ${escapeHtml(saved.project_name) || '(unnamed project)'} &mdash; ${fmtCost(saved.final_bid)}
+            </div>
+            <button class="btn btn-primary" onclick="goto('history')">View bid history →</button>
+            <button class="btn btn-ghost" onclick="runCalculation()" style="margin-left:8px">Back to output</button>
           </div>
-          <button class="btn btn-primary" onclick="goto('history')">View bid history →</button>
-          <button class="btn btn-ghost" onclick="runCalculation()" style="margin-left:8px">Back to output</button>
         </div>
-      </div>
-    `;
+      `;
+    }
   }
 }
 
