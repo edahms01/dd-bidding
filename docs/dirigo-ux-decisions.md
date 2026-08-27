@@ -282,6 +282,8 @@ Severity is higher than it first appears, because it writes wrong data rather th
 
 Pinned by `finalize-modal-selection-not-persisted.spec.js`, which is an *inverted* spec — it passes because the code is broken and will fail when the bug is fixed. The file must state at the top that failure is the expected signal of a correct fix, and that the spec should be inverted rather than accommodated.
 
+**Scope note for the A2.5 fix, found doing a full read-through of `submitBid()` (2026-08-27, prompted by two unrelated defects turning up in that function in close succession — see CLAUDE.md):** `buildBidRecord()`'s `markup_pct` is derived from the same wrong basis as `final_bid` — `markupResult.totalMarkup`, the plain calculator's result, not whatever the user selected. Today the two fields are at least *consistent with each other* (both wrong, together). If A2.5 wires the modal's selected amount into `final_bid` without also recomputing `markup_pct` from that same selected amount, it trades one bug for a subtler one: a bid record where the displayed markup percentage no longer matches the price it's supposedly the markup on. Not a new defect right now — nothing observably diverges beyond what's already pinned above — just a fix-scope trap to avoid when A2.5 actually happens.
+
 **Plastering and External wall rates are never costed — found during the A2 spike, scheduling needs Eric's decision.**
 The Rates page has real, working `$/SF` inputs for Plastering and External wall, with hint text and badges identical to every other priced line. Neither ever reaches a bid total. Checked the actual code rather than assumed:
 
