@@ -411,7 +411,16 @@ async function _launchBidAgent(state, summary, markupResult) {
 
 // ── SUBMIT BID ────────────────────────────────────────────────────────
 
-async function submitBid() {
+// A2.5: finalizeSelection ({ amount, selectedOption }) is the modal's
+// resolved choice (FinalizeModal.jsx's handleConfirm(), or the dead
+// classic-script _finalizeBid() below — not currently reachable) —
+// threaded straight through to buildBidRecord() (js/state.js), which is
+// where it actually replaces the plain-calculator amount. Everything
+// below still computes state/summary/markupResult exactly as before:
+// they're still the source for direct_cost/estimated_labor_cost/
+// estimated_material_cost, which are legitimately plain-calculator-
+// derived and out of scope for this fix.
+async function submitBid(finalizeSelection) {
   // Same pre-fill logic as runCalculation — ensure contingency is set before
   // reading. Same dual-write reasoning too (see runCalculation()'s comment) —
   // the direct .value write alone would be silently reverted next time
@@ -434,7 +443,7 @@ async function submitBid() {
 
   let saved;
   try {
-    saved = await saveBid(buildBidRecord(state, summary, markupResult));
+    saved = await saveBid(buildBidRecord(state, summary, markupResult, finalizeSelection));
   } catch (e) {
     // A failed save must never show "Bid submitted ✓" — the draft stays
     // in dirigo_drafts untouched (clearFinalizedDraft() below only runs

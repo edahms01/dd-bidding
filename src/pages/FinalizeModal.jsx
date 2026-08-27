@@ -51,7 +51,12 @@ export default function FinalizeModal() {
 
     dispatch({ type: 'SET_FINALIZE_SUBMITTING', value: true });
     try {
-      await window.submitBid();
+      // A2.5: pass the resolved selection through — submitBid() (js/ui.js)
+      // used to ignore it and recompute final_bid/markup_pct from the
+      // plain calculator instead. selected is the reducer's own option
+      // vocabulary ('competitive'|'recommended'|'ambitious'|'override'),
+      // reused verbatim, no translation layer.
+      await window.submitBid({ amount, selectedOption: selected });
       dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
       window._showBidToast?.(label, amount);
     } catch (e) {

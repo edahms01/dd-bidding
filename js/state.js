@@ -208,9 +208,21 @@ function collectFormData() {
 // Assembles a bid record ready for saveBid(). bid_id and date_submitted are
 // assigned server-side (netlify/functions/bids-core.js's stampNewBid(),
 // Phase 3) — not present on the object this function returns.
-function buildBidRecord(state, summary, markupResult) {
+//
+// A2.5: finalizeSelection ({ amount, selectedOption }) is what the user
+// actually picked in the finalize modal (FinalizeModal.jsx's handleConfirm())
+// — a standard agent option's bidAmount, or the custom-override amount.
+// final_bid and markup_pct are both derived from that chosen amount, not
+// from markupResult (the plain calculator's independent result), which
+// used to feed both and is why they were wrong together. The fallback to
+// markupResult.finalBidPrice below only matters if this is ever called
+// without a selection — submitBid() (js/ui.js) always supplies one today.
+function buildBidRecord(state, summary, markupResult, finalizeSelection) {
+  const chosenAmount = finalizeSelection?.amount != null
+    ? finalizeSelection.amount
+    : markupResult.finalBidPrice;
   const markupPct = summary.directCostTotal > 0
-    ? Math.round((markupResult.totalMarkup / summary.directCostTotal) * 1000) / 10
+    ? Math.round(((chosenAmount - summary.directCostTotal) / summary.directCostTotal) * 1000) / 10
     : 0;
   return {
     project_name:           state.project.name,
@@ -227,7 +239,19 @@ function buildBidRecord(state, summary, markupResult) {
     estimated_labor_cost:   Math.round(summary.laborTotal),
     estimated_material_cost: Math.round(summary.materialTotal),
     markup_pct:             markupPct,
-    final_bid:              Math.round(markupResult.finalBidPrice),
+    final_bid:              Math.round(chosenAmount),
+    // A2.5: which finalize-modal option the user actually chose — the
+    // reducer's own vocabulary ('competitive'|'recommended'|'ambitious'|
+    // 'override'), reused verbatim rather than translated, so it stays
+    // aligned with the modal's own data-modal-opt test hooks. null only
+    // if buildBidRecord() is ever called without a selection (see above).
+    selected_option:        finalizeSelection?.selectedOption ?? null,
+    // Redundant with final_bid when selected_option is 'override' (both
+    // carry the same chosen amount), kept separately anyway since the
+    // record shape doesn't otherwise distinguish "why" from "how much".
+    custom_override_amount: finalizeSelection?.selectedOption === 'override'
+      ? Math.round(finalizeSelection.amount)
+      : null,
     confidence:             state.conditions.confidence,
     intelligence:           state.intelligence,
     outcome:                'pending',
