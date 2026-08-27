@@ -77,6 +77,41 @@ function setPath(obj, path, value) {
   return { ...obj, [head]: setPath(obj[head] ?? {}, rest, value) };
 }
 
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+// ── Standing rule: every hydration action merges onto current/default
+// state, recursively — never replaces a section wholesale. Not a
+// one-off patch for one old file; this is the general shape any load-a-
+// full-object-into-the-reducer action must have, permanently, because
+// the schema is expected to keep growing (rates.finish/stud/board today,
+// whatever assembly-extensibility work adds tomorrow) and *something*
+// hydrating this reducer — a draft load, an import, a legacy migration,
+// a rate template saved before a field existed — will keep lacking
+// newer fields as it does. A wholesale `{...defaults, ...incoming}`
+// (single-level) or `state.section = incoming` (no merge at all) both
+// break the same way the day a field gets added: reproduced directly on
+// LOAD_SECTION, not hypothesized — legacy-migration.spec.js's pre-drafts
+// fixture has a project object with no `scope` key (predates that
+// field), and a wholesale replace left project.scope undefined, crashing
+// ProjectPage's `p.scope.includes(label)` on the very next render.
+// mergeDeep() recurses into nested plain objects (rates.finish, .stud,
+// .board, etc.) so a partially-populated nested object degrades
+// gracefully too, not just a missing top-level key. Arrays (project.scope)
+// replace wholesale, not element-wise — merging a list field-by-field
+// wouldn't mean anything. A key *present* in `incoming` always wins, at
+// any depth; a key *absent* from it falls back to whatever `base`
+// (current state, or the reducer's own defaults) already has.
+function mergeDeep(base, incoming) {
+  if (!isPlainObject(base) || !isPlainObject(incoming)) return incoming;
+  const out = { ...base };
+  for (const key of Object.keys(incoming)) {
+    out[key] = mergeDeep(base[key], incoming[key]);
+  }
+  return out;
+}
+
 export function reducer(state, action) {
   switch (action.type) {
     case 'SET_FIELD':
@@ -87,13 +122,17 @@ export function reducer(state, action) {
       // set(id, val) writes for the Rates section, which would otherwise
       // fight React's controlled inputs (the value would flash in, then
       // be overwritten on next re-render since React never learned the
-      // DOM changed out from under it).
+      // DOM changed out from under it). mergeDeep(), not a wholesale
+      // replace — see its comment above: a rate template saved before
+      // Tier 5 Part 2 shipped has no rateEscalation field at all, and a
+      // future rates/rateEscalation field added the same way would hit
+      // the exact same gap in old templates.
       return {
         ...state,
         bid: {
           ...state.bid,
-          rates: action.rates ?? state.bid.rates,
-          rateEscalation: action.rateEscalation ?? state.bid.rateEscalation
+          rates: action.rates != null ? mergeDeep(state.bid.rates, action.rates) : state.bid.rates,
+          rateEscalation: action.rateEscalation != null ? mergeDeep(state.bid.rateEscalation, action.rateEscalation) : state.bid.rateEscalation
         }
       };
     case 'LOAD_SECTION':
@@ -103,22 +142,11 @@ export function reducer(state, action) {
       // three near-identical ones. undefined/null value is a no-op, not
       // a wipe — matches populateForm()'s own `state.X || {}` fallback
       // (a draft missing a whole section shouldn't blank out defaults).
-      // Merged onto the *current* section, not replaced outright — a
-      // real, reproduced crash, not a hypothetical: legacy-migration.
-      // spec.js's pre-drafts dirigo_current_bid blob has a project
-      // object with no `scope` key at all (predates that field), and a
-      // wholesale replace left state.bid.project.scope undefined,
-      // crashing ProjectPage's p.scope.includes(label) on the very next
-      // render. A key present in action.value (even an empty array)
-      // still wins; only a key *absent* from it falls back to whatever
-      // was already there — the same "missing means leave it alone,
-      // don't blank it" semantics populateForm()'s own
-      // `if (Array.isArray(p.scope))` guard always had for this exact
-      // field.
+      // mergeDeep(), not a wholesale replace — see its comment above.
       if (action.value == null) return state;
       return {
         ...state,
-        bid: { ...state.bid, [action.key]: { ...state.bid[action.key], ...action.value } }
+        bid: { ...state.bid, [action.key]: mergeDeep(state.bid[action.key], action.value) }
       };
     case 'RESET_BID':
       // Bridge target for js/forms.js's resetFormFields() (window.

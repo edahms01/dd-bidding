@@ -282,11 +282,25 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
 
 // ── ORCHESTRATION ─────────────────────────────────────────────────────
 
+// A2: Conditions converted to React — STATE.conf alone is stale the
+// instant a user picks a confidence level in the browser, since
+// ConditionsPage.jsx's buttons dispatch straight into the reducer and
+// never call setConf() (see js/forms.js and CLAUDE.md). Same accessor
+// js/state.js's collectFormData() reads confidence through, not
+// reimplemented per call site — both call sites below used to read
+// STATE.conf directly and silently pre-filled contingency to 0
+// regardless of the confidence actually selected; found by reproducing
+// it directly (select High confidence, run a calculation, contingency
+// pre-filled to 0 instead of 4), not assumed.
+function _currentConfidence() {
+  return (typeof window !== 'undefined' && window.__getConfidence) ? window.__getConfidence() : STATE.conf;
+}
+
 function runCalculation() {
   // Pre-fill contingency from confidence if field is empty (only fires on first calculate)
   const contingencyEl = document.getElementById('markup-contingency');
   if (contingencyEl && !contingencyEl.value) {
-    const conf = STATE.conf;
+    const conf = _currentConfidence();
     contingencyEl.value = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
   }
 
@@ -354,7 +368,7 @@ async function submitBid() {
   // Same pre-fill logic as runCalculation — ensure contingency is set before reading
   const contingencyEl = document.getElementById('markup-contingency');
   if (contingencyEl && !contingencyEl.value) {
-    const conf = STATE.conf;
+    const conf = _currentConfidence();
     contingencyEl.value = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
   }
 

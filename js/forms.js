@@ -97,176 +97,174 @@ function populateForm(state) {
     if (el !== null && val !== undefined && val !== null) el.value = val;
   }
 
-  // ── Project (A2: ProjectPage is now React-owned) ──
-  // Same reasoning/pattern as Rates below: window.__hydrateProject
-  // dispatches into the real reducer state instead of writing DOM
-  // .value directly, which would be silently overwritten on
-  // ProjectPage's next re-render. Falls back to the old set()-based
-  // path when it isn't registered yet (Vitest/non-browser contexts, or
-  // before AppShell has mounted).
+  // ── Project / Conditions / Intelligence / Rates ──
+  // A2: all four sections are React-owned now. Each does BOTH a plain
+  // set(id, val) write AND a window.__hydrateX dispatch — not one or the
+  // other, on purpose, after getting this wrong twice on real code paths
+  // (see CLAUDE.md's "Converting a page" checklist, items 4 and 5, for
+  // the fuller writeup; both were found by reproducing the failure
+  // directly, not assumed):
+  //   1. Dispatch alone left every synchronous DOM read done before
+  //      React's next commit reading stale data. loadSeedData() calls
+  //      runCalculation() (reads the DOM via collectFormData())
+  //      immediately after this function returns, in the same tick —
+  //      Tab 7 showed "$0" right after "Load seed data" until something
+  //      else re-triggered a calculation later. The plain set() writes
+  //      below fix that: they're synchronous, so any read right after
+  //      this function returns already sees the right values.
+  //   2. The set() writes alone are exactly what a React-controlled
+  //      input silently reverts on its *next* unrelated re-render
+  //      (checklist item 3) — so the dispatch is still required too, not
+  //      redundant with the writes. Both land the exact same final
+  //      value, so there's no flicker to a *wrong* value in either
+  //      direction — just two paths converging on one answer, the same
+  //      shape as the resetFormFields() fix above.
   const p = state.project || {};
-  if (window.__hydrateProject) {
-    window.__hydrateProject({
-      ...p,
-      // durationWeeks lives in project (new) or conditions (legacy) —
-      // try both, same fallback this function has always applied.
-      durationWeeks: p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks
+  set('proj-name',     p.name);
+  set('proj-gc',       p.gc);
+  set('proj-bid',      p.bidDate);
+  set('proj-addr',     p.address);
+  set('proj-type',     p.buildingType);
+  set('proj-drawings', p.drawingsRef);
+  set('proj-start',    p.startDate);
+  // durationWeeks lives in project (new) or conditions (legacy) — try both
+  set('proj-dur',    p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks);
+  set('proj-floors', p.floors);
+
+  if (Array.isArray(p.scope)) {
+    document.querySelectorAll('.pills .pill').forEach(pill => {
+      pill.classList.toggle('on', p.scope.includes(pill.dataset.scope || pill.textContent.trim()));
     });
-  } else {
-    set('proj-name',     p.name);
-    set('proj-gc',       p.gc);
-    set('proj-bid',      p.bidDate);
-    set('proj-addr',     p.address);
-    set('proj-type',     p.buildingType);
-    set('proj-drawings', p.drawingsRef);
-    set('proj-start',    p.startDate);
-    set('proj-dur',    p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks);
-    set('proj-floors', p.floors);
-
-    if (Array.isArray(p.scope)) {
-      document.querySelectorAll('.pills .pill').forEach(pill => {
-        pill.classList.toggle('on', p.scope.includes(pill.dataset.scope || pill.textContent.trim()));
-      });
-    }
-    set('proj-exclusions', p.exclusions);
   }
+  set('proj-exclusions', p.exclusions);
 
-  // Update header badge — stays a direct DOM write regardless of
-  // hydration path above: the header's badge span is static JSX
-  // ProjectPage never touches (see CLAUDE.md's "static JSX = safe for
-  // external mutation" pattern), so mutating it here is safe whether
-  // Project has converted or not.
+  window.__hydrateProject?.({
+    ...p,
+    durationWeeks: p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks
+  });
+
+  // Update header badge — always a direct DOM write: the header's badge
+  // span is static JSX ProjectPage never touches (see CLAUDE.md's
+  // "static JSX = safe for external mutation" pattern), so there's no
+  // reducer copy of this value to dispatch in the first place.
   const badge = document.querySelector('.proj-badge span');
   if (badge && p.name) badge.textContent = p.name;
 
-  // ── Conditions (A2: ConditionsPage is now React-owned) ──
-  // Curved-walls-LF/phase-count visibility becomes native React
-  // conditional rendering (curvedWalls === 'yes' / phasedWork === 'yes')
-  // instead of the imperative style.display toggling in the fallback
-  // branch below; confidence hydrates into the reducer instead of
-  // calling setConf() directly (setConf() itself is now dead code
-  // outside this fallback branch — see js/ui.js/ConditionsPage.jsx).
+  // Curved-walls-LF/phase-count visibility is native React conditional
+  // rendering on ConditionsPage now (curvedWalls === 'yes' / phasedWork
+  // === 'yes') rather than driven by the style.display toggling below —
+  // that code stays for the synchronous-read reason above (and for the
+  // non-browser fallback), it just no longer has sole responsibility for
+  // what's visible on screen once the dispatch below lands.
   const c = state.conditions || {};
-  if (window.__hydrateConditions) {
-    window.__hydrateConditions(c);
-  } else {
-    set('cond-maxht', c.maxHt);
-    set('cond-sf12',  c.sfAbove12);
-    set('cond-sf20',  c.sfAbove20);
+  set('cond-maxht', c.maxHt);
+  set('cond-sf12',  c.sfAbove12);
+  set('cond-sf20',  c.sfAbove20);
 
-    // Curved walls — sync LF field visibility
-    const curvedEl = document.getElementById('f-curved');
-    const curvedLF = document.getElementById('f-curved-lf');
-    if (curvedEl && c.curvedWalls) {
-      curvedEl.value = c.curvedWalls;
-      if (curvedLF) {
-        curvedLF.style.display = c.curvedWalls === 'yes' ? 'block' : 'none';
-        if (c.curvedWallsLF) curvedLF.value = c.curvedWallsLF;
-      }
+  const curvedEl = document.getElementById('f-curved');
+  const curvedLF = document.getElementById('f-curved-lf');
+  if (curvedEl && c.curvedWalls) {
+    curvedEl.value = c.curvedWalls;
+    if (curvedLF) {
+      curvedLF.style.display = c.curvedWalls === 'yes' ? 'block' : 'none';
+      if (c.curvedWallsLF) curvedLF.value = c.curvedWallsLF;
     }
-
-    set('f-exterior', c.exteriorExposure);
-
-    // Phased work — sync phase count visibility
-    const phaseEl = document.getElementById('f-phase');
-    const phaseN  = document.getElementById('f-phase-n');
-    if (phaseEl && c.phasedWork) {
-      phaseEl.value = c.phasedWork;
-      if (phaseN) {
-        phaseN.style.display = c.phasedWork === 'yes' ? 'block' : 'none';
-        if (c.phaseCount) phaseN.value = c.phaseCount;
-      }
-    }
-
-    set('f-access',    c.accessDifficulty);
-    set('f-parking',   c.parking);
-    set('cond-waste',  c.wastePct);
-    set('cond-trips',  c.trips);
-    set('cond-notes',  c.notes);
-    if (c.confidence) setConf(c.confidence);
   }
 
-  // ── Intelligence (A2: part of ConditionsPage — same tab, same
-  // window.__hydrateX pattern) ──
+  set('f-exterior', c.exteriorExposure);
+
+  const phaseEl = document.getElementById('f-phase');
+  const phaseN  = document.getElementById('f-phase-n');
+  if (phaseEl && c.phasedWork) {
+    phaseEl.value = c.phasedWork;
+    if (phaseN) {
+      phaseN.style.display = c.phasedWork === 'yes' ? 'block' : 'none';
+      if (c.phaseCount) phaseN.value = c.phaseCount;
+    }
+  }
+
+  set('f-access',    c.accessDifficulty);
+  set('f-parking',   c.parking);
+  set('cond-waste',  c.wastePct);
+  set('cond-trips',  c.trips);
+  set('cond-notes',  c.notes);
+  // setConf() is dead in the browser path (ConditionsPage's confidence
+  // buttons dispatch SET_FIELD directly) but still updates STATE.conf,
+  // which window.__getConfidence's fallback (js/state.js) needs correct
+  // before ConditionsPage has ever mounted — keep calling it.
+  if (c.confidence) setConf(c.confidence);
+
+  window.__hydrateConditions?.(c);
+
+  // ── Intelligence (part of ConditionsPage — same tab, same page in the
+  // original markup) ──
   const intel = state.intelligence || {};
-  if (window.__hydrateIntelligence) {
-    window.__hydrateIntelligence(intel);
-  } else {
-    set('intel-crew',           intel.crewAvailability);
-    set('intel-pipeline',       intel.pipelinePressure);
-    set('intel-material-trend', intel.materialTrend);
-    set('intel-gc-rel',         intel.gcRelationship);
-    set('intel-gc-price',       intel.gcPriceSensitivity);
-    set('intel-competition',    intel.competitionLevel);
-    set('intel-competitors',    intel.knownCompetitors);
-    set('intel-edge',           intel.dirigoEdge);
-  }
+  set('intel-crew',           intel.crewAvailability);
+  set('intel-pipeline',       intel.pipelinePressure);
+  set('intel-material-trend', intel.materialTrend);
+  set('intel-gc-rel',         intel.gcRelationship);
+  set('intel-gc-price',       intel.gcPriceSensitivity);
+  set('intel-competition',    intel.competitionLevel);
+  set('intel-competitors',    intel.knownCompetitors);
+  set('intel-edge',           intel.dirigoEdge);
 
-  // ── Rates (A2 spike: RatesPage is now React-owned) ──
-  // Was a long run of set(id, val) calls writing straight into DOM
-  // inputs, same shape as every other section on this page — but since
-  // RatesPage's inputs are React-controlled, writing .value directly
-  // would get silently overwritten on RatesPage's next re-render (React
-  // never learns the DOM changed out from under it). window.__hydrateRates
-  // (src/state/bridges.js) dispatches into the real reducer state instead.
-  // Falls back to the old set()-based path when it isn't registered yet
-  // (e.g. Vitest/non-browser contexts, or before AppShell has mounted).
-  if (window.__hydrateRates) {
-    window.__hydrateRates(state.rates, state.rateEscalation);
-  } else {
-    const r = state.rates || {};
-    set('rate-frame',   r.framing);
-    set('rate-hang',    r.hanging);
-    set('rate-burden',  r.burdenPct);
-    set('rate-super',   r.superPct);
-    if (r.finish) {
-      set('rate-fin1', r.finish[1]);
-      set('rate-fin2', r.finish[2]);
-      set('rate-fin3', r.finish[3]);
-      set('rate-fin4', r.finish[4]);
-      set('rate-fin5', r.finish[5]);
-    }
-    set('rate-add12', r.adder12Pct);
-    set('rate-add20', r.adder20Pct);
-    if (r.stud) {
-      set('rate-stud158', r.stud['1-5/8"']);
-      set('rate-stud212', r.stud['2-1/2"']);
-      set('rate-stud358', r.stud['3-5/8"']);
-      set('rate-stud4',   r.stud['4"']);
-      set('rate-stud6',   r.stud['6"']);
-    }
-    if (r.board) {
-      set('rate-brd-std',   r.board['Standard']);
-      set('rate-brd-typex', r.board['Type-X']);
-      set('rate-brd-moist', r.board['Moisture']);
-      set('rate-brd-imp',   r.board['Impact']);
-    }
-    set('rate-tape',     r.tape);
-    set('rate-insul',    r.insul);
-    set('rate-fasten',   r.fasten);
-    set('rate-delivery', r.delivery);
-    set('rate-disposal', r.disposal);
-    set('rate-lift',     r.lift);
+  window.__hydrateIntelligence?.(intel);
 
-    const re = state.rateEscalation || {};
-    if (re.stud) {
-      set('esc-stud158', re.stud['1-5/8"']);
-      set('esc-stud212', re.stud['2-1/2"']);
-      set('esc-stud358', re.stud['3-5/8"']);
-      set('esc-stud4',   re.stud['4"']);
-      set('esc-stud6',   re.stud['6"']);
-    }
-    if (re.board) {
-      set('esc-brd-std',   re.board['Standard']);
-      set('esc-brd-typex', re.board['Type-X']);
-      set('esc-brd-moist', re.board['Moisture']);
-      set('esc-brd-imp',   re.board['Impact']);
-    }
-    set('esc-tape',   re.tape);
-    set('esc-insul',  re.insul);
-    set('esc-fasten', re.fasten);
-    calc(); // refresh rates running totals bar — no-op fallback path only
+  // ── Rates ──
+  const r = state.rates || {};
+  set('rate-frame',   r.framing);
+  set('rate-hang',    r.hanging);
+  set('rate-burden',  r.burdenPct);
+  set('rate-super',   r.superPct);
+  if (r.finish) {
+    set('rate-fin1', r.finish[1]);
+    set('rate-fin2', r.finish[2]);
+    set('rate-fin3', r.finish[3]);
+    set('rate-fin4', r.finish[4]);
+    set('rate-fin5', r.finish[5]);
   }
+  set('rate-add12', r.adder12Pct);
+  set('rate-add20', r.adder20Pct);
+  if (r.stud) {
+    set('rate-stud158', r.stud['1-5/8"']);
+    set('rate-stud212', r.stud['2-1/2"']);
+    set('rate-stud358', r.stud['3-5/8"']);
+    set('rate-stud4',   r.stud['4"']);
+    set('rate-stud6',   r.stud['6"']);
+  }
+  if (r.board) {
+    set('rate-brd-std',   r.board['Standard']);
+    set('rate-brd-typex', r.board['Type-X']);
+    set('rate-brd-moist', r.board['Moisture']);
+    set('rate-brd-imp',   r.board['Impact']);
+  }
+  set('rate-tape',     r.tape);
+  set('rate-insul',    r.insul);
+  set('rate-fasten',   r.fasten);
+  set('rate-delivery', r.delivery);
+  set('rate-disposal', r.disposal);
+  set('rate-lift',     r.lift);
+
+  const re = state.rateEscalation || {};
+  if (re.stud) {
+    set('esc-stud158', re.stud['1-5/8"']);
+    set('esc-stud212', re.stud['2-1/2"']);
+    set('esc-stud358', re.stud['3-5/8"']);
+    set('esc-stud4',   re.stud['4"']);
+    set('esc-stud6',   re.stud['6"']);
+  }
+  if (re.board) {
+    set('esc-brd-std',   re.board['Standard']);
+    set('esc-brd-typex', re.board['Type-X']);
+    set('esc-brd-moist', re.board['Moisture']);
+    set('esc-brd-imp',   re.board['Impact']);
+  }
+  set('esc-tape',   re.tape);
+  set('esc-insul',  re.insul);
+  set('esc-fasten', re.fasten);
+  calc(); // refresh rates running totals bar — also required synchronously, same reason as the writes above
+
+  window.__hydrateRates?.(state.rates, state.rateEscalation);
 
   // ── Markup ──
   const mu = state.markupInputs || {};
