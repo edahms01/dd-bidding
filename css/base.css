@@ -1,0 +1,16 @@
+/* ── BASE — element defaults, typography, resets ──────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;overflow:hidden}
+
+/* Generic form-control resets — the app-wide default for any bare
+   input/select/textarea (body-level fields: Project, GC, dates, notes).
+   Table-scoped inputs get their own smaller override in components.css
+   (td input,td select) — a data table is a distinct density context
+   from a body-level form field, and the two were already different
+   sizes before this pass (13px vs 12px); this keeps that same tiering,
+   just shifted up with the rest of the type scale. */
+input[type=text],input[type=number],input[type=date],select,textarea{font-family:inherit;font-size:14px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;width:100%;outline:none;transition:border-color .12s}
+input[type=text]:focus,input[type=number]:focus,input[type=date]:focus,select:focus,textarea:focus{border-color:var(--border2)}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+select option{background:var(--surface2)}
+textarea{resize:vertical;min-height:80px}
