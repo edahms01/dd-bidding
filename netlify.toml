@@ -1,6 +1,26 @@
 [build]
-  # Static publish, no build step — same as before Phase 3, just now
-  # explicit so `netlify dev` (local) and the deployed site both know
-  # where the app and the functions live.
-  publish   = "."
+  # Preflight test config (Phase A): Vite build stood up, still a vanilla
+  # app (no export-syntax conversion — that's gated on the Preflight
+  # verification result). publish now points at the Vite build output.
+  command   = "vite build"
+  publish   = "dist"
   functions = "netlify/functions"
+
+[build.environment]
+  # Netlify's build image sets NODE_ENV=production, which makes npm skip
+  # devDependencies -- but vite (the build tool itself) IS a
+  # devDependency, so `vite build` couldn't even load its own config.
+  # Reproduced locally (NODE_ENV=production npm ci installs 50 packages,
+  # not 1187, and `vite.config.mjs`'s `import { defineConfig } from
+  # 'vite'` fails to resolve) and confirmed via a real Netlify deploy
+  # preview build (PR #11, first attempt: "Build script returned
+  # non-zero exit code: 2"). This is Netlify's own documented fix for
+  # exactly this situation, not a workaround invented here.
+  NPM_FLAGS = "--include=dev"
+
+[dev]
+  # Without this, Netlify's framework auto-detect picked "npm run test"
+  # as the dev command (misdetected from package.json scripts) instead of
+  # an actual Vite dev server — explicit config avoids that.
+  command    = "npx vite --port 5173"
+  targetPort = 5173
