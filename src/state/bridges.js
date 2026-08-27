@@ -21,9 +21,13 @@ export function registerBridges(dispatch) {
   // ── Tab routing — replaces js/tabs.js's goto() ──
   // Preserves goto()'s exact per-tab side effects, minus the 'rates'
   // case (RatesPage now handles its own on-become-active side effects,
-  // e.g. loading the rate-template list, via its own effect).
+  // e.g. loading the rate-template list, via its own effect). The
+  // 'history' branch dispatches directly now rather than calling a
+  // separate window.showHistory — see the A2 cleanup-pass note below
+  // for why that standalone bridge (and window.showDashboard/
+  // toggleNav) is gone.
   window.goto = function goto(id) {
-    if (id === 'history') { window.showHistory(); return; }
+    if (id === 'history') { _dispatch({ type: 'GOTO_SECTION', section: 'history' }); return; }
     _dispatch({ type: 'GOTO_TAB', id });
     // Legacy side effects for still-vanilla pages — unchanged targets,
     // just no longer routed through goto()'s own class-toggling.
@@ -34,32 +38,17 @@ export function registerBridges(dispatch) {
     if (id === 'agent') window.renderAgentTab?.();
   };
 
-  // ── Left-nav section switches — replace js/tabs.js's showHistory()/
-  // showDashboard(). Neither calls its old legacy render function any
-  // more — HistoryPage/DashboardPage are real React components that
-  // fetch/read their own data via their own becomes-active effect (see
-  // each page's own file). window.renderDashboard() (js/ui.js) is now
-  // fully dead, same status renderHistory() already had.
-  window.showHistory = function showHistory() {
-    _dispatch({ type: 'GOTO_SECTION', section: 'history' });
-  };
-
-  window.showDashboard = function showDashboard() {
-    _dispatch({ type: 'GOTO_SECTION', section: 'dashboard' });
-  };
-
-  // ── Nav collapse toggle — replaces js/tabs.js's toggleNav(). Keeps
-  // the exact same localStorage key/persistence behavior.
-  window.toggleNav = function toggleNav() {
-    // Read current value off the DOM class rather than plumbing state
-    // back out of this module — AppShell renders navCollapsed from
-    // state, so toggling is just "set to the opposite of what's
-    // currently rendered." Cheap and avoids a second source of truth.
-    const nav = document.getElementById('app-leftnav');
-    const collapsed = !nav.classList.contains('collapsed');
-    localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
-    _dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
-  };
+  // ── A2 cleanup pass: window.showHistory()/showDashboard()/toggleNav()
+  // (which used to replace js/tabs.js's same-named functions) are gone.
+  // Once every page converted, their only remaining callers were
+  // AppShell's own onClick handlers — no classic-script consumer left at
+  // all (unlike window.goto above, still called by js/forms.js's
+  // switchToDraft()/createDraft() as a bare identifier) — so AppShell
+  // dispatches GOTO_SECTION/SET_NAV_COLLAPSED directly instead of
+  // through a bridge that existed only for AppShell to call itself
+  // through. js/tabs.js's own goto/showHistory/showDashboard/toggleNav
+  // were already dead (shadowed) before this; nothing additional to
+  // update there.
 
   // ── Rates hydration — replaces js/forms.js's populateForm()/
   // applyRateTemplate() direct DOM set(id, val) writes for the Rates
@@ -133,24 +122,27 @@ export function registerBridges(dispatch) {
   // submitBid() runs.
   window.__setSubmitResult = (result) => _dispatch({ type: 'SET_SUBMIT_RESULT', result });
 
-  // ── Finalize modal — replaces js/ui.js's _showFinalizeModal()/
-  // _closeFinalizeModal(). The modal is a real shell-owned component now
-  // (FinalizeModal.jsx, rendered by AppShell) — these overwrite the
-  // classic-script function declarations of the same name, same
-  // shadowing mechanism window.goto already relies on, so every existing
-  // caller keeps working unmodified: Agent's still-classic-script
-  // "Finalize bid →" button (onclick="_showFinalizeModal(_lastAgentResult
-  // ?.options||[])"), OutputPage's "Try again" button (already ported,
-  // uses window.__getLastAgentResult()), and js/ui.js's own
-  // document.addEventListener('keydown', ...) Escape handler (a bare
-  // identifier reference to _closeFinalizeModal, resolved at call time —
-  // it picks up this overwritten definition automatically).
-  // _initFinalizeModal()/_modalSelectRow()/_modalCustomInput()/
-  // _finalizeBid() are now fully dead — FinalizeModal.jsx doesn't call
-  // any of them, and nothing else does either (verified: grepped every
-  // call site before converting, per the accessor-audit discipline —
-  // see CLAUDE.md).
-  window._showFinalizeModal = (options) => _dispatch({ type: 'OPEN_FINALIZE_MODAL', options });
+  // ── Finalize modal close — replaces js/ui.js's _closeFinalizeModal().
+  // The modal is a real shell-owned component now (FinalizeModal.jsx,
+  // rendered by AppShell), which dispatches CLOSE_FINALIZE_MODAL
+  // directly for its own Cancel/×/overlay-click handlers — this bridge
+  // overwrites the classic-script function declaration of the same
+  // name (shadowing, same mechanism window.goto relies on) purely so
+  // js/ui.js's own document.addEventListener('keydown', ...) Escape
+  // handler keeps working: it calls _closeFinalizeModal as a bare
+  // identifier, resolved at call time, so it picks up this overwritten
+  // definition automatically. That keydown listener is the *only*
+  // remaining consumer — a genuine classic-script one, unlike
+  // window._showFinalizeModal (below, now gone) or
+  // window.__getLastAgentResult (js/ui.js, now gone), which had none
+  // left once Agent/Output converted; only AgentPage.jsx's/
+  // OutputPage.jsx's own onClick handlers called those, so they dispatch
+  // OPEN_FINALIZE_MODAL directly and read state.ui.agent.cachedResult
+  // (already the same value _lastAgentResult held) instead now.
+  // _initFinalizeModal()/_showFinalizeModal()/_modalSelectRow()/
+  // _modalCustomInput()/_finalizeBid() are all fully dead — nothing
+  // calls any of them (verified: grepped every call site before
+  // converting, per the accessor-audit discipline — see CLAUDE.md).
   window._closeFinalizeModal = () => _dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
 
   // ── Agent tab rendering — replaces js/ui.js's renderAgentTab()/

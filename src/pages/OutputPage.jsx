@@ -167,7 +167,7 @@ function Phase4({ output }) {
   );
 }
 
-function SubmitResultPanel({ result }) {
+function SubmitResultPanel({ result, agentOptions, dispatch }) {
   if (result.status === 'error') {
     return (
       <div className="section-block">
@@ -177,7 +177,13 @@ function SubmitResultPanel({ result }) {
           <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
             Nothing was saved — your draft is unchanged. Check your connection and try again.
           </div>
-          <button className="btn btn-primary" onClick={() => window._showFinalizeModal?.(window.__getLastAgentResult?.()?.options || [])}>Try again</button>
+          {/* A2 cleanup pass: dispatches OPEN_FINALIZE_MODAL directly —
+              window._showFinalizeModal/window.__getLastAgentResult are
+              gone, no remaining classic-script consumer once Agent/
+              Output converted (see bridges.js); agentOptions is
+              state.ui.agent.cachedResult?.options, the same value
+              _lastAgentResult?.options held. */}
+          <button className="btn btn-primary" onClick={() => dispatch({ type: 'OPEN_FINALIZE_MODAL', options: agentOptions || [] })}>Try again</button>
         </div>
       </div>
     );
@@ -200,7 +206,7 @@ function SubmitResultPanel({ result }) {
 
 export default function OutputPage({ active }) {
   const [state, dispatch] = useStore();
-  const { output, submitResult } = state.ui;
+  const { output, submitResult, agent } = state.ui;
   const mu = state.bid.markupInputs;
 
   const setMarkup = (field, value) => dispatch({ type: 'SET_FIELD', path: ['bid', 'markupInputs', field], value });
@@ -246,7 +252,7 @@ export default function OutputPage({ active }) {
       </div>
 
       <div id="output-bid">
-        {submitResult ? <SubmitResultPanel result={submitResult} /> : (output ? <Phase4 output={output} /> : null)}
+        {submitResult ? <SubmitResultPanel result={submitResult} agentOptions={agent.cachedResult?.options} dispatch={dispatch} /> : (output ? <Phase4 output={output} /> : null)}
       </div>
     </div>
   );

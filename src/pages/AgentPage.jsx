@@ -62,7 +62,7 @@ function WinLikelihoodPill({ val }) {
   return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '—'}</span>;
 }
 
-function Header() {
+function Header({ options, dispatch }) {
   return (
     <div className="page-hdr">
       <div>
@@ -71,7 +71,13 @@ function Header() {
       </div>
       <div className="page-actions">
         <button className="btn btn-ghost" onClick={() => window.goto('output')}>← Back</button>
-        <button id="agent-finalize-btn" className="btn btn-primary" onClick={() => window._showFinalizeModal(window.__getLastAgentResult?.()?.options || [])}>Finalize bid →</button>
+        {/* A2 cleanup pass: dispatches OPEN_FINALIZE_MODAL directly —
+            window._showFinalizeModal/window.__getLastAgentResult are
+            gone, they had no remaining classic-script consumer once
+            Agent/Output converted (see bridges.js), and options is
+            already available here as a prop (state.ui.agent.cachedResult
+            — the same value _lastAgentResult held). */}
+        <button id="agent-finalize-btn" className="btn btn-primary" onClick={() => dispatch({ type: 'OPEN_FINALIZE_MODAL', options: options || [] })}>Finalize bid →</button>
       </div>
     </div>
   );
@@ -107,7 +113,7 @@ function OptionCard({ opt, isSelected, dispatch }) {
 function AgentResult({ r, selectedOption, historyUnavailable, dispatch }) {
   return (
     <>
-      <Header />
+      <Header options={r.options} dispatch={dispatch} />
       {historyUnavailable && (
         <div style={{ background: 'rgba(232,124,42,.08)', border: '1px solid rgba(232,124,42,.3)', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 20, fontSize: 12, color: 'var(--accent)' }}>
           Historical bid data unavailable — recommendation based on this bid only.
@@ -206,7 +212,7 @@ export default function AgentPage({ active }) {
   } else if (loading) {
     body = (
       <>
-        <Header />
+        <Header options={[]} dispatch={dispatch} />
         <div style={{ textAlign: 'center', padding: '60px 24px' }}>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 6 }}>Agent is analyzing your bid…</div>
           <div style={{ fontSize: 11, color: 'var(--text3)' }}>This takes a few seconds.</div>
@@ -216,7 +222,7 @@ export default function AgentPage({ active }) {
   } else {
     body = (
       <>
-        <Header />
+        <Header options={[]} dispatch={dispatch} />
         <div className="empty-state">Complete your bid setup and click "Generate bid output →" on Tab 6 to get the agent's recommendation.</div>
       </>
     );

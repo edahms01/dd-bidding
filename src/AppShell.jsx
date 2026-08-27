@@ -105,7 +105,21 @@ export default function AppShell() {
       </header>
 
       <div className="app-layout">
-        <nav className="leftnav" id="app-leftnav">
+        {/* A2 cleanup pass: dispatches directly instead of going through
+            window.showHistory()/showDashboard()/toggleNav() (bridges.js)
+            — those bridges had no remaining classic-script consumer once
+            every page converted, only this component's own onClick
+            handlers, so the indirection was removed along with them
+            (see CLAUDE.md). Fixed a real, pre-existing bug found while
+            doing this: className was hardcoded to "leftnav", never
+            conditionally including "collapsed" — toggleNav() correctly
+            flipped navCollapsed (the labels/toggle-icon always updated),
+            but the sidebar's own width (.leftnav.collapsed, css/
+            components.css) never actually changed, because nothing ever
+            put the class on this element. Reproduced directly (toggled,
+            read getComputedStyle(nav).width, it never changed) before
+            fixing. */}
+        <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '')} id="app-leftnav">
           <div className="nav-items">
             <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => window.createDraft?.()} title="New Bid">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -117,7 +131,7 @@ export default function AppShell() {
               {!navCollapsed && <span className="nav-label">New Bid</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'history' ? ' active' : '')} data-nav="history" onClick={() => window.showHistory()} title="Bid History">
+            <div className={'nav-item' + (activeSection === 'history' ? ' active' : '')} data-nav="history" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'history' })} title="Bid History">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="8" cy="8" r="6" />
                 <polyline points="8 5 8 8.5 10.5 10.5" />
@@ -125,7 +139,7 @@ export default function AppShell() {
               {!navCollapsed && <span className="nav-label">Bid History</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'dashboard' ? ' active' : '')} data-nav="dashboard" onClick={() => window.showDashboard()} title="Dashboard">
+            <div className={'nav-item' + (activeSection === 'dashboard' ? ' active' : '')} data-nav="dashboard" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'dashboard' })} title="Dashboard">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="2" width="5" height="5" rx="1" />
                 <rect x="9" y="2" width="5" height="5" rx="1" />
@@ -144,7 +158,11 @@ export default function AppShell() {
             </div>
           </div>
 
-          <button className="nav-toggle" onClick={() => window.toggleNav()}>
+          <button className="nav-toggle" onClick={() => {
+            const collapsed = !navCollapsed;
+            localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
+            dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
+          }}>
             <span id="nav-toggle-icon">
               {navCollapsed ? (
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>

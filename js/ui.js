@@ -16,21 +16,19 @@ let _lastCalcSum       = null;
 let _lastCalcMarkup    = null;
 let _selectedBidOption = 'recommended';
 let _lastAgentResult   = null;
-// A2: OutputPage.jsx's submit-failure panel needs this for its "Try
-// again" button — same gap class as js/forms.js's
-// window.__getHasUnsavedChanges: a top-level `let` doesn't become a
-// `window` property in a classic script, and a React onClick handler
-// (module scope) can't see it via bare identifier lookup either, unlike
-// the original inline onclick="..." attribute this button used to be
-// (classic-script global scope resolves bare `_lastAgentResult` fine;
-// window._lastAgentResult from a module does not — it's silently
-// undefined forever without this accessor). Guarded the same way as
-// this file's addEventListener('keydown', ...) below — tests/unit/
-// ui.test.js imports this module under Vitest's plain 'node'
-// environment (no window at all) specifically to test escapeHtml().
-if (typeof window !== 'undefined') {
-  window.__getLastAgentResult = () => _lastAgentResult;
-}
+// A2 cleanup pass: window.__getLastAgentResult (the accessor
+// OutputPage.jsx's/AgentPage.jsx's "Try again"/"Finalize bid" buttons
+// used to call, for the same reason js/forms.js's
+// window.__getHasUnsavedChanges exists — a top-level `let` isn't a
+// `window` property, and a React onClick can't see it via bare
+// identifier lookup the way the original inline onclick="..." could)
+// is gone now. Once both buttons live in React, the value they needed
+// (this variable, mirrored into the reducer every time renderAgentTab()
+// /_renderAgentResult() dispatch — see window.__renderAgentTab,
+// bridges.js) is already sitting in state.ui.agent.cachedResult, read
+// directly there instead. Unlike window.__getHasUnsavedChanges (still
+// needed — hasUnsavedChanges has no reducer-state twin), this one had
+// become a redundant second way to read a value React already had.
 
 // Phase 3: set only when getHistorySummary() (a network call now) rejects
 // during an agent run — distinct from the pre-existing, legitimate case
@@ -942,11 +940,12 @@ function _renderAgentTabLegacy() {
 }
 
 function _renderAgentResult(page, r) {
-  // Always do this, regardless of render path below — other
-  // classic-script code (Agent's still-classic "Finalize bid →" button
-  // reading _lastAgentResult inline, window.__getLastAgentResult())
-  // depends on this being the real, current cache, not just a rendering
-  // concern.
+  // Always do this, regardless of render path below — the legacy
+  // fallback branch (only reachable pre-mount/under Vitest) still reads
+  // this bare identifier for its own "Finalize bid →" button, so it has
+  // to stay correct even though the live browser path no longer depends
+  // on it as a rendering concern (AgentPage.jsx reads
+  // state.ui.agent.cachedResult instead — see bridges.js).
   _lastAgentResult   = r;
 
   // A2: bridge to AgentPage.jsx — see renderAgentTab()'s comment above.
