@@ -4,12 +4,21 @@
 // placeholder — the real content always came from js/ui.js's
 // renderAgentTab()/_renderAgentResult() innerHTML writes).
 //
-// Step 3 of the Agent conversion (see CLAUDE.md) — the caching
-// mechanism and the page structure, not the presentation rework.
+// Step 4 of the Agent conversion (see CLAUDE.md) applied the neutral-
+// card/win-likelihood-pill treatment on top of step 3's structure —
 // OPT_COLORS (competitive/recommended/ambitious-specific card colors)
-// is kept exactly as today, deliberately — the neutral-card/win-
-// likelihood-pill treatment already decided in the UX record is step
-// 4's job, on top of this, not bundled in here.
+// is gone. The three options are choices, not statuses: cards are
+// visually neutral by default (var(--surface)/var(--border), the same
+// values OPT_COLORS' own fallback already used for an unrecognized
+// type), selection state is var(--action-dim)/var(--action-border) —
+// consistent with FinalizeModal.jsx's .bid-option-row.selected (already
+// action-blue since A1's token work, css/components.css). The
+// "Agent pick" badge is neutral now too (a category label, not a
+// status) — the same treatment StatusPill's own "Neutral" variant
+// already uses on this page. Win-likelihood color is the one thing
+// that stays: it's a genuine status (how likely this option is to
+// win), not a category, so WinLikelihoodPill/WIN_LIKELIHOOD_STYLES are
+// untouched from step 3.
 //
 // Renders directly from state.ui.agent, which js/ui.js's
 // renderAgentTab()/_renderAgentResult() dispatch into via
@@ -28,12 +37,6 @@
 import { useStore } from '../state/store.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
-
-const OPT_COLORS = {
-  competitive: { color: 'var(--blue)', bg: 'rgba(74,143,232,.08)', border: 'rgba(74,143,232,.25)' },
-  recommended: { color: 'var(--green)', bg: 'rgba(58,191,122,.08)', border: 'rgba(58,191,122,.3)' },
-  ambitious: { color: 'var(--accent)', bg: 'rgba(232,124,42,.06)', border: 'rgba(232,124,42,.25)' }
-};
 
 function StatusPill({ status }) {
   if (status === 'positive') return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: 'rgba(58,191,122,.1)', border: '1px solid rgba(58,191,122,.25)', color: 'var(--green)' }}>Positive</span>;
@@ -75,23 +78,22 @@ function Header() {
 }
 
 function OptionCard({ opt, isSelected, dispatch }) {
-  const oc = OPT_COLORS[opt.type] || { color: 'var(--text)', bg: 'var(--surface)', border: 'var(--border)' };
   const isRec = opt.type === 'recommended';
   return (
     <div
       data-bid-opt={opt.type}
       onClick={() => dispatch({ type: 'SELECT_AGENT_OPTION', option: opt.type })}
       style={{
-        flex: 1, background: isSelected ? 'var(--accent-dim)' : oc.bg,
-        border: '1px solid ' + (isSelected ? 'var(--accent-border)' : oc.border),
+        flex: 1, background: isSelected ? 'var(--action-dim)' : 'var(--surface)',
+        border: '1px solid ' + (isSelected ? 'var(--action-border)' : 'var(--border)'),
         borderRadius: 'var(--rl)', padding: '18px 16px', cursor: 'pointer', position: 'relative', transition: 'all .15s'
       }}
     >
       {isRec && (
-        <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(58,191,122,.12)', border: '1px solid rgba(58,191,122,.3)', color: 'var(--green)', letterSpacing: '.03em' }}>Agent pick</span>
+        <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)', letterSpacing: '.03em' }}>Agent pick</span>
       )}
-      <div style={{ fontSize: 10, fontWeight: 700, color: oc.color, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
-      <div style={{ fontFamily: 'monospace', fontSize: 26, fontWeight: 700, color: oc.color, lineHeight: 1, marginBottom: 3 }}>{fmtCost(opt.bidAmount)}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
+      <div style={{ fontFamily: 'monospace', fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1, marginBottom: 3 }}>{fmtCost(opt.bidAmount)}</div>
       <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>{opt.margin}% margin</div>
       <div>
         <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>WIN LIKELIHOOD</div>
