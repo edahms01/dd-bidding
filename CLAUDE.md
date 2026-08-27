@@ -32,6 +32,8 @@ Order matters — later files call functions defined in earlier ones via plain g
 
 `netlify.toml` now has an explicit `[build]` block (`command = "vite build"`, `publish = "dist"`, `functions = "netlify/functions"`) and an explicit `[dev]` block (`command = "npx vite --port 5173"`, `targetPort = 5173`) — without the `[dev]` block, Netlify's framework auto-detection misreads `package.json`'s scripts and tries to run `npm run test` as the dev command instead of starting Vite. Both blocks are load-bearing, not stylistic.
 
+`[build.environment]` sets `NPM_FLAGS = "--include=dev"` — **load-bearing, do not remove.** Netlify's build image sets `NODE_ENV=production`, which makes `npm ci` skip devDependencies, but `vite` (the build tool) is one. Without this flag, production and every deploy preview fail to build at all (confirmed: this took down the first real deploy-preview build attempt for this exact reason). Rollback path, verified: reverting the merge commit that introduced this config (`git revert -m 1 <merge-sha>`) restores `publish = "."` with no build command — the pre-Phase-A production config — with a clean, empty diff against the last commit before that merge. Confirmed by diffing, not just asserted.
+
 ## Testing conventions
 
 - `tests/e2e/helpers.js` exports `clearAll(page)`/`loadSeed(page)` — always use these, never a bare `page.click('button:has-text("Clear all data")')`, since `clearSeedData()` is an async fetch-then-reload and a bare click races ahead of the reload.
@@ -44,6 +46,7 @@ Order matters — later files call functions defined in earlier ones via plain g
 - **Finalize failure panel renders on the wrong tab.** `submitBid()`'s failure panel targets `#output-bid` (Tab 7), but `_finalizeBid()`'s modal (where the user is actually looking) is open on Tab 8. Known, documented in a code comment at the failure's `catch` block in `js/ui.js`. Fix is scoped to Phase E (5.6) of the migration roadmap, not sooner.
 - Inline-`onclick`-with-interpolated-data is a JS-string-context injection distinct from `innerHTML` escaping (HTML entity-decoding happens before inline-handler JS runs) — `escapeHtml()` doesn't protect this path. See comment at `js/ui.js` near `escapeHtml()`.
 - Legacy `cost_variance` null-handling on records predating the split labor/material actual-cost fields.
+- **`vite` should move from `devDependencies` to `dependencies`.** `NPM_FLAGS = "--include=dev"` (see Netlify config above) is required today because `vite` is a devDependency and the build tool itself, but it also installs Playwright and Vitest into every production build — wasted install time for tooling the build never uses. Tidier fix: move `vite` alone to `dependencies`, which would make `NPM_FLAGS` unnecessary. Not worth touching a verified-green build config for on its own — filed against Phase A1, do alongside that work rather than as a standalone change.
 
 ## Phase A: React migration + design system (in progress)
 
