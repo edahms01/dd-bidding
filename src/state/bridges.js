@@ -133,6 +133,26 @@ export function registerBridges(dispatch) {
   // always targeted, regardless of which tab is actually active when
   // submitBid() runs.
   window.__setSubmitResult = (result) => _dispatch({ type: 'SET_SUBMIT_RESULT', result });
+
+  // ── Finalize modal — replaces js/ui.js's _showFinalizeModal()/
+  // _closeFinalizeModal(). The modal is a real shell-owned component now
+  // (FinalizeModal.jsx, rendered by AppShell) — these overwrite the
+  // classic-script function declarations of the same name, same
+  // shadowing mechanism window.goto already relies on, so every existing
+  // caller keeps working unmodified: Agent's still-classic-script
+  // "Finalize bid →" button (onclick="_showFinalizeModal(_lastAgentResult
+  // ?.options||[])"), OutputPage's "Try again" button (already ported,
+  // uses window.__getLastAgentResult()), and js/ui.js's own
+  // document.addEventListener('keydown', ...) Escape handler (a bare
+  // identifier reference to _closeFinalizeModal, resolved at call time —
+  // it picks up this overwritten definition automatically).
+  // _initFinalizeModal()/_modalSelectRow()/_modalCustomInput()/
+  // _finalizeBid() are now fully dead — FinalizeModal.jsx doesn't call
+  // any of them, and nothing else does either (verified: grepped every
+  // call site before converting, per the accessor-audit discipline —
+  // see CLAUDE.md).
+  window._showFinalizeModal = (options) => _dispatch({ type: 'OPEN_FINALIZE_MODAL', options });
+  window._closeFinalizeModal = () => _dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
 }
 
 // ── Confidence read accessor ──

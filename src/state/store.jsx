@@ -100,7 +100,27 @@ export const initialState = {
     // resetFormFields()'s own documented behavior of leaving Tab 7/8
     // alone on a fresh draft, since goto('output') already unconditionally
     // recalculates (and this clears) on every visit to that tab.
-    submitResult: null
+    submitResult: null,
+    // Shell-owned now (AppShell renders it, always mounted like every
+    // other page — see FinalizeModal.jsx), reachable from both Tab 7
+    // (OutputPage's "Try again") and Tab 8 (Agent's "Finalize bid →",
+    // still classic-script markup until Agent converts) via the
+    // window._showFinalizeModal bridge. `open` drives the same CSS
+    // .open-class-toggle the original modal-overlay always used
+    // (opacity/transform transitions keyed off that class) — the modal
+    // stays mounted at all times, never conditionally rendered, or the
+    // fade/slide-in transition would have nothing to animate from.
+    // `selected` always resets to 'recommended' on open, matching
+    // _showFinalizeModal()'s original unconditional _modalSelectRow(
+    // recRow) call — never carries over from a previous open.
+    finalizeModal: {
+      open: false,
+      options: [],
+      selected: 'recommended',
+      customAmount: '',
+      isSubmitting: false,
+      error: null
+    }
   },
   bid: {
     project: {
@@ -379,6 +399,50 @@ export function reducer(state, action) {
       // replaces its old direct #output-bid.innerHTML writes for the
       // post-finalize success/failure panel.
       return { ...state, ui: { ...state.ui, submitResult: action.result } };
+    case 'OPEN_FINALIZE_MODAL':
+      // Bridge target for window._showFinalizeModal(options) — replaces
+      // _showFinalizeModal()'s old body.innerHTML rebuild + _initFinalizeModal
+      // ()'s lazy-create. Always resets selected/customAmount/isSubmitting/
+      // error, matching the original's unconditional _modalSelectRow(recRow)
+      // call on every open — never carries stale state from a previous open.
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          finalizeModal: {
+            open: true, options: action.options || [], selected: 'recommended',
+            customAmount: '', isSubmitting: false, error: null
+          }
+        }
+      };
+    case 'CLOSE_FINALIZE_MODAL':
+      // Bridge target for window._closeFinalizeModal() — replaces the
+      // original's el.classList.remove('open'). Still needed as a real
+      // bridge (not just dispatched directly from FinalizeModal.jsx)
+      // because the Escape-key listener (js/ui.js) calls it as a bare
+      // classic-script identifier reference, same mechanism window.goto
+      // already relies on for its own shadowing.
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, open: false } } };
+    case 'SELECT_FINALIZE_OPTION':
+      // Replaces _modalSelectRow()'s DOM class/checked/disabled writes —
+      // FinalizeModal.jsx derives all of that from `selected` at render
+      // time instead (className, radio `checked`, confirm-button
+      // `disabled`, the custom-amount wrap's visibility).
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, selected: action.option } } };
+    case 'SET_FINALIZE_CUSTOM_AMOUNT':
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, customAmount: action.value } } };
+    case 'SET_FINALIZE_SUBMITTING':
+      // Replaces _finalizeBid()'s confirmBtn.disabled = true/false direct
+      // writes — the double-submit guard. Dispatched synchronously, before
+      // any await, same as the original — see FinalizeModal.jsx's
+      // handleConfirm() and CLAUDE.md's checklist for the timing
+      // verification (no flushSync needed here: a synchronous dispatch
+      // inside a click handler, before its first await, commits before
+      // the browser's next paint under React 18's batching, the same
+      // guarantee the original direct write relied on).
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, isSubmitting: action.value } } };
+    case 'SET_FINALIZE_ERROR':
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, error: action.error } } };
     default:
       return state;
   }

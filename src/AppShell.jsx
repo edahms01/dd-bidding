@@ -26,6 +26,7 @@ import WallsPage from './pages/WallsPage.jsx';
 import CeilingsPage from './pages/CeilingsPage.jsx';
 import OutputPage from './pages/OutputPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
+import FinalizeModal from './pages/FinalizeModal.jsx';
 
 const WORKFLOW_TABS = [
   { id: 'project',     num: 1, label: 'Project' },
@@ -71,6 +72,7 @@ export default function AppShell() {
   }, []);
 
   return (
+    <Fragment>
     <div className="shell">
       <header className="header">
         <div className="logo-mark">
@@ -189,5 +191,7 @@ export default function AppShell() {
         </div>
       </div>
     </div>
+    <FinalizeModal />
+    </Fragment>
   );
 }
