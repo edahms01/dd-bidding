@@ -24,9 +24,34 @@ Order matters — later files call functions defined in earlier ones via plain g
 
 **Vite** is standing up production build tooling (`vite.config.mjs`), landed as part of the Phase A React migration's Preflight work — **the app itself is still fully vanilla; only the build pipeline changed.** `package.json`'s `"type": "commonjs"` is deliberately unchanged (Netlify Functions and the classic script tags both depend on that; see `docs/preflight-report.md` for why `type="module"` isn't compatible with this app as structured).
 
-**`vite.config.mjs` has one non-obvious plugin** (`copy-classic-script-sources`): `vite build` refuses to bundle classic `<script src>` tags *and* silently omits the files they reference from `dist/` — a plain `vite build` here produces a build that looks successful but 404s on every `js/*.js` file at runtime. The plugin copies `js/` and `data/` into `dist/` after build, with a build-time assertion that fails loudly if any expected file goes missing. **This plugin must be deleted once Phase A's React migration (A2) converts `js/*.js` to real bundled module imports** — at that point it would start shipping untransformed duplicate files alongside the bundled output, silently. Tracked as an explicit A2 checklist item in `docs/phase-a-implementation-plan.md`.
+**`vite.config.mjs` has one non-obvious plugin** (`copy-classic-script-sources`): `vite build` refuses to bundle classic `<script src>` tags *and* silently omits the files they reference from `dist/` — a plain `vite build` here produces a build that looks successful but 404s on every `js/*.js` file at runtime. The plugin copies `js/` and `data/` into `dist/` after build, with a build-time assertion that fails loudly if any expected file goes missing. **This plugin must be deleted once Phase A's React migration (A2) converts `js/*.js` to real bundled module imports** — at that point it would start shipping untransformed duplicate files alongside the bundled output, silently. Tracked as an explicit A2 checklist item (see Phase A section below for where the authoritative plan lives).
 
 `npm test` = Vitest (`vitest.config.mjs`, `environment: 'node'`, `tests/unit/**/*.test.js`). `npm run test:e2e` = Playwright (`playwright.config.mjs`, `tests/e2e/`, single worker — bid history lives in one shared Netlify Blobs store, `fullyParallel: false` because specs share `localStorage`).
+
+## CSS architecture (A1)
+
+`css/styles.css` is now a thin 6-line `@import` aggregator — `index.html`'s `<link>` still points at it unchanged, so the real content lives one level down, imported in this order:
+
+```
+tokens.css      :root only — no selectors. Raw color primitives (--accent, --blue, --teal,
+                --green, --danger) plus semantic aliases (--action = --blue, --status-warn =
+                --accent) layered on top. Usage sites reference the semantic name, not the raw
+                color — --accent/--blue as bare values should not appear in new component CSS.
+base.css        universal reset + bare-element form-control resets only (input[type=...], select,
+                textarea). No custom class names belong here.
+components.css  every class-named reusable UI used on ≥2 pages: shell/header/tabs/page-scaffold,
+                buttons, autosave-indicator, .field/.lbl, grids, section-block, pills, generic
+                table/th/td/del-btn/add-row-btn/calc-cell, totals-bar (Rates + Output share it),
+                left-nav, the finalize modal (incl. bid-option-*), demo-controls
+pages.css       genuinely single-page classes only: the Conditions-flags block and the entire
+                Rates block (rgroup/rcard/badges/ftable/stud-card/adder-row/etc.)
+responsive.css  empty stub — Phase D
+print.css       empty stub — Phase G
+```
+
+**Color split (A1)**: blue (`--action`) is the one color for primary action / active-interactive-state / focus. Orange (`--status-warn`) is retained for status/category signals only — never on an interactive element. One deliberate, explicit exception left alone in A1: the agent-recommendation cards' `OPT_COLORS` map (`js/ui.js`, inside `_renderAgentResult()`) still uses the old orange/blue/green-per-option scheme untouched — that render block is being deleted wholesale in the A2 React migration, so restyling it now would be done twice. Don't "fix" it before A2 gets there; see the approved plan for the intended A2 treatment (neutral cards, color only on the win-likelihood pill).
+
+**Type scale (A1)**: body 14px, table cells 13px (including CSS-Grid-based pseudo-table cells like `.calc-cell`/`.flvl` — the tier is about the content being dense tabular numbers, not the HTML tag rendering it), hints 12px, labels 11px, nothing below 11px. `.tab .tnum` (the small numeric tab-index badge) is treated as labels-tier despite not carrying `text-transform:uppercase` — it's a chip, not prose.
 
 ## Netlify config
 
@@ -52,7 +77,7 @@ Order matters — later files call functions defined in earlier ones via plain g
 
 The rendering split described above (static-markup pages vs. `innerHTML`-replace pages) is being replaced with React, because several approved upcoming features (a persistent totals rail, reactive calculation, a live price slider, live step-completion indicators) need to update *while the user is typing* — the current `innerHTML`-replace pattern destroys and recreates focused inputs on every render.
 
-- **Plan**: `docs/phase-a-implementation-plan.md` — the full approved execution plan (PR A1/A2 split, state model, migration sequencing, escalation triggers).
+- **Plan**: the full approved execution plan (PR A1/A2 split, state model, migration sequencing, escalation triggers) is a Claude Code plan-mode artifact, not committed to this repo — ask Eric for the current copy if picking this up without it in context. `docs/a1-brief.md` is the operative, repo-committed brief for A1 specifically and supersedes the original `phase-a-brief.md` (not committed — superseded before it was ever added here).
 - **Reports**: `docs/preflight-report.md` (build-tooling boot-compatibility verification, mutation-tested against the real parity harness) and `docs/step-0-coverage-report.md` (test coverage gaps, now closed).
-- **Source docs** (`phase-a-brief.md`, `dirigo-ux-decisions.md` — the full UX decision record for Phases A–G) are pending commit into `docs/`; currently only in a local Downloads folder. Anyone picking this up cold should ask for them if they're not yet in the repo.
-- **Current state**: Preflight + Step 0 complete on the `phase-a-preflight` branch, pending a verified Netlify deploy preview before merge to `main` (this branch changes production build/publish settings — see `netlify.toml`). A1 (tooling/tokens, still vanilla JS) not yet started.
+- **`docs/dirigo-ux-decisions.md`** (the full UX decision record for Phases A–G, including §9.8 known defects / §9.9 Preflight outcome / the A2.5 phase) is **not yet committed** — pending the canonical current copy from Eric. Do not reconstruct it from an older reference if one turns up locally; ask for the current version.
+- **Current state**: Preflight + Step 0 merged to `main`. A1 (CSS layering, color tokens, type scale, numeric typography, demo-controls restyle — see CSS architecture section above) drafted and verified on branch `a1-tooling-tokens`, not yet merged. Zero React, zero module-export changes in A1 — both remain A2 work.

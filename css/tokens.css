@@ -1,0 +1,30 @@
+/* ── DESIGN TOKENS ──────────────────────────────────────────────────
+   No selectors here — only custom properties. See CLAUDE.md for the
+   colour-split rationale (blue = action, orange = status-only) and
+   docs/dirigo-ux-decisions.md §6.2/§9.6 for the design decision record. */
+:root{
+  --bg:#0f1117;--surface:#181c25;--surface2:#1e2330;
+  --border:#2a2f3d;--border2:#353b4d;
+  --text:#e8eaf0;--text2:#8b90a0;--text3:#555a6b;
+
+  /* Raw colour primitives */
+  --accent:#e87c2a;--accent-dim:rgba(232,124,42,0.12);--accent-border:rgba(232,124,42,0.35);
+  --teal:#2ab5a0;--teal-dim:rgba(42,181,160,0.1);
+  --blue:#4a8fe8;--blue-dim:rgba(74,143,232,0.1);
+  --green:#3abf7a;
+  --danger:#e85c4a;--danger-dim:rgba(232,92,74,0.12);--danger-border:rgba(232,92,74,0.3);
+
+  /* Semantic tokens — the colour split (A1). --action is the one colour
+     for primary action / active-interactive-state / focus, everywhere.
+     --status-warn is orange, retained for status/category signals
+     only — it must never appear on an interactive element. --blue's
+     own pre-existing minimal role (Material rate-group icon, .b-sf
+     badge) is untouched and coexists with --action deliberately —
+     that overlap predates this split and is out of this phase's scope.
+     One deliberate exception this phase leaves alone: the agent-card
+     OPT_COLORS map in js/ui.js, deferred to A2 (see CLAUDE.md). */
+  --action:var(--blue);--action-dim:var(--blue-dim);--action-border:rgba(74,143,232,0.35);
+  --status-warn:var(--accent);--status-warn-dim:var(--accent-dim);--status-warn-border:var(--accent-border);
+
+  --r:8px;--rl:12px;
+}

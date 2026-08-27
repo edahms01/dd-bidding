@@ -123,10 +123,10 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
     return `<tr>
       <td>${escapeHtml(r.location) || '—'}</td>
       <td style="color:var(--text2)">${escapeHtml(r.typeId)}${r.layers > 1 ? ' ×' + r.layers : ''}</td>
-      <td style="font-family:monospace;color:var(--text2)">${qty}</td>
-      <td style="font-family:monospace">${fmtCost(r.laborTotal)}</td>
-      <td style="font-family:monospace">${fmtCost(r.materialTotal)}</td>
-      <td style="font-family:monospace;font-weight:600">${fmtCost(r.total)}</td>
+      <td style="font-variant-numeric:tabular-nums;color:var(--text2)">${qty}</td>
+      <td style="font-variant-numeric:tabular-nums">${fmtCost(r.laborTotal)}</td>
+      <td style="font-variant-numeric:tabular-nums">${fmtCost(r.materialTotal)}</td>
+      <td style="font-variant-numeric:tabular-nums;font-weight:600">${fmtCost(r.total)}</td>
     </tr>`;
   }
 
@@ -156,7 +156,7 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
     return `<div style="display:flex;justify-content:space-between;align-items:center;
         padding:10px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">${label}</span>
-      <span style="font-family:monospace;font-size:13px;color:${accent || 'var(--text)'}">
+      <span style="font-variant-numeric:tabular-nums;font-size:13px;color:${accent || 'var(--text)'}">
         ${value}
       </span>
     </div>`;
@@ -231,7 +231,7 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
         <div style="display:flex;justify-content:space-between;align-items:center;
             padding:14px 0 6px;margin-top:4px">
           <span style="font-size:14px;font-weight:600;color:var(--text)">Direct cost total</span>
-          <span style="font-family:monospace;font-size:22px;font-weight:700;
+          <span style="font-variant-numeric:tabular-nums;font-size:22px;font-weight:700;
               color:var(--green)">${fmtCost(summary.directCostTotal)}</span>
         </div>
       </div>
@@ -254,7 +254,7 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
         <div style="display:flex;justify-content:space-between;align-items:center;
             padding:14px 0 6px;margin-top:4px">
           <span style="font-size:14px;font-weight:600;color:var(--text)">Total markup</span>
-          <span style="font-family:monospace;font-size:16px;font-weight:600;
+          <span style="font-variant-numeric:tabular-nums;font-size:16px;font-weight:600;
               color:var(--text2)">${fmtCost(markupResult.totalMarkup)}</span>
         </div>
       </div>
@@ -271,7 +271,7 @@ function renderOutput(state, wallCosts, ceilCosts, summary, markupResult) {
             Effective margin: ${fmtPct(markupResult.effectiveMargin)}
           </div>
         </div>
-        <div style="font-family:monospace;font-size:38px;font-weight:700;color:var(--green)">
+        <div style="font-variant-numeric:tabular-nums;font-size:38px;font-weight:700;color:var(--green)">
           ${fmtCost(markupResult.finalBidPrice)}
         </div>
       </div>
@@ -474,7 +474,7 @@ async function renderHistory() {
           <td style="font-weight:500">${escapeHtml(b.project_name) || '—'}</td>
           <td style="color:var(--text2)">${escapeHtml(b.gc) || '—'}</td>
           <td style="color:var(--text2)">${escapeHtml(b.building_type) || '—'}</td>
-          <td style="font-family:monospace;font-weight:600;color:var(--green)">${b.final_bid ? fmtCost(b.final_bid) : '—'}</td>
+          <td style="font-variant-numeric:tabular-nums;font-weight:600;color:var(--green)">${b.final_bid ? fmtCost(b.final_bid) : '—'}</td>
           <td>${confLabel(b.confidence)}</td>
           <td>${outcomePill(b.outcome)}</td>
           <td style="white-space:nowrap">
@@ -1073,7 +1073,7 @@ function _showFinalizeModal(agentOptions) {
                  oninput="_modalCustomInput(this)" onclick="event.stopPropagation()"
                  style="width:160px;background:var(--surface2);border:1px solid var(--border2);
                         border-radius:var(--r);padding:5px 8px;font-size:13px;
-                        color:var(--text);font-family:monospace;margin-top:4px">
+                        color:var(--text);font-variant-numeric:tabular-nums;margin-top:4px">
         </div>
       </div>
     </div>`;
