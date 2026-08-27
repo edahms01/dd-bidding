@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import { cpSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -39,6 +40,7 @@ export default defineConfig({
     outDir: 'dist'
   },
   plugins: [
+    react(),
     {
       name: 'copy-classic-script-sources',
       closeBundle() {

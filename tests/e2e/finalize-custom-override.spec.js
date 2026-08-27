@@ -51,25 +51,21 @@ test('Confirm is disabled the moment Custom override is selected, and only re-en
 });
 
 test('finalizing with a custom override amount clears the draft and creates a Bid History record', async ({ page }) => {
-  // NOTE: this does NOT assert the override amount ends up as the saved
-  // final_bid. Verified directly (see docs/preflight-report.md-adjacent
-  // finding, reported separately to Eric): _finalizeBid() computes the
-  // selected amount/label but only uses it for the client-side toast --
-  // submitBid() independently recomputes final_bid from the plain
-  // calculator markup result and never receives the modal's selection.
-  // This reproduces regardless of which row is picked (a standard option
-  // or the override), so it isn't override-specific. A dedicated spec
-  // (finalize-modal-selection-not-persisted.spec.js) documents that gap
-  // precisely; asserting a specific dollar amount here would either fail
-  // today or silently encode the bug as correct once "fixed" for real --
-  // neither is what this gap-closing spec is for. What's asserted here
-  // is what's actually true: the flow completes, the source draft is
-  // cleared, and a record appears.
+  // A2.5: prior to the fix, this deliberately did NOT assert the override
+  // amount ended up as the saved final_bid -- submitBid() independently
+  // recomputed final_bid from the plain calculator markup result and
+  // never received the modal's selection (see finalize-modal-selection-
+  // not-persisted.spec.js for the dedicated regression coverage). Now
+  // that FinalizeModal.jsx threads { amount, selectedOption } through to
+  // buildBidRecord(), it's safe to assert the override path directly here
+  // too, rather than only in the standard-option spec.
   await page.goto('/');
   await openFinalizeModal(page);
 
   const activeIdBefore = await page.evaluate(() => localStorage.getItem('dirigo_active_draft_id'));
   expect(activeIdBefore).toBeTruthy();
+
+  const before = await page.evaluate(async () => (await (await fetch('/.netlify/functions/bids')).json()).map(b => b.bid_id));
 
   await page.locator('[data-modal-opt="override"]').click();
   await page.locator('#modal-custom-amount').fill('317500');
@@ -81,6 +77,13 @@ test('finalizing with a custom override amount clears the draft and creates a Bi
     return !!drafts[id];
   }, activeIdBefore);
   expect(stillPresent).toBe(false);
+
+  const after = await page.evaluate(async () => await (await fetch('/.netlify/functions/bids')).json());
+  const newBid = after.find(b => !before.includes(b.bid_id));
+  expect(newBid).toBeTruthy();
+  expect(newBid.final_bid).toBe(317500);
+  expect(newBid.selected_option).toBe('override');
+  expect(newBid.custom_override_amount).toBe(317500);
 
   await page.click('.nav-item[title="Bid History"]');
   await expect(page.locator('#page-history')).toContainText('Harborview');

@@ -97,7 +97,28 @@ function populateForm(state) {
     if (el !== null && val !== undefined && val !== null) el.value = val;
   }
 
-  // ── Project ──
+  // ── Project / Conditions / Intelligence / Rates ──
+  // A2: all four sections are React-owned now. Each does BOTH a plain
+  // set(id, val) write AND a window.__hydrateX dispatch — not one or the
+  // other, on purpose, after getting this wrong twice on real code paths
+  // (see CLAUDE.md's "Converting a page" checklist, items 4 and 5, for
+  // the fuller writeup; both were found by reproducing the failure
+  // directly, not assumed):
+  //   1. Dispatch alone left every synchronous DOM read done before
+  //      React's next commit reading stale data. loadSeedData() calls
+  //      runCalculation() (reads the DOM via collectFormData())
+  //      immediately after this function returns, in the same tick —
+  //      Tab 7 showed "$0" right after "Load seed data" until something
+  //      else re-triggered a calculation later. The plain set() writes
+  //      below fix that: they're synchronous, so any read right after
+  //      this function returns already sees the right values.
+  //   2. The set() writes alone are exactly what a React-controlled
+  //      input silently reverts on its *next* unrelated re-render
+  //      (checklist item 3) — so the dispatch is still required too, not
+  //      redundant with the writes. Both land the exact same final
+  //      value, so there's no flicker to a *wrong* value in either
+  //      direction — just two paths converging on one answer, the same
+  //      shape as the resetFormFields() fix above.
   const p = state.project || {};
   set('proj-name',     p.name);
   set('proj-gc',       p.gc);
@@ -117,17 +138,29 @@ function populateForm(state) {
   }
   set('proj-exclusions', p.exclusions);
 
-  // Update header badge
+  window.__hydrateProject?.({
+    ...p,
+    durationWeeks: p.durationWeeks != null ? p.durationWeeks : (state.conditions || {}).durationWeeks
+  });
+
+  // Update header badge — always a direct DOM write: the header's badge
+  // span is static JSX ProjectPage never touches (see CLAUDE.md's
+  // "static JSX = safe for external mutation" pattern), so there's no
+  // reducer copy of this value to dispatch in the first place.
   const badge = document.querySelector('.proj-badge span');
   if (badge && p.name) badge.textContent = p.name;
 
-  // ── Conditions ──
+  // Curved-walls-LF/phase-count visibility is native React conditional
+  // rendering on ConditionsPage now (curvedWalls === 'yes' / phasedWork
+  // === 'yes') rather than driven by the style.display toggling below —
+  // that code stays for the synchronous-read reason above (and for the
+  // non-browser fallback), it just no longer has sole responsibility for
+  // what's visible on screen once the dispatch below lands.
   const c = state.conditions || {};
   set('cond-maxht', c.maxHt);
   set('cond-sf12',  c.sfAbove12);
   set('cond-sf20',  c.sfAbove20);
 
-  // Curved walls — sync LF field visibility
   const curvedEl = document.getElementById('f-curved');
   const curvedLF = document.getElementById('f-curved-lf');
   if (curvedEl && c.curvedWalls) {
@@ -140,7 +173,6 @@ function populateForm(state) {
 
   set('f-exterior', c.exteriorExposure);
 
-  // Phased work — sync phase count visibility
   const phaseEl = document.getElementById('f-phase');
   const phaseN  = document.getElementById('f-phase-n');
   if (phaseEl && c.phasedWork) {
@@ -156,9 +188,16 @@ function populateForm(state) {
   set('cond-waste',  c.wastePct);
   set('cond-trips',  c.trips);
   set('cond-notes',  c.notes);
+  // setConf() is dead in the browser path (ConditionsPage's confidence
+  // buttons dispatch SET_FIELD directly) but still updates STATE.conf,
+  // which window.__getConfidence's fallback (js/state.js) needs correct
+  // before ConditionsPage has ever mounted — keep calling it.
   if (c.confidence) setConf(c.confidence);
 
-  // ── Intelligence ──
+  window.__hydrateConditions?.(c);
+
+  // ── Intelligence (part of ConditionsPage — same tab, same page in the
+  // original markup) ──
   const intel = state.intelligence || {};
   set('intel-crew',           intel.crewAvailability);
   set('intel-pipeline',       intel.pipelinePressure);
@@ -168,6 +207,8 @@ function populateForm(state) {
   set('intel-competition',    intel.competitionLevel);
   set('intel-competitors',    intel.knownCompetitors);
   set('intel-edge',           intel.dirigoEdge);
+
+  window.__hydrateIntelligence?.(intel);
 
   // ── Rates ──
   const r = state.rates || {};
@@ -204,7 +245,6 @@ function populateForm(state) {
   set('rate-disposal', r.disposal);
   set('rate-lift',     r.lift);
 
-  // ── Rate escalation (Tier 5, Part 2) ──
   const re = state.rateEscalation || {};
   if (re.stud) {
     set('esc-stud158', re.stud['1-5/8"']);
@@ -222,87 +262,148 @@ function populateForm(state) {
   set('esc-tape',   re.tape);
   set('esc-insul',  re.insul);
   set('esc-fasten', re.fasten);
-  calc(); // refresh rates running totals bar
+  calc(); // refresh rates running totals bar — also required synchronously, same reason as the writes above
 
-  // ── Markup ──
+  window.__hydrateRates?.(state.rates, state.rateEscalation);
+
+  // ── Markup (part of OutputPage now) ── same dual-write shape as
+  // Project/Conditions/Intelligence/Rates above (checklist item 4) —
+  // both the plain writes (for any synchronous read right after this
+  // function returns) and the dispatch (so the next unrelated
+  // re-render doesn't revert them) are required.
   const mu = state.markupInputs || {};
   set('markup-overhead',    mu.overheadPct);
   set('markup-contingency', mu.contingencyPct);
   set('markup-profit',      mu.profitPct);
+  window.__hydrateMarkup?.(mu);
 
-  // ── Assemblies ──
-  const asmBody = document.getElementById('asm-body');
-  if (asmBody && state.assemblies !== undefined) {
-    asmBody.innerHTML = '';
-    asmCount = 0;
-    (state.assemblies || []).forEach(asm => {
-      addAsm();
-      const tr   = asmBody.lastElementChild;
-      const inps = tr.querySelectorAll('input');
-      const sels = tr.querySelectorAll('select');
-      inps[0].value        = asm.id        || '';
-      inps[0].dataset.auto = asm.id        || '';
-      if (sels[0]) sels[0].value = asm.category   || 'Wall';
-      if (sels[1]) sels[1].value = asm.studSize    || '3-5/8"';
-      if (sels[2]) sels[2].value = asm.spacing     || '16"';
-      if (sels[3]) sels[3].value = String(asm.layers      ?? 1);
-      if (sels[4]) sels[4].value = asm.boardType   || 'Standard';
-      if (sels[5]) sels[5].value = asm.fireRating  || 'None';
-      if (sels[6]) sels[6].value = asm.acoustic    || 'No';
-      if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
-      if (inps[1]) inps[1].value = asm.notes       || '';
-      // ?? not || — an explicit 0% override must render as "0", not
-      // fall back to a blank input (which collectFormData() would then
-      // re-read as "not set" on the next pass, silently reverting it).
-      if (inps[2]) inps[2].value = String(asm.wastePctOverride ?? '');
-    });
+  // ── Assemblies (AssembliesPage is now React-owned) ──
+  // window.__hydrateAssemblies dispatches into the reducer instead of
+  // rebuilding #asm-body's children directly — that rebuild is what
+  // addAsm()/populateForm() used to do together, but AssembliesPage now
+  // owns that same list via .map(), and classic-script code manually
+  // appending/replacing <tr> children there would fight React's own
+  // reconciliation of it (a structural hazard, not the leaf-value one
+  // every other section's fallback handles — see CLAUDE.md's
+  // "Converting a page" checklist and bridges.js's
+  // window.__hydrateAssemblies comment for the full reasoning, and why
+  // this can't use the same "plain write + dispatch" shape as Project/
+  // Conditions/Rates above). Falls back to the old addAsm()-based
+  // rebuild only when the bridge isn't registered (Vitest/non-browser
+  // contexts, or before AppShell has mounted).
+  if (window.__hydrateAssemblies) {
+    // Same guard the original rebuild had (state.assemblies !==
+    // undefined) — every real caller always provides it, but preserve
+    // the "don't touch it if genuinely absent" behavior rather than
+    // silently wiping the table to empty on a state object that never
+    // mentions assemblies at all.
+    if (state.assemblies !== undefined) window.__hydrateAssemblies(state.assemblies);
+  } else {
+    const asmBody = document.getElementById('asm-body');
+    if (asmBody && state.assemblies !== undefined) {
+      asmBody.innerHTML = '';
+      asmCount = 0;
+      (state.assemblies || []).forEach(asm => {
+        addAsm();
+        const tr   = asmBody.lastElementChild;
+        const inps = tr.querySelectorAll('input');
+        const sels = tr.querySelectorAll('select');
+        inps[0].value        = asm.id        || '';
+        inps[0].dataset.auto = asm.id        || '';
+        if (sels[0]) sels[0].value = asm.category   || 'Wall';
+        if (sels[1]) sels[1].value = asm.studSize    || '3-5/8"';
+        if (sels[2]) sels[2].value = asm.spacing     || '16"';
+        if (sels[3]) sels[3].value = String(asm.layers      ?? 1);
+        if (sels[4]) sels[4].value = asm.boardType   || 'Standard';
+        if (sels[5]) sels[5].value = asm.fireRating  || 'None';
+        if (sels[6]) sels[6].value = asm.acoustic    || 'No';
+        if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
+        if (inps[1]) inps[1].value = asm.notes       || '';
+        // ?? not || — an explicit 0% override must render as "0", not
+        // fall back to a blank input (which collectFormData() would
+        // then re-read as "not set" on the next pass, silently
+        // reverting it).
+        if (inps[2]) inps[2].value = String(asm.wastePctOverride ?? '');
+      });
+    }
   }
 
-  // ── Walls ──
-  const wallBody = document.getElementById('wall-body');
-  if (wallBody && state.walls !== undefined) {
-    wallBody.innerHTML = '';
-    (state.walls || []).forEach(w => {
-      addWall();
-      const tr   = wallBody.lastElementChild;
-      const inps = tr.querySelectorAll('input');
-      if (inps[0]) inps[0].value = w.location != null ? w.location : '';
-      if (inps[1]) inps[1].value = w.typeId   != null ? w.typeId   : '';
-      if (inps[2]) inps[2].value = w.height   != null ? w.height   : '';
-      if (inps[3]) inps[3].value = w.lf       != null ? w.lf       : '';
-      if (inps[4]) inps[4].value = w.grossSF  != null ? w.grossSF  : '';
-      if (inps[5]) inps[5].value = w.openings != null ? w.openings : '';
-      const gsf = tr.querySelector('.wgsf');
-      if (gsf) calcWall(gsf);
-    });
+  // ── Walls (WallsPage is now React-owned) ──
+  // window.__hydrateWalls dispatches into the reducer instead of
+  // rebuilding #wall-body's children directly — same structural
+  // hazard/fix as Assemblies (see CLAUDE.md's "Converting a page"
+  // checklist items 7–8): manually appending/replacing <tr> children
+  // there would fight WallsPage's own .map()-based ownership of that
+  // list, so this can't use the scalar sections' "plain write +
+  // dispatch" shape above. Falls back to the old addWall()-based
+  // rebuild only when the bridge isn't registered (Vitest/non-browser
+  // contexts, or before AppShell has mounted).
+  if (window.__hydrateWalls) {
+    if (state.walls !== undefined) window.__hydrateWalls(state.walls);
+  } else {
+    const wallBody = document.getElementById('wall-body');
+    if (wallBody && state.walls !== undefined) {
+      wallBody.innerHTML = '';
+      (state.walls || []).forEach(w => {
+        addWall();
+        const tr   = wallBody.lastElementChild;
+        const inps = tr.querySelectorAll('input');
+        if (inps[0]) inps[0].value = w.location != null ? w.location : '';
+        if (inps[1]) inps[1].value = w.typeId   != null ? w.typeId   : '';
+        if (inps[2]) inps[2].value = w.height   != null ? w.height   : '';
+        if (inps[3]) inps[3].value = w.lf       != null ? w.lf       : '';
+        if (inps[4]) inps[4].value = w.grossSF  != null ? w.grossSF  : '';
+        if (inps[5]) inps[5].value = w.openings != null ? w.openings : '';
+        const gsf = tr.querySelector('.wgsf');
+        if (gsf) calcWall(gsf);
+      });
+    }
   }
 
-  // ── Ceilings ──
-  const ceilBody = document.getElementById('ceil-body');
-  if (ceilBody && state.ceilings !== undefined) {
-    ceilBody.innerHTML = '';
-    (state.ceilings || []).forEach(ceil => {
-      addCeil();
-      const tr   = ceilBody.lastElementChild;
-      const inps = tr.querySelectorAll('input');
-      if (inps[0]) inps[0].value = ceil.location != null ? ceil.location : '';
-      if (inps[1]) inps[1].value = ceil.typeId   != null ? ceil.typeId   : '';
-      if (inps[2]) inps[2].value = ceil.height   != null ? ceil.height   : '';
-      if (inps[3]) inps[3].value = ceil.grossSF  != null ? ceil.grossSF  : '';
-      if (inps[4]) inps[4].value = ceil.soffitLF != null ? ceil.soffitLF : '';
-      if (inps[5]) inps[5].value = ceil.openings != null ? ceil.openings : '';
-      const gsf = tr.querySelector('.cgsf');
-      if (gsf) calcCeil(gsf);
-    });
+  // ── Ceilings (CeilingsPage is now React-owned) ── same shape as Walls above.
+  if (window.__hydrateCeilings) {
+    if (state.ceilings !== undefined) window.__hydrateCeilings(state.ceilings);
+  } else {
+    const ceilBody = document.getElementById('ceil-body');
+    if (ceilBody && state.ceilings !== undefined) {
+      ceilBody.innerHTML = '';
+      (state.ceilings || []).forEach(ceil => {
+        addCeil();
+        const tr   = ceilBody.lastElementChild;
+        const inps = tr.querySelectorAll('input');
+        if (inps[0]) inps[0].value = ceil.location != null ? ceil.location : '';
+        if (inps[1]) inps[1].value = ceil.typeId   != null ? ceil.typeId   : '';
+        if (inps[2]) inps[2].value = ceil.height   != null ? ceil.height   : '';
+        if (inps[3]) inps[3].value = ceil.grossSF  != null ? ceil.grossSF  : '';
+        if (inps[4]) inps[4].value = ceil.soffitLF != null ? ceil.soffitLF : '';
+        if (inps[5]) inps[5].value = ceil.openings != null ? ceil.openings : '';
+        const gsf = tr.querySelector('.cgsf');
+        if (gsf) calcCeil(gsf);
+      });
+    }
   }
 }
 
-// Applies a saved rate template's rates object to the Rates tab fields —
-// the same set(id, val) calls populateForm()'s Rates section uses above,
-// pulled out so js/ui.js's Save/Load controls can invoke just the rates
-// hydration without touching project/conditions/assemblies/etc.
+// A2 spike: DEAD CODE as of RatesPage.jsx. This function's only caller
+// was js/ui.js's loadSelectedRateTemplate() (the old Rates page's "Load"
+// button handler) — that button is now rendered by RatesPage.jsx, whose
+// own handleLoadTemplate() dispatches straight into the reducer
+// (LOAD_RATES) instead of calling this. Verified: grepped for every
+// caller before leaving this alone rather than "fixing" it — nothing
+// else calls it. Left in place rather than deleted or modified, since
+// touching dead code that's genuinely unreachable adds risk for zero
+// behavior change; slated for removal alongside its js/ui.js siblings
+// (renderRateTemplateSelect/saveRateTemplateFromForm/
+// loadSelectedRateTemplate/deleteSelectedRateTemplate, all now also
+// dead) during the full-migration cleanup pass, not this spike.
 //
-// Two things set() alone does NOT do, both required here:
+// Original comment, describing behavior this function no longer drives
+// but is preserved for whoever removes it later:
+//
+// Applies a saved rate template's rates object to the Rates tab fields —
+// the same set(id, val) calls populateForm()'s Rates section used to,
+// before the A2 spike. Two things set() alone does NOT do, both required
+// when this was live:
 //   1. set() is a plain el.value = val — it does not fire the input/
 //      change events the totals bar and autosave delegation listen for.
 //      calc() at the end refreshes the totals bar the same way
@@ -504,9 +605,6 @@ function resetFormFields() {
     pill.classList.toggle('on', scope === 'Metal framing' || scope === 'Drywall');
   });
 
-  const badge = document.querySelector('.proj-badge span');
-  if (badge) badge.textContent = 'New bid';
-
   // ── Conditions ──
   ['cond-maxht', 'cond-sf12', 'cond-sf20', 'f-exterior', 'f-access', 'f-parking',
    'cond-waste', 'cond-trips', 'cond-notes'].forEach(clear);
@@ -538,18 +636,50 @@ function resetFormFields() {
   ].forEach(clear);
   calc(); // refresh rates running totals bar to zero, mirroring populateForm()
 
+  // ── A2: also reset the React-owned copy of all four sections above ──
+  // The plain clear() calls above are still required, not superseded:
+  // _createAndActivateBlankDraft() calls collectFormData() (reads live
+  // DOM .value) immediately after this function returns, in the same
+  // tick, before React ever gets a chance to flush a dispatch — so the
+  // DOM has to already be correct synchronously. But a dispatch is
+  // *also* required, separately: React dispatches are batched/async, so
+  // without this, the next time anything re-renders ProjectPage/
+  // ConditionsPage/RatesPage (e.g. the goto('project') dispatch
+  // createDraft() issues right after this call), React would silently
+  // restore the OLD reducer values into the DOM, undoing every clear()
+  // above the instant the user looked at the screen. Reproduced
+  // directly, not assumed: fill #rate-frame, click New Bid, and find
+  // "77" still showing on the Rates tab afterward — that was the first
+  // version of this fix, dispatch-only, no plain clear() calls; fixed by
+  // keeping both, not by picking one. No-ops outside the browser
+  // (Vitest, or before AppShell has mounted).
+  window.__resetBidState?.();
+
+  const badge = document.querySelector('.proj-badge span');
+  if (badge) badge.textContent = 'New bid';
+
   // ── Markup ──
   ['markup-overhead', 'markup-contingency', 'markup-profit'].forEach(clear);
 
-  // ── Assemblies / Walls / Ceilings — clear and rebuild one default row each ──
-  const asmBody = document.getElementById('asm-body');
-  if (asmBody) { asmBody.innerHTML = ''; asmCount = 0; addAsm(); }
+  // ── Assemblies — AssembliesPage now owns #asm-body's children via
+  // .map() over state.bid.assemblies; window.__resetBidState() above
+  // already resets that array to one blank row (store.jsx's RESET_BID),
+  // flushSync'd so it's already reflected in the DOM by the time this
+  // function returns. Directly rebuilding #asm-body here too — the way
+  // this used to, and the way Walls/Ceilings below still do — would
+  // fight React's own ownership of that list (a real, different hazard
+  // than the leaf-value case every other section's fallback branch
+  // handles; see CLAUDE.md's "Converting a page" checklist and
+  // bridges.js's window.__hydrateAssemblies comment). Non-browser
+  // fallback: window.__resetBidState won't exist (Vitest doesn't mount
+  // React), so this leaves #asm-body empty in that context — harmless,
+  // since js/forms.js isn't imported by any Vitest test today.
 
-  const wallBody = document.getElementById('wall-body');
-  if (wallBody) { wallBody.innerHTML = ''; addWall(); }
-
-  const ceilBody = document.getElementById('ceil-body');
-  if (ceilBody) { ceilBody.innerHTML = ''; addCeil(); }
+  // ── Walls / Ceilings — WallsPage/CeilingsPage now own #wall-body/
+  // #ceil-body's children via .map(); window.__resetBidState() above
+  // already reset both arrays to one blank row each (flushSync'd, same
+  // as Assemblies — see its comment above for why direct DOM rebuild
+  // here would fight React's ownership of those lists now).
 }
 
 // ── DRAFT LIFECYCLE ──────────────────────────────────────────────────
@@ -661,6 +791,16 @@ function setConf(v) {
 // addWall()/addCeil()/addAsm() are covered without rebinding.
 
 let hasUnsavedChanges = false;
+
+// A2 spike: real bug found, not assumed. hasUnsavedChanges is a plain
+// top-level `let` — unlike a `function` declaration, `let`/`const` at
+// classic-script top level do NOT become window properties, only bare
+// script-scope bindings. React code (RatesPage.jsx) can't read a bare
+// identifier from another file, so `window.hasUnsavedChanges` from
+// there was always undefined — silently skipping the "overwrite my
+// unsaved changes?" confirm() before loading a rate template. One
+// accessor, not retrofitting every one of this flag's assignment sites.
+window.__getHasUnsavedChanges = () => hasUnsavedChanges;
 
 function _setIndicator(status, when) {
   const el = document.getElementById('autosave-indicator');
@@ -791,39 +931,67 @@ function handleImportFile(event) {
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────
-
-addAsm();
-addWall();
-addCeil();
-
-// resumeActiveDraft() -> populateForm() calls calc(), which is defined in
-// js/ui.js — loaded *after* this file. That was latent and harmless before
-// Phase 1 (the only prior writer of dirigo_current_bid was loadSeedData(),
-// whose populateForm() call happens after an async fetch(), well after every
-// script has loaded). Once autosave made real data available on nearly
-// every reload, calling this synchronously here would hit that ordering gap
-// and throw "calc is not defined", silently truncating populateForm() before
-// it reaches markup/assemblies/walls/ceilings.
 //
-// DO NOT "simplify" this back to a bare synchronous call — that silently
-// reintroduces the bug above. DOMContentLoaded (not `load`) is the right
-// event: every <script> tag in this app is a plain blocking `<script src>`
-// with no async/defer, so by the time the document finishes parsing, every
-// script — ui.js included — has already run. `load` would also work but
-// additionally waits on stylesheets/images, which buys nothing here.
-function _initDraftsAndResume() {
+// A2 spike: this whole section used to run at plain classic-<script>-load
+// time (originally gated only on DOMContentLoaded for the drafts/resume
+// part — see the preserved comment below). That was safe when every page
+// was static HTML already present the instant the parser reached this
+// script tag. It is NOT safe now that AppShell (React) owns the page
+// shell and Assemblies/Walls/Ceilings/etc. only get their real markup
+// cloned in from a <template> inside a post-mount effect — confirmed by
+// reproducing the failure directly: addAsm() threw on a null #asm-body,
+// and separately, .workflow-area not existing yet meant the input/change
+// listener that drives autosave was silently never attached at all.
+// DOMContentLoaded doesn't fix this either — module scripts run before
+// DOMContentLoaded fires, but React's useEffect is scheduled for after
+// paint, a race against it, not a guarantee of ordering.
+//
+// Fix: everything in this section that touches React-owned DOM now runs
+// off AppShell's 'dirigo:shell-ready' event (src/AppShell.jsx), dispatched
+// once every LegacyPage's mount effect has already cloned its template in
+// (children's effects fire before a parent's, in the same commit — by the
+// time AppShell's own effect dispatches this, every template is in).
+function _initApp() {
+  // addAsm()/addWall()/addCeil() all removed from this unconditional
+  // boot-time call — AssembliesPage/WallsPage/CeilingsPage now each own
+  // their own <tbody> via .map() over state.bid.{assemblies,walls,
+  // ceilings}, which already start with one blank row apiece
+  // (store.jsx's initialState, matching what these calls used to
+  // establish here). Calling them directly would append a rogue <tr>
+  // that React doesn't know about into a list it also renders — found
+  // by reproducing it directly on Assemblies first (a debug read showed
+  // a leftover addAsm()-generated row, complete with its inline
+  // style="width:...px" and onchange="updateAsmId(...)" attributes,
+  // sitting in #asm-body despite AssembliesPage.jsx never rendering
+  // anything that looks like that) — audited every other addAsm()/
+  // addWall()/addCeil() call site across the whole app before starting
+  // Walls/Ceilings specifically because of that (duplicateDraft() only
+  // clones plain data via drafts.js, never touches the DOM;
+  // switchToDraft() only goes through populateForm(); this was the only
+  // other unconditional direct call site, for the same reason the
+  // addAsm() one was).
+
+  // resumeActiveDraft() -> populateForm() calls calc(), which is defined
+  // in js/ui.js — loaded *after* this file. That was latent and harmless
+  // before Phase 1 (the only prior writer of dirigo_current_bid was
+  // loadSeedData(), whose populateForm() call happens after an async
+  // fetch(), well after every script has loaded). Once autosave made
+  // real data available on nearly every reload, calling this
+  // synchronously here would hit that ordering gap and throw "calc is
+  // not defined", silently truncating populateForm() before it reaches
+  // markup/assemblies/walls/ceilings. DO NOT "simplify" this back to a
+  // bare synchronous call at module-load time — that reintroduces the
+  // bug above; 'dirigo:shell-ready' already fires late enough (after
+  // every classic script, including ui.js, has loaded) that this concern
+  // is satisfied by construction, not by accident.
   _runLegacyMigrationIfNeeded();
   resumeActiveDraft();
+
+  const _workflowArea = document.querySelector('.workflow-area');
+  if (_workflowArea) {
+    _workflowArea.addEventListener('input', _handleFormChange);
+    _workflowArea.addEventListener('change', _handleFormChange);
+  }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _initDraftsAndResume, { once: true });
-} else {
-  _initDraftsAndResume();
-}
-
-const _workflowArea = document.querySelector('.workflow-area');
-if (_workflowArea) {
-  _workflowArea.addEventListener('input', _handleFormChange);
-  _workflowArea.addEventListener('change', _handleFormChange);
-}
+window.addEventListener('dirigo:shell-ready', _initApp, { once: true });

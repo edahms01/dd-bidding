@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "assemblies": [
+    {
+      "id": "W1",
+      "category": "Wall",
+      "studSize": "3-5/8\"",
+      "spacing": "16\"",
+      "layers": 1,
+      "boardType": "Standard",
+      "fireRating": "None",
+      "acoustic": "No",
+      "finishLevel": 3,
+      "notes": "Standard partition",
+      "wastePctOverride": null
+    },
+    {
+      "id": "W2",
+      "category": "Wall",
+      "studSize": "3-5/8\"",
+      "spacing": "16\"",
+      "layers": 2,
+      "boardType": "Type-X",
+      "fireRating": "1-hr",
+      "acoustic": "Yes",
+      "finishLevel": 3,
+      "notes": "Demising wall — fire rated",
+      "wastePctOverride": null
+    },
+    {
+      "id": "W3",
+      "category": "Wall",
+      "studSize": "6\"",
+      "spacing": "16\"",
+      "layers": 1,
+      "boardType": "Moisture",
+      "fireRating": "None",
+      "acoustic": "No",
+      "finishLevel": 4,
+      "notes": "Exterior-adjacent wall — moisture resistant",
+      "wastePctOverride": null
+    },
+    {
+      "id": "C1",
+      "category": "Ceiling",
+      "studSize": "2-1/2\"",
+      "spacing": "24\"",
+      "layers": 1,
+      "boardType": "Standard",
+      "fireRating": "None",
+      "acoustic": "No",
+      "finishLevel": 3,
+      "notes": "Standard ceiling",
+      "wastePctOverride": null
+    },
+    {
+      "id": "C2",
+      "category": "Ceiling",
+      "studSize": "2-1/2\"",
+      "spacing": "16\"",
+      "layers": 2,
+      "boardType": "Type-X",
+      "fireRating": "1-hr",
+      "acoustic": "Yes",
+      "finishLevel": 4,
+      "notes": "Level 2 rated ceiling",
+      "wastePctOverride": null
+    }
+  ],
+  "walls": [
+    {
+      "location": "Level 1 — Sales floor",
+      "typeId": "W1",
+      "height": 14,
+      "lf": 320,
+      "grossSF": 4480,
+      "openings": 380,
+      "netSF": 4100
+    },
+    {
+      "location": "Level 1 — Back of house",
+      "typeId": "W2",
+      "height": 14,
+      "lf": 180,
+      "grossSF": 2520,
+      "openings": 120,
+      "netSF": 2400
+    },
+    {
+      "location": "Level 1 — Feature wall",
+      "typeId": "W3",
+      "height": 16,
+      "lf": 45,
+      "grossSF": 720,
+      "openings": 0,
+      "netSF": 720
+    },
+    {
+      "location": "Level 2 — Office interiors",
+      "typeId": "W1",
+      "height": 10,
+      "lf": 210,
+      "grossSF": 2100,
+      "openings": 280,
+      "netSF": 1820
+    },
+    {
+      "location": "Level 2 — Demising walls",
+      "typeId": "W2",
+      "height": 10,
+      "lf": 140,
+      "grossSF": 1400,
+      "openings": 60,
+      "netSF": 1340
+    }
+  ],
+  "ceilings": [
+    {
+      "location": "Level 1 — Sales floor",
+      "typeId": "C1",
+      "height": 14,
+      "grossSF": 3800,
+      "soffitLF": 0,
+      "openings": 220,
+      "netSF": 3580
+    },
+    {
+      "location": "Level 1 — Back of house",
+      "typeId": "C1",
+      "height": 12,
+      "grossSF": 1200,
+      "soffitLF": 0,
+      "openings": 80,
+      "netSF": 1120
+    },
+    {
+      "location": "Level 1 — Entry soffit",
+      "typeId": "C2",
+      "height": 16,
+      "grossSF": 480,
+      "soffitLF": 62,
+      "openings": 0,
+      "netSF": 480
+    },
+    {
+      "location": "Level 2 — Office",
+      "typeId": "C2",
+      "height": 10,
+      "grossSF": 2100,
+      "soffitLF": 0,
+      "openings": 140,
+      "netSF": 1960
+    }
+  ],
+  "conditions": {
+    "maxHt": 16,
+    "sfAbove12": 3200,
+    "sfAbove20": 0,
+    "curvedWalls": "yes",
+    "curvedWallsLF": 45,
+    "exteriorExposure": "yes",
+    "phasedWork": "no",
+    "phaseCount": 0,
+    "accessDifficulty": "restricted",
+    "parking": "no",
+    "wastePct": 12,
+    "trips": 6,
+    "confidence": "md",
+    "durationWeeks": 14,
+    "notes": "Tight site — loading dock shared with adjacent tenant. GC has confirmed phased ceiling access on Level 2. Curved feature wall at main entrance needs close attention."
+  },
+  "rates": {
+    "framing": 4.2,
+    "hanging": 0.95,
+    "burdenPct": 34,
+    "superPct": 9,
+    "finish": {
+      "1": 0.55,
+      "2": 0.75,
+      "3": 1.1,
+      "4": 1.55,
+      "5": 2.4
+    },
+    "adder12Pct": 18,
+    "adder20Pct": 35,
+    "stud": {
+      "1-5/8\"": 0.38,
+      "2-1/2\"": 0.44,
+      "3-5/8\"": 0.52,
+      "4\"": 0.61,
+      "6\"": 0.78
+    },
+    "board": {
+      "Standard": 0.48,
+      "Type-X": 0.58,
+      "Moisture": 0.64,
+      "Impact": 0.72
+    },
+    "tape": 0.14,
+    "insul": 0.32,
+    "fasten": 0.11,
+    "delivery": 380,
+    "disposal": 420,
+    "lift": 650
+  },
+  "rateEscalation": {
+    "stud": {
+      "1-5/8\"": null,
+      "2-1/2\"": 5,
+      "3-5/8\"": null,
+      "4\"": null,
+      "6\"": null
+    },
+    "board": {
+      "Standard": null,
+      "Type-X": 5,
+      "Moisture": null,
+      "Impact": null
+    },
+    "tape": null,
+    "insul": null,
+    "fasten": null
+  },
+  "markupInputs": {
+    "overheadPct": 12,
+    "contingencyPct": 8,
+    "profitPct": 10
+  },
+  "intelligence": {
+    "crewAvailability": "full",
+    "pipelinePressure": "neutral",
+    "materialTrend": "stable",
+    "gcRelationship": "strong",
+    "gcPriceSensitivity": "balanced",
+    "competitionLevel": "moderate",
+    "knownCompetitors": "Summit Drywall, Northeast Interiors",
+    "dirigoEdge": "strong",
+    "openDraftCount": 1
+  },
+  "project": {
+    "name": "Harborview Plaza — Retail Fit-Out",
+    "gc": "Callahan Construction Group",
+    "buildingType": "Retail",
+    "bidDate": "2026-07-15",
+    "address": "1240 Harbor Blvd, Portland, ME 04101",
+    "drawingsRef": "Rev C — 2025-08-12",
+    "startDate": "2026-09-13",
+    "durationWeeks": 14,
+    "floors": 2,
+    "scope": [
+      "Metal framing",
+      "Drywall",
+      "Plastering"
+    ],
+    "exclusions": "Excludes paint and ACT grid. GC supplies blocking."
+  }
+}

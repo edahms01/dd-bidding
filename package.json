@@ -20,10 +20,13 @@
   "homepage": "https://github.com/edahms01/dd-bidding#readme",
   "private": true,
   "dependencies": {
-    "@netlify/blobs": "^11.0.1"
+    "@netlify/blobs": "^11.0.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@vitejs/plugin-react": "^6.1.0",
     "http-server": "^14.1.1",
     "netlify-cli": "^27.1.2",
     "vite": "^8.2.2",
