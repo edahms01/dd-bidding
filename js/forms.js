@@ -169,60 +169,71 @@ function populateForm(state) {
   set('intel-competitors',    intel.knownCompetitors);
   set('intel-edge',           intel.dirigoEdge);
 
-  // ── Rates ──
-  const r = state.rates || {};
-  set('rate-frame',   r.framing);
-  set('rate-hang',    r.hanging);
-  set('rate-burden',  r.burdenPct);
-  set('rate-super',   r.superPct);
-  if (r.finish) {
-    set('rate-fin1', r.finish[1]);
-    set('rate-fin2', r.finish[2]);
-    set('rate-fin3', r.finish[3]);
-    set('rate-fin4', r.finish[4]);
-    set('rate-fin5', r.finish[5]);
-  }
-  set('rate-add12', r.adder12Pct);
-  set('rate-add20', r.adder20Pct);
-  if (r.stud) {
-    set('rate-stud158', r.stud['1-5/8"']);
-    set('rate-stud212', r.stud['2-1/2"']);
-    set('rate-stud358', r.stud['3-5/8"']);
-    set('rate-stud4',   r.stud['4"']);
-    set('rate-stud6',   r.stud['6"']);
-  }
-  if (r.board) {
-    set('rate-brd-std',   r.board['Standard']);
-    set('rate-brd-typex', r.board['Type-X']);
-    set('rate-brd-moist', r.board['Moisture']);
-    set('rate-brd-imp',   r.board['Impact']);
-  }
-  set('rate-tape',     r.tape);
-  set('rate-insul',    r.insul);
-  set('rate-fasten',   r.fasten);
-  set('rate-delivery', r.delivery);
-  set('rate-disposal', r.disposal);
-  set('rate-lift',     r.lift);
+  // ── Rates (A2 spike: RatesPage is now React-owned) ──
+  // Was a long run of set(id, val) calls writing straight into DOM
+  // inputs, same shape as every other section on this page — but since
+  // RatesPage's inputs are React-controlled, writing .value directly
+  // would get silently overwritten on RatesPage's next re-render (React
+  // never learns the DOM changed out from under it). window.__hydrateRates
+  // (src/state/bridges.js) dispatches into the real reducer state instead.
+  // Falls back to the old set()-based path when it isn't registered yet
+  // (e.g. Vitest/non-browser contexts, or before AppShell has mounted).
+  if (window.__hydrateRates) {
+    window.__hydrateRates(state.rates, state.rateEscalation);
+  } else {
+    const r = state.rates || {};
+    set('rate-frame',   r.framing);
+    set('rate-hang',    r.hanging);
+    set('rate-burden',  r.burdenPct);
+    set('rate-super',   r.superPct);
+    if (r.finish) {
+      set('rate-fin1', r.finish[1]);
+      set('rate-fin2', r.finish[2]);
+      set('rate-fin3', r.finish[3]);
+      set('rate-fin4', r.finish[4]);
+      set('rate-fin5', r.finish[5]);
+    }
+    set('rate-add12', r.adder12Pct);
+    set('rate-add20', r.adder20Pct);
+    if (r.stud) {
+      set('rate-stud158', r.stud['1-5/8"']);
+      set('rate-stud212', r.stud['2-1/2"']);
+      set('rate-stud358', r.stud['3-5/8"']);
+      set('rate-stud4',   r.stud['4"']);
+      set('rate-stud6',   r.stud['6"']);
+    }
+    if (r.board) {
+      set('rate-brd-std',   r.board['Standard']);
+      set('rate-brd-typex', r.board['Type-X']);
+      set('rate-brd-moist', r.board['Moisture']);
+      set('rate-brd-imp',   r.board['Impact']);
+    }
+    set('rate-tape',     r.tape);
+    set('rate-insul',    r.insul);
+    set('rate-fasten',   r.fasten);
+    set('rate-delivery', r.delivery);
+    set('rate-disposal', r.disposal);
+    set('rate-lift',     r.lift);
 
-  // ── Rate escalation (Tier 5, Part 2) ──
-  const re = state.rateEscalation || {};
-  if (re.stud) {
-    set('esc-stud158', re.stud['1-5/8"']);
-    set('esc-stud212', re.stud['2-1/2"']);
-    set('esc-stud358', re.stud['3-5/8"']);
-    set('esc-stud4',   re.stud['4"']);
-    set('esc-stud6',   re.stud['6"']);
+    const re = state.rateEscalation || {};
+    if (re.stud) {
+      set('esc-stud158', re.stud['1-5/8"']);
+      set('esc-stud212', re.stud['2-1/2"']);
+      set('esc-stud358', re.stud['3-5/8"']);
+      set('esc-stud4',   re.stud['4"']);
+      set('esc-stud6',   re.stud['6"']);
+    }
+    if (re.board) {
+      set('esc-brd-std',   re.board['Standard']);
+      set('esc-brd-typex', re.board['Type-X']);
+      set('esc-brd-moist', re.board['Moisture']);
+      set('esc-brd-imp',   re.board['Impact']);
+    }
+    set('esc-tape',   re.tape);
+    set('esc-insul',  re.insul);
+    set('esc-fasten', re.fasten);
+    calc(); // refresh rates running totals bar — no-op fallback path only
   }
-  if (re.board) {
-    set('esc-brd-std',   re.board['Standard']);
-    set('esc-brd-typex', re.board['Type-X']);
-    set('esc-brd-moist', re.board['Moisture']);
-    set('esc-brd-imp',   re.board['Impact']);
-  }
-  set('esc-tape',   re.tape);
-  set('esc-insul',  re.insul);
-  set('esc-fasten', re.fasten);
-  calc(); // refresh rates running totals bar
 
   // ── Markup ──
   const mu = state.markupInputs || {};
@@ -297,12 +308,26 @@ function populateForm(state) {
   }
 }
 
-// Applies a saved rate template's rates object to the Rates tab fields —
-// the same set(id, val) calls populateForm()'s Rates section uses above,
-// pulled out so js/ui.js's Save/Load controls can invoke just the rates
-// hydration without touching project/conditions/assemblies/etc.
+// A2 spike: DEAD CODE as of RatesPage.jsx. This function's only caller
+// was js/ui.js's loadSelectedRateTemplate() (the old Rates page's "Load"
+// button handler) — that button is now rendered by RatesPage.jsx, whose
+// own handleLoadTemplate() dispatches straight into the reducer
+// (LOAD_RATES) instead of calling this. Verified: grepped for every
+// caller before leaving this alone rather than "fixing" it — nothing
+// else calls it. Left in place rather than deleted or modified, since
+// touching dead code that's genuinely unreachable adds risk for zero
+// behavior change; slated for removal alongside its js/ui.js siblings
+// (renderRateTemplateSelect/saveRateTemplateFromForm/
+// loadSelectedRateTemplate/deleteSelectedRateTemplate, all now also
+// dead) during the full-migration cleanup pass, not this spike.
 //
-// Two things set() alone does NOT do, both required here:
+// Original comment, describing behavior this function no longer drives
+// but is preserved for whoever removes it later:
+//
+// Applies a saved rate template's rates object to the Rates tab fields —
+// the same set(id, val) calls populateForm()'s Rates section used to,
+// before the A2 spike. Two things set() alone does NOT do, both required
+// when this was live:
 //   1. set() is a plain el.value = val — it does not fire the input/
 //      change events the totals bar and autosave delegation listen for.
 //      calc() at the end refreshes the totals bar the same way
@@ -662,6 +687,16 @@ function setConf(v) {
 
 let hasUnsavedChanges = false;
 
+// A2 spike: real bug found, not assumed. hasUnsavedChanges is a plain
+// top-level `let` — unlike a `function` declaration, `let`/`const` at
+// classic-script top level do NOT become window properties, only bare
+// script-scope bindings. React code (RatesPage.jsx) can't read a bare
+// identifier from another file, so `window.hasUnsavedChanges` from
+// there was always undefined — silently skipping the "overwrite my
+// unsaved changes?" confirm() before loading a rate template. One
+// accessor, not retrofitting every one of this flag's assignment sites.
+window.__getHasUnsavedChanges = () => hasUnsavedChanges;
+
 function _setIndicator(status, when) {
   const el = document.getElementById('autosave-indicator');
   if (!el) return;
@@ -791,39 +826,52 @@ function handleImportFile(event) {
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────
-
-addAsm();
-addWall();
-addCeil();
-
-// resumeActiveDraft() -> populateForm() calls calc(), which is defined in
-// js/ui.js — loaded *after* this file. That was latent and harmless before
-// Phase 1 (the only prior writer of dirigo_current_bid was loadSeedData(),
-// whose populateForm() call happens after an async fetch(), well after every
-// script has loaded). Once autosave made real data available on nearly
-// every reload, calling this synchronously here would hit that ordering gap
-// and throw "calc is not defined", silently truncating populateForm() before
-// it reaches markup/assemblies/walls/ceilings.
 //
-// DO NOT "simplify" this back to a bare synchronous call — that silently
-// reintroduces the bug above. DOMContentLoaded (not `load`) is the right
-// event: every <script> tag in this app is a plain blocking `<script src>`
-// with no async/defer, so by the time the document finishes parsing, every
-// script — ui.js included — has already run. `load` would also work but
-// additionally waits on stylesheets/images, which buys nothing here.
-function _initDraftsAndResume() {
+// A2 spike: this whole section used to run at plain classic-<script>-load
+// time (originally gated only on DOMContentLoaded for the drafts/resume
+// part — see the preserved comment below). That was safe when every page
+// was static HTML already present the instant the parser reached this
+// script tag. It is NOT safe now that AppShell (React) owns the page
+// shell and Assemblies/Walls/Ceilings/etc. only get their real markup
+// cloned in from a <template> inside a post-mount effect — confirmed by
+// reproducing the failure directly: addAsm() threw on a null #asm-body,
+// and separately, .workflow-area not existing yet meant the input/change
+// listener that drives autosave was silently never attached at all.
+// DOMContentLoaded doesn't fix this either — module scripts run before
+// DOMContentLoaded fires, but React's useEffect is scheduled for after
+// paint, a race against it, not a guarantee of ordering.
+//
+// Fix: everything in this section that touches React-owned DOM now runs
+// off AppShell's 'dirigo:shell-ready' event (src/AppShell.jsx), dispatched
+// once every LegacyPage's mount effect has already cloned its template in
+// (children's effects fire before a parent's, in the same commit — by the
+// time AppShell's own effect dispatches this, every template is in).
+function _initApp() {
+  addAsm();
+  addWall();
+  addCeil();
+
+  // resumeActiveDraft() -> populateForm() calls calc(), which is defined
+  // in js/ui.js — loaded *after* this file. That was latent and harmless
+  // before Phase 1 (the only prior writer of dirigo_current_bid was
+  // loadSeedData(), whose populateForm() call happens after an async
+  // fetch(), well after every script has loaded). Once autosave made
+  // real data available on nearly every reload, calling this
+  // synchronously here would hit that ordering gap and throw "calc is
+  // not defined", silently truncating populateForm() before it reaches
+  // markup/assemblies/walls/ceilings. DO NOT "simplify" this back to a
+  // bare synchronous call at module-load time — that reintroduces the
+  // bug above; 'dirigo:shell-ready' already fires late enough (after
+  // every classic script, including ui.js, has loaded) that this concern
+  // is satisfied by construction, not by accident.
   _runLegacyMigrationIfNeeded();
   resumeActiveDraft();
+
+  const _workflowArea = document.querySelector('.workflow-area');
+  if (_workflowArea) {
+    _workflowArea.addEventListener('input', _handleFormChange);
+    _workflowArea.addEventListener('change', _handleFormChange);
+  }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _initDraftsAndResume, { once: true });
-} else {
-  _initDraftsAndResume();
-}
-
-const _workflowArea = document.querySelector('.workflow-area');
-if (_workflowArea) {
-  _workflowArea.addEventListener('input', _handleFormChange);
-  _workflowArea.addEventListener('change', _handleFormChange);
-}
+window.addEventListener('dirigo:shell-ready', _initApp, { once: true });
