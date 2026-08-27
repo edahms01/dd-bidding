@@ -35,18 +35,17 @@ export function registerBridges(dispatch) {
   };
 
   // ── Left-nav section switches — replace js/tabs.js's showHistory()/
-  // showDashboard(). History no longer calls the legacy renderHistory()
-  // — HistoryPage is a real React component now and fetches its own
-  // data (see HistoryPage.jsx's effect on becoming active). Dashboard
-  // is unconverted this spike — same LegacyPage/window.renderDashboard()
-  // path as before.
+  // showDashboard(). Neither calls its old legacy render function any
+  // more — HistoryPage/DashboardPage are real React components that
+  // fetch/read their own data via their own becomes-active effect (see
+  // each page's own file). window.renderDashboard() (js/ui.js) is now
+  // fully dead, same status renderHistory() already had.
   window.showHistory = function showHistory() {
     _dispatch({ type: 'GOTO_SECTION', section: 'history' });
   };
 
   window.showDashboard = function showDashboard() {
     _dispatch({ type: 'GOTO_SECTION', section: 'dashboard' });
-    window.renderDashboard?.();
   };
 
   // ── Nav collapse toggle — replaces js/tabs.js's toggleNav(). Keeps

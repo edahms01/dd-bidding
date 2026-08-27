@@ -8,19 +8,13 @@
 </head>
 <body>
 
-<!-- A2 spike: AppShell (header/left nav/tabs) + RatesPage + HistoryPage
-     render here. Every not-yet-converted page's exact original markup is
-     kept below in inert <template> tags — LegacyPage (src/pages/LegacyPage.jsx)
-     clones a template's content into its own DOM once on first mount, then
-     never lets React touch those children again, so the old vanilla
-     scripts (populateForm(), addAsm(), calc(), etc.) keep operating on
-     real, unmanaged DOM exactly as before. See CLAUDE.md and the A2 plan
-     for the full coexistence architecture. -->
+<!-- A2: AppShell (header/left nav/tabs) and every page render here now —
+     the last page (Dashboard) converted to React. No inert <template>
+     tags remain; LegacyPage (src/pages/LegacyPage.jsx) is unused but not
+     yet deleted (the final A2 cleanup pass — see CLAUDE.md — drops it
+     along with the window.* bridges once verified nothing needs them).
+     See CLAUDE.md and the A2 plan for the full migration history. -->
 <div id="root"></div>
-
-<template id="legacy-tpl-dashboard">
-  <div class="empty-state">Loading drafts…</div>
-</template>
 
 <div id="dev-toolbar" class="dev-toolbar">
   <span class="dev-toolbar-label">Demo controls</span>

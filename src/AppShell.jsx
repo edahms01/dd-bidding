@@ -17,7 +17,6 @@
 import { Fragment, useEffect } from 'react';
 import { useStore } from './state/store.jsx';
 import { registerBridges } from './state/bridges.js';
-import LegacyPage from './pages/LegacyPage.jsx';
 import ProjectPage from './pages/ProjectPage.jsx';
 import ConditionsPage from './pages/ConditionsPage.jsx';
 import RatesPage from './pages/RatesPage.jsx';
@@ -27,6 +26,7 @@ import CeilingsPage from './pages/CeilingsPage.jsx';
 import OutputPage from './pages/OutputPage.jsx';
 import AgentPage from './pages/AgentPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 
 const WORKFLOW_TABS = [
@@ -182,7 +182,7 @@ export default function AppShell() {
             <CeilingsPage active={activeSection === 'workflow' && activeTab === 'ceilings'} />
             <OutputPage active={activeSection === 'workflow' && activeTab === 'output'} />
             <AgentPage active={activeSection === 'workflow' && activeTab === 'agent'} />
-            <LegacyPage id="dashboard" active={activeSection === 'dashboard'} />
+            <DashboardPage active={activeSection === 'dashboard'} />
             <HistoryPage active={activeSection === 'history'} />
           </div>
         </div>
