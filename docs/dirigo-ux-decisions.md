@@ -84,8 +84,10 @@ Spec: page-level toggle on Walls and Ceilings — "Enter by dimensions" / "Enter
 **4.1 Persistent bid-total rail — APPROVED.**
 Totals currently exist only on Rates and Cost Summary. The entire takeoff — where most time is spent — shows no number. Thin persistent rail (direct cost / markup / bid price) from Assemblies onward, with a subtle flash on change. Most demo-friendly change in the report.
 
-**4.2 Reactive calculation, Recalculate button removed — APPROVED.**
+**4.2 Reactive calculation, Recalculate button removed — APPROVED. Implemented (Phase B, Step 1, 2026-08-28).**
 The manual `↻ Recalculate` implies the number can go stale but nothing indicates when, which undercuts trust in every figure on screen. Make calculation reactive and delete the button.
+
+`js/ui.js`'s `runCalculation()` split into `calculateOnly()` (numbers only — everything through `renderOutput()`) and `runCalculation()` (`calculateOnly()` plus the bid-agent launch, unchanged externally). A new debounced trigger, `window.scheduleRecalc` (500ms), calls `calculateOnly()` only — wired from `js/forms.js`'s existing autosave-change handler (uncontrolled-input keystrokes) and `src/AppShell.jsx`'s `state.bid` watcher (React-dispatched row add/delete/hydration/controlled fields). **Decided explicitly, not assumed:** the bid agent must not relaunch on every reactive tick — "numbers update live" doesn't imply "relaunch an AI call on every keystroke." Agent-launch frequency is unchanged from before this phase: it still only fires from `window.goto('output')` and the post-finalize "Back to output" button, both of which still call the full `runCalculation()`.
 
 **4.3 Top cost drivers panel — APPROVED.**
 The existing breakdown reports what the number is, not where it's movable. Add the five rows contributing the most dollars, plus labor as a % of direct cost.
@@ -236,7 +238,7 @@ The Playwright suite is behavioural — it drives the UI and asserts on outcomes
 
 **Assumptions requiring Code to confirm** (not verified by search):
 - That `.tab.done` styling is currently unwired rather than wired to something else
-- That no consumer depends on the `↻ Recalculate` button's manual trigger before 4.2 removes it
+- ~~That no consumer depends on the `↻ Recalculate` button's manual trigger before 4.2 removes it~~ — confirmed by direct read (its only call site, `OutputPage.jsx`, was `window.runCalculation?.()`, an on-click convenience with no other consumer) and by the full, unmodified Playwright suite passing after removal (Phase B, Step 1).
 - That `dirigo_drafts` and the Netlify-backed bid store can be unified behind one list view (2.5) without a storage migration
 
 ---
