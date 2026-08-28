@@ -25,6 +25,7 @@
 // handling.spec.js double-click spec, not just reasoned through.
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
+import { hasUnresolvedReferences } from '../state/validation.js';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 
@@ -69,7 +70,15 @@ export default function FinalizeModal() {
     }
   }
 
-  const confirmDisabled = isSubmitting || (selected === 'override' && !(parseFloat(customAmount) > 0));
+  // 3.1 — defense-in-depth alongside AgentPage.jsx's own disabled
+  // "Finalize bid →" button: that button already blocks opening this
+  // modal in the normal flow, but OutputPage.jsx's post-failure "Try
+  // again" panel reopens it directly (dispatch({type:'OPEN_FINALIZE_
+  // MODAL', ...})), bypassing AgentPage's button entirely — so this
+  // modal needs its own independent check, not just a trust that the
+  // caller already checked.
+  const blocked = hasUnresolvedReferences(state.bid);
+  const confirmDisabled = isSubmitting || blocked || (selected === 'override' && !(parseFloat(customAmount) > 0));
 
   return (
     <div className={'modal-overlay' + (open ? ' open' : '')} id="finalize-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) dispatch({ type: 'CLOSE_FINALIZE_MODAL' }); }}>
@@ -108,6 +117,15 @@ export default function FinalizeModal() {
         <div id="finalize-modal-error" style={{ display: error ? 'block' : 'none', margin: '0 20px 12px', padding: '10px 14px', background: 'rgba(232,92,74,.08)', border: '1px solid rgba(232,92,74,.3)', borderRadius: 'var(--r)', color: '#e85c4a', fontSize: 12 }}>
           {error}
         </div>
+        {/* 3.1 — same block styling as the submit-error notice above,
+            shown instead of it (mutually exclusive: a blocked submit
+            never reaches submitBid() at all, so `error` can't be set
+            yet) whenever an orphaned Type ID reference exists. */}
+        {blocked && !error && (
+          <div style={{ margin: '0 20px 12px', padding: '10px 14px', background: 'rgba(232,92,74,.08)', border: '1px solid rgba(232,92,74,.3)', borderRadius: 'var(--r)', color: '#e85c4a', fontSize: 12 }}>
+            Resolve every unrecognized Type ID reference on Walls/Ceilings before finalizing.
+          </div>
+        )}
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={() => dispatch({ type: 'CLOSE_FINALIZE_MODAL' })}>Cancel</button>
           <button className="btn btn-primary" id="finalize-confirm-btn" onClick={handleConfirm} disabled={confirmDisabled}>

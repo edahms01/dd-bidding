@@ -331,6 +331,25 @@ export function reducer(state, action) {
       return { ...state, bid: { ...state.bid, walls: [...state.bid.walls, blankWallRow()] } };
     case 'ADD_CEILING_ROW':
       return { ...state, bid: { ...state.bid, ceilings: [...state.bid.ceilings, blankCeilRow()] } };
+    case 'SET_ROW_FIELD':
+      // 3.1 — for the one row field that's controlled (Type ID, via
+      // TypeIdSelect.jsx), since orphan detection needs real reducer
+      // state to react across pages. NOT a general-purpose replacement
+      // for every row field going uncontrolled-to-controlled — the rest
+      // of each row stays deliberately uncontrolled (see WallsPage.jsx/
+      // CeilingsPage.jsx/AssembliesPage.jsx). Deliberately NOT built on
+      // setPath() above: setPath spreads on a numeric array index
+      // ({...arr, [index]: val}), which silently turns the array into a
+      // plain object — breaking every later .map()/.filter() on that
+      // section. .map() with an index check keeps it a real array.
+      return {
+        ...state,
+        bid: {
+          ...state.bid,
+          [action.section]: state.bid[action.section].map((r, i) =>
+            i === action.index ? { ...r, [action.field]: action.value } : r)
+        }
+      };
     case 'DELETE_ROW':
       // Generic across row-array sections (assemblies now; walls/
       // ceilings once they convert) — deletes by index, captured at

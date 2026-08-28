@@ -73,17 +73,27 @@ function collectFormData() {
     });
   });
 
+  // 3.1: Type ID converting from a free-text <input> to a <select>
+  // (TypeIdSelect.jsx) meant tr.querySelectorAll('input')[n] positional
+  // indexing would silently skip it and shift every field after it out
+  // of alignment (a <select> isn't an <input>). Both loops below read
+  // each field by its own stable className (WallsPage.jsx/
+  // CeilingsPage.jsx) instead — column order in either page's JSX no
+  // longer has to match this function's field order at all.
+  function fieldVal(tr, cls) {
+    return tr.querySelector('.' + cls)?.value ?? '';
+  }
+
   const walls = [];
   document.querySelectorAll('#wall-body tr').forEach(tr => {
-    const inp = tr.querySelectorAll('input');
-    if (!inp[0]) return;
-    const gross = parseFloat(inp[4]?.value) || 0;
-    const ded   = parseFloat(inp[5]?.value) || 0;
+    if (!tr.querySelector('.wall-location')) return;
+    const gross = parseFloat(fieldVal(tr, 'wgsf')) || 0;
+    const ded   = parseFloat(fieldVal(tr, 'wded')) || 0;
     walls.push({
-      location: inp[0].value,
-      typeId:   inp[1].value.trim(),
-      height:   parseFloat(inp[2]?.value) || 0,
-      lf:       parseFloat(inp[3]?.value) || 0,
+      location: fieldVal(tr, 'wall-location'),
+      typeId:   fieldVal(tr, 'wall-typeid').trim(),
+      height:   parseFloat(fieldVal(tr, 'wall-height')) || 0,
+      lf:       parseFloat(fieldVal(tr, 'wlf')) || 0,
       grossSF:  gross,
       openings: ded,
       netSF:    Math.max(0, gross - ded)
@@ -92,16 +102,15 @@ function collectFormData() {
 
   const ceilings = [];
   document.querySelectorAll('#ceil-body tr').forEach(tr => {
-    const inp = tr.querySelectorAll('input');
-    if (!inp[0]) return;
-    const gross = parseFloat(inp[3]?.value) || 0;
-    const ded   = parseFloat(inp[5]?.value) || 0;
+    if (!tr.querySelector('.ceil-location')) return;
+    const gross = parseFloat(fieldVal(tr, 'cgsf')) || 0;
+    const ded   = parseFloat(fieldVal(tr, 'cded')) || 0;
     ceilings.push({
-      location: inp[0].value,
-      typeId:   inp[1].value.trim(),
-      height:   parseFloat(inp[2]?.value) || 0,
+      location: fieldVal(tr, 'ceil-location'),
+      typeId:   fieldVal(tr, 'ceil-typeid').trim(),
+      height:   parseFloat(fieldVal(tr, 'ceil-height')) || 0,
       grossSF:  gross,
-      soffitLF: parseFloat(inp[4]?.value) || 0,
+      soffitLF: parseFloat(fieldVal(tr, 'ceil-soffitlf')) || 0,
       openings: ded,
       netSF:    Math.max(0, gross - ded)
     });
