@@ -28,6 +28,13 @@ import AgentPage from './pages/AgentPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
+import BidTotalRail from './components/BidTotalRail.jsx';
+
+// 4.1: tabs where the rail shows — "visible from Assemblies onward" per
+// the decision record, not project/conditions/rates (which either
+// precede any takeoff data existing at all, or already have their own
+// totals display — RatesPage.jsx's own crude tile).
+const RAIL_TABS = ['assemblies', 'walls', 'ceilings', 'output', 'agent'];
 
 const WORKFLOW_TABS = [
   { id: 'project',     num: 1, label: 'Project' },
@@ -204,6 +211,10 @@ export default function AppShell() {
                 </Fragment>
               ))}
             </nav>
+          )}
+
+          {activeSection === 'workflow' && RAIL_TABS.includes(activeTab) && (
+            <BidTotalRail output={state.ui.output} />
           )}
 
           <div className="body">

@@ -92,6 +92,16 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .total-val.green{color:var(--green);font-size:22px}
 .total-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
 
+/* ── BID TOTAL RAIL (4.1 — persistent, Assemblies onward) ── */
+/* Same visual language as .totals-bar (reuses .total-item/.total-val/
+   .total-div/.total-lbl directly) but slimmer and non-scrolling — sits
+   between the tab bar and the page body, not inside any one page. */
+.bid-total-rail{display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;flex-shrink:0;transition:background-color .3s ease}
+.bid-total-rail .total-item{padding:0 16px}
+.bid-total-rail .total-val{font-size:15px}
+.bid-total-rail .total-val.green{font-size:17px}
+.bid-total-rail.flash{background-color:rgba(58,191,122,.12)}
+
 .divider{height:1px;background:var(--border);margin:20px 0}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}
 
