@@ -862,6 +862,13 @@ function _handleFormChange() {
   hasUnsavedChanges = true;
   _setIndicator('saving');
   _debouncedAutosave();
+  // 4.2: reactive calculation. Independent debounced timer from the
+  // autosave one above (js/ui.js's window.scheduleRecalc, its own
+  // 500ms) — this is the uncontrolled-input-keystroke half of the
+  // trigger; row add/delete/hydration/controlled-field changes don't
+  // reliably bubble a native input/change event here, so those are
+  // covered separately by src/AppShell.jsx's state.bid watcher.
+  window.scheduleRecalc?.();
 }
 
 window.addEventListener('beforeunload', (e) => {

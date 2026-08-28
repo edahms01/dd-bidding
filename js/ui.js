@@ -331,7 +331,19 @@ function _currentConfidence() {
   return (typeof window !== 'undefined' && window.__getConfidence) ? window.__getConfidence() : STATE.conf;
 }
 
-function runCalculation() {
+// 4.2: split out of what used to be the single runCalculation() function.
+// calculateOnly() is the numbers-only half — everything through
+// renderOutput()/_lastCalc* stashing, no agent launch. runCalculation()
+// (below) is calculateOnly() plus the agent launch, unchanged externally
+// — every existing call site (window.goto('output'), the post-finalize
+// "Back to output" button) keeps calling runCalculation() and keeps
+// getting the agent relaunch it always did. The new reactive-calculation
+// trigger (window.scheduleRecalc, below) calls calculateOnly() instead,
+// specifically so a debounced edit anywhere in the workflow never
+// relaunches the bid agent (a real API call) as a side effect — decided
+// explicitly with Eric rather than assumed, since "numbers update live"
+// doesn't imply "relaunch an AI call on every keystroke."
+function calculateOnly() {
   // Pre-fill contingency from confidence if field is empty (only fires on first calculate)
   // A2: markup-contingency is a React-controlled input now (OutputPage.jsx)
   // — the direct .value write below is still required (collectFormData(),
@@ -368,9 +380,29 @@ function runCalculation() {
   _lastCalcSum    = summary;
   _lastCalcMarkup = markupResult;
 
+  return { state, summary, markupResult };
+}
+
+function runCalculation() {
+  const { state, summary, markupResult } = calculateOnly();
   _agentResult  = null;
   _agentLoading = true;
   _launchBidAgent(state, summary, markupResult);
+}
+
+// 4.2: the one new reactive-calculation trigger. Debounced independently
+// of autosave's own 700ms debounce (js/autosave.js) — both reset off the
+// same events but fire on separate timers, so there's no shared-timer
+// race, just two independent schedules. Wired from js/forms.js's
+// existing _handleFormChange() (uncontrolled-input keystrokes) and from
+// src/AppShell.jsx's state.bid watcher (React-dispatched row add/
+// delete/hydration/controlled-field changes) — see CLAUDE.md's Phase B
+// section. Guarded per checklist item 9 (CLAUDE.md): tests/unit/
+// ui.test.js imports this file under Vitest's node environment, no
+// window at all.
+const RECALC_DEBOUNCE_MS = 500; // shorter than autosave's 700ms — numbers should feel live
+if (typeof window !== 'undefined') {
+  window.scheduleRecalc = debounce(calculateOnly, RECALC_DEBOUNCE_MS);
 }
 
 // ── AGENT LAUNCH ──────────────────────────────────────────────────────

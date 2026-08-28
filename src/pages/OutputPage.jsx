@@ -217,7 +217,11 @@ export default function OutputPage({ active }) {
         <div><div className="page-title">Initial Bid</div><div className="page-sub">Direct cost breakdown and pricing</div></div>
         <div className="page-actions">
           <button className="btn btn-ghost" onClick={() => window.goto('ceilings')}>← Back</button>
-          <button className="btn btn-ghost" onClick={() => window.runCalculation?.()}>↻ Recalculate</button>
+          {/* 4.2: manual Recalculate removed — calculation is reactive now
+              (window.scheduleRecalc, js/ui.js), wired from js/forms.js's
+              autosave-change handler and AppShell.jsx's state.bid watcher.
+              The button implied a number could go stale with nothing
+              indicating when; nothing here should need it anymore. */}
           <button className="btn btn-primary" onClick={() => window.goto('agent')}>Next: Agent Recommendation →</button>
         </div>
       </div>

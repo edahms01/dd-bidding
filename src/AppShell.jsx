@@ -70,6 +70,21 @@ export default function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 4.2: reactive calculation. Covers the half js/forms.js's
+  // _handleFormChange() (uncontrolled-input keystrokes) can't —
+  // React-dispatched row add/delete/duplicate/undo, hydration on draft
+  // switch/import/reset, and controlled fields (Project/Conditions/
+  // Rates/Markup) don't reliably fire a native input/change event that
+  // bubbles to .workflow-area. Every bid-touching reducer branch returns
+  // a new state.bid reference, so this fires on every relevant dispatch.
+  // Overlap with the forms.js path is harmless — both call the same
+  // debounced window.scheduleRecalc singleton (js/ui.js), which only
+  // recomputes numbers, never relaunches the bid agent (see js/ui.js's
+  // calculateOnly()/runCalculation() split).
+  useEffect(() => {
+    window.scheduleRecalc?.();
+  }, [state.bid]);
+
   return (
     <Fragment>
     <div className="shell">
