@@ -129,6 +129,18 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch }) {
 
       <div className="section-block">
         <div className="section-label">Bid options</div>
+        {/* Phase B interim caveat (2026-08-28) — the real fix (re-validate/
+            relaunch against fresh inputs) is Phase E's job, per docs/
+            dirigo-ux-decisions.md §9.9. This one line exists because 4.2's
+            reactive calculation is what turned a pre-existing, dormant
+            staleness gap into an actively misleading one within a single
+            session (verified directly: the rail's bid price moving by
+            tens of thousands of dollars while these cards sat frozen) —
+            Phase B's own change made it worse, so a cheap mitigation is
+            fair scope here even though the full fix isn't. */}
+        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
+          These options may reflect an earlier version of your inputs.
+        </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
           {(r.options || []).map((opt) => (
             <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} />
