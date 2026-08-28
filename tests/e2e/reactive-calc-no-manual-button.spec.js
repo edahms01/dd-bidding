@@ -70,7 +70,8 @@ test('recalculation also fires on row add, not just keystrokes', async ({ page }
   // A blank/unmatched Type ID makes calculator.js tag this row as an
   // unresolved reference (zero cost, see 3.1's Type ID work) — use a
   // real seed assembly id (data/seed.json) so this row actually prices.
-  await newRow.locator('td:nth-child(2) input').fill('W1');
+  // 3.1 converted Type ID to a <select> (TypeIdSelect.jsx).
+  await newRow.locator('td:nth-child(2) select').selectOption('W1');
   await newRow.locator('td:nth-child(3) input').fill('10');
   await newRow.locator('.wlf').fill('40');
   await newRow.locator('.wgsf').fill('400');

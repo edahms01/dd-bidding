@@ -56,10 +56,14 @@ Selecting Bid History currently hides the step bar entirely, so the app reads as
 
 ## 3. Decisions — Takeoff tables
 
-**3.1 Type ID becomes a dropdown bound to Assemblies — APPROVED. Highest severity item in the report.**
+**3.1 Type ID becomes a dropdown bound to Assemblies — APPROVED. Highest severity item in the report. Implemented (Phase B, Step 3, 2026-08-28).**
 Wall and ceiling rows take Type ID as free text. `collectFormData()` trims whitespace, so that failure mode is covered, but case mismatch, typos, and deleting an assembly still referenced by takeoff rows all produce a wrong total with no warning. The new per-assembly Waste % override adds more data riding on that reference.
 
 Spec: select populated live from Assemblies, option label `W1 — 3-5/8" / Type-X / L4`; inline warning when a reference goes orphaned; block submit while unresolved references exist.
+
+New `src/components/TypeIdSelect.jsx` replaces the free-text `<input>` — case mismatch and typos are now structurally impossible, since a value can only come from a real assembly id or the field's own blank default. The one deliberately controlled field in an otherwise fully uncontrolled row (`SET_ROW_FIELD`, `src/state/store.jsx`), since orphan detection needs to react across pages. `src/state/validation.js`'s `hasUnresolvedReferences()`/`isOrphanTypeId()` is the shared rule behind the inline warning, the "Finalize bid →" button, and the finalize modal's Confirm button — **deliberately narrower than `calculator.js`'s own per-row `error` flag**, which also fires for a genuinely blank typeId (every fresh draft's default starter row). Found by direct investigation before shipping: reusing that flag as originally planned would have blocked Finalize on every brand-new, untouched draft. "A reference goes orphaned" means a row that HAD a real reference now invalid (an assembly deleted, or a stale imported/legacy value) — not a row nobody has filled in yet.
+
+`js/state.js`'s `collectFormData()` rewritten from positional NodeList indexing to class-based `querySelector` lookups for Walls/Ceilings rows — required because Type ID converting from `<input>` to `<select>` would otherwise have silently shifted every field after it out of the old `inp[n]` index math (a `<select>` isn't an `<input>`). Verified with a real before/after export-payload diff (not just a passing spec, per Eric's explicit standard): captured the exported seed-data payload against the pre-rewrite code (git stash to the prior commit, same running dev server) and against the post-rewrite code, byte-for-byte identical.
 
 **3.2 Remove hard-coded pixel widths — APPROVED, but ABSORBED by the React migration (§9).**
 Generated cells carry `style="width:52px"` and similar. Cramped on desktop, truncates at browser zoom, and physically overrides any responsive breakpoint. No longer a separate task: the row generators in `forms.js` become components during the Phase A migration, and the inline widths do not survive that transition. Retained here as an acceptance criterion, not a work item — no pixel widths in generated markup after Phase A.
