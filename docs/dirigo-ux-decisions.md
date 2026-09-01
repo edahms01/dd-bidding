@@ -73,8 +73,10 @@ Rationale from the walkthrough: estimators frequently arrive with SF already tot
 
 Spec: page-level toggle on Walls and Ceilings — "Enter by dimensions" / "Enter by area". Persists per draft. Switching hides columns without discarding entered values. LF framing stays visible and required in **both** modes, since framing is priced per LF and cannot be recovered from SF alone.
 
-**3.4 Validation guardrails — APPROVED.**
+**3.4 Validation guardrails — APPROVED. Three of four implemented (Phase B, Step 4, 2026-08-28) — the fourth (LF empty in area mode) lands with 3.3, once the mode concept exists.**
 `calcWall()` clamps net SF at zero, so openings exceeding gross SF display a plausible number and hide the mistake. Add soft warnings for: openings > gross, zero-height rows, blank rows (dimmed and excluded from totals), and — tied to 3.3 — LF empty in area mode, which silently drops framing cost.
+
+One page-level derived pass in `WallsPage.jsx`/`CeilingsPage.jsx` (mirroring `RatesPage.jsx`'s existing `recomputeTotals()`/root-`onInput` pattern, not a new mechanism) computes all three read-only, from the same class-named fields 3.1's `collectFormData()` rewrite introduced — the same pass will feed 3.5's column totals later rather than a second, competing read of the same rows. `--status-warn` styling, deliberately distinct from 3.1's `--danger` orphan warning (soft vs. blocking severity, per `css/tokens.css`'s own documented split). Zero-height only flags a row that otherwise has real data — a fully blank row gets its own (dimmed) treatment instead, not a redundant second badge. **Explicit constraint honored, not touched:** `calcWall()`/`calcCeil()`'s clamp-at-zero math, and every existing calculation, is unmodified — these are display-only warnings over already-computed values.
 
 **3.5 Table affordances — APPROVED: column totals, duplicate row, undo on delete. Paste-from-spreadsheet REJECTED.**
 - *Column totals* (LF, gross SF, net SF): estimators cross-check against the drawing set. Without it they export to Excel, defeating the product.
