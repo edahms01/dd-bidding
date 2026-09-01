@@ -102,6 +102,12 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .bid-total-rail .total-val.green{font-size:17px}
 .bid-total-rail.flash{background-color:rgba(58,191,122,.12)}
 
+/* ── TAKEOFF ROW GUARDRAILS (3.4 — soft warnings, Walls/Ceilings) ── */
+/* A blank row (no data entered at all) dims out rather than showing a
+   warning badge — it's not a mistake, just not filled in yet, and
+   3.5's column totals (Step 6) exclude rows carrying this class. */
+.row-blank{opacity:.45}
+
 .divider{height:1px;background:var(--border);margin:20px 0}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}
 

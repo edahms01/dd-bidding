@@ -4,11 +4,12 @@
 // WallsPage.jsx/AssembliesPage.jsx — see WallsPage.jsx's header comment
 // for the full reasoning (row identity, uncontrolled fields, derived
 // Net SF, the 3.1 class-based collectFormData() rewrite and Type ID
-// dropdown). Soffit LF (the 5th column) has no calc side effect at all
-// in the original markup — no oninput — so it's a plain uncontrolled
-// input here too, nothing special beyond the new stable className.
+// dropdown, the 3.4 page-level derived-guardrail pass). Soffit LF (the
+// 5th column) has no calc side effect at all in the original markup —
+// no oninput — so it's a plain uncontrolled input here too, nothing
+// special beyond the new stable className.
 // ─────────────────────────────────────────────────────────────────────
-import { useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store.jsx';
 import TypeIdSelect from '../components/TypeIdSelect.jsx';
 import { isOrphanTypeId } from '../state/validation.js';
@@ -19,7 +20,7 @@ function fmtNet(g, d) {
   return gross > 0 ? Math.max(0, gross - ded).toLocaleString() : '—';
 }
 
-function CeilRow({ row, index, dispatch, assemblies }) {
+function CeilRow({ row, index, dispatch, assemblies, derived }) {
   const gsfRef = useRef(null);
   const dedRef = useRef(null);
   const netRef = useRef(null);
@@ -34,7 +35,7 @@ function CeilRow({ row, index, dispatch, assemblies }) {
   const orphan = isOrphanTypeId(row.typeId, assemblies);
 
   return (
-    <tr>
+    <tr className={derived?.isBlank ? 'row-blank' : ''}>
       <td><input type="text" className="ceil-location" defaultValue={row.location} placeholder="Floor 3 / Lobby" /></td>
       <td>
         <TypeIdSelect
@@ -49,10 +50,20 @@ function CeilRow({ row, index, dispatch, assemblies }) {
           </div>
         )}
       </td>
-      <td><input type="number" min="0" className="ceil-height" defaultValue={row.height} placeholder="12" /></td>
+      <td>
+        <input type="number" min="0" className="ceil-height" defaultValue={row.height} placeholder="12" />
+        {derived?.zeroHeight && (
+          <div style={{ fontSize: 11, color: 'var(--status-warn)', marginTop: 3 }}>⚠ Height is 0</div>
+        )}
+      </td>
       <td><input ref={gsfRef} type="number" min="0" defaultValue={row.grossSF} placeholder="0" className="cgsf" onInput={recalc} /></td>
       <td><input type="number" min="0" className="ceil-soffitlf" defaultValue={row.soffitLF} placeholder="0" /></td>
-      <td><input ref={dedRef} type="number" min="0" defaultValue={row.openings} placeholder="0" className="cded" onInput={recalc} /></td>
+      <td>
+        <input ref={dedRef} type="number" min="0" defaultValue={row.openings} placeholder="0" className="cded" onInput={recalc} />
+        {derived?.openingsExceedGross && (
+          <div style={{ fontSize: 11, color: 'var(--status-warn)', marginTop: 3 }}>⚠ Exceeds gross SF</div>
+        )}
+      </td>
       <td><span ref={netRef} className="calc-cell cnet">{fmtNet(row.grossSF, row.openings)}</span></td>
       <td><button className="del-btn" onClick={() => dispatch({ type: 'DELETE_ROW', section: 'ceilings', index })}>×</button></td>
     </tr>
@@ -63,9 +74,34 @@ export default function CeilingsPage({ active }) {
   const [state, dispatch] = useStore();
   const rows = state.bid.ceilings;
   const assemblies = state.bid.assemblies;
+  const rootRef = useRef(null);
+  const [derived, setDerived] = useState([]);
+
+  const computeDerived = useCallback(() => {
+    if (!rootRef.current) return [];
+    return Array.from(rootRef.current.querySelectorAll('#ceil-body tr')).map((tr) => {
+      const location = tr.querySelector('.ceil-location')?.value || '';
+      const typeId   = tr.querySelector('.ceil-typeid')?.value || '';
+      const height   = parseFloat(tr.querySelector('.ceil-height')?.value) || 0;
+      const gross    = parseFloat(tr.querySelector('.cgsf')?.value) || 0;
+      const soffitLF = parseFloat(tr.querySelector('.ceil-soffitlf')?.value) || 0;
+      const openings = parseFloat(tr.querySelector('.cded')?.value) || 0;
+      const isBlank = !location && !typeId && !height && !gross && !soffitLF && !openings;
+      return {
+        isBlank,
+        zeroHeight: !isBlank && height === 0,
+        openingsExceedGross: gross > 0 && openings > gross,
+        gross, openings, soffitLF
+      };
+    });
+  }, []);
+
+  useEffect(() => {
+    setDerived(computeDerived());
+  }, [rows, computeDerived]);
 
   return (
-    <div className={'page' + (active ? ' active' : '')} id="page-ceilings">
+    <div className={'page' + (active ? ' active' : '')} id="page-ceilings" ref={rootRef} onInput={() => setDerived(computeDerived())}>
       <div className="page-hdr">
         <div><div className="page-title">Ceiling + soffit quantities</div><div className="page-sub">One row per area. Net SF calculates automatically.</div></div>
         <div className="page-actions">
@@ -85,7 +121,7 @@ export default function CeilingsPage({ active }) {
             <th>SF ceiling</th><th>Soffit LF</th><th>Openings (SF)</th><th>Net SF</th><th></th>
           </tr></thead>
           <tbody id="ceil-body">
-            {rows.map((row, i) => <CeilRow key={row._key} row={row} index={i} dispatch={dispatch} assemblies={assemblies} />)}
+            {rows.map((row, i) => <CeilRow key={row._key} row={row} index={i} dispatch={dispatch} assemblies={assemblies} derived={derived[i]} />)}
           </tbody>
         </table>
       </div>
