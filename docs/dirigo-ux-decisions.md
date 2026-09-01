@@ -103,8 +103,10 @@ Undo on delete: `DELETE_ROW` stashes the removed row (same live-capture fix as D
 
 ## 4. Decisions — Calculation feedback
 
-**4.1 Persistent bid-total rail — APPROVED.**
+**4.1 Persistent bid-total rail — APPROVED. Implemented (Phase B, Step 2, 2026-08-28).**
 Totals currently exist only on Rates and Cost Summary. The entire takeoff — where most time is spent — shows no number. Thin persistent rail (direct cost / markup / bid price) from Assemblies onward, with a subtle flash on change. Most demo-friendly change in the report.
+
+New `src/components/BidTotalRail.jsx` — first file in a new `src/components/` directory, shell-owned and always mounted (same pattern as `FinalizeModal.jsx`). Reads `state.ui.output` directly, kept live by 4.2's reactive calculation — no separate calculation path. Mounted from `src/AppShell.jsx`, scoped to `assemblies`/`walls`/`ceilings`/`output`/`agent` (not project/conditions/rates, which either precede any takeoff data or already have their own totals tile — Rates' own crude tile). Reuses `.total-item`/`.total-val`/`.total-div`/`.total-lbl` (`css/components.css`) — same visual language as the existing Rates/Output totals bars. Flash-on-change is pure React state (a `useRef`/`useState` pair diffing `finalBidPrice` between renders), no DOM-read conflict since `state.ui.output` is already React-owned.
 
 **4.2 Reactive calculation, Recalculate button removed — APPROVED. Implemented (Phase B, Step 1, 2026-08-28).**
 The manual `↻ Recalculate` implies the number can go stale but nothing indicates when, which undercuts trust in every figure on screen. Make calculation reactive and delete the button.
