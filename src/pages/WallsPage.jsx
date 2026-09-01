@@ -128,10 +128,32 @@ function WallRow({ row, index, dispatch, assemblies, derived, mode }) {
         )}
       </td>
       <td><span ref={netRef} className="calc-cell wnet">{fmtNet(row.grossSF, row.openings)}</span></td>
-      <td><button className="del-btn" onClick={() => dispatch({ type: 'DELETE_ROW', section: 'walls', index })}>×</button></td>
+      <td className="row-actions">
+        {/* 3.5 — live-captured via window.collectFormData(), not
+            state.bid.walls[index] directly: every field but Type ID is
+            uncontrolled, so the reducer's own copy can be stale relative
+            to what's actually typed in the DOM right now. */}
+        <button className="dup-btn" title="Duplicate" onClick={() => {
+          const live = window.collectFormData?.()?.walls?.[index];
+          const values = live ? { location: live.location, typeId: live.typeId, height: live.height, lf: live.lf, grossSF: live.grossSF, openings: live.openings } : undefined;
+          dispatch({ type: 'DUPLICATE_ROW', section: 'walls', index, values });
+          // 3.5 — plain reducer dispatch, not a native DOM event; see
+          // AppShell.jsx's reactive-calc effect comment for why autosave
+          // is fixed per-action here, not with a blanket watcher.
+          window._handleFormChange?.();
+        }}>⧉</button>
+        <button className="del-btn" onClick={() => {
+          const live = window.collectFormData?.()?.walls?.[index];
+          const values = live ? { location: live.location, typeId: live.typeId, height: live.height, lf: live.lf, grossSF: live.grossSF, openings: live.openings } : undefined;
+          dispatch({ type: 'DELETE_ROW', section: 'walls', index, values });
+          window._handleFormChange?.();
+        }}>×</button>
+      </td>
     </tr>
   );
 }
+
+function fmtTotal(n) { return n > 0 ? n.toLocaleString() : '—'; }
 
 export default function WallsPage({ active }) {
   const [state, dispatch] = useStore();
@@ -170,7 +192,7 @@ export default function WallsPage({ active }) {
         // recoverable from SF alone) — only worth flagging on a row
         // that otherwise has real data, same reasoning as zeroHeight.
         lfEmptyInAreaMode: !isBlank && modeRef.current === 'area' && !lf,
-        lf, gross, openings
+        lf, gross, openings, netSF: Math.max(0, gross - openings)
       };
     });
   }, []);
@@ -219,7 +241,7 @@ export default function WallsPage({ active }) {
           <colgroup>
             <col style={{ width: 150 }} /><col style={{ width: 64 }} /><col style={{ width: 78, visibility: mode === 'area' ? 'collapse' : 'visible' }} />
             <col style={{ width: 82 }} /><col style={{ width: 92 }} /><col style={{ width: 92 }} />
-            <col style={{ width: 72 }} /><col style={{ width: 36 }} />
+            <col style={{ width: 72 }} /><col style={{ width: 58 }} />
           </colgroup>
           <thead><tr>
             <th>Location</th><th>Type ID</th><th style={mode === 'area' ? { display: 'none' } : undefined}>Height (ft)</th>
@@ -228,9 +250,20 @@ export default function WallsPage({ active }) {
           <tbody id="wall-body">
             {rows.map((row, i) => <WallRow key={row._key} row={row} index={i} dispatch={dispatch} assemblies={assemblies} derived={derived[i]} mode={mode} />)}
           </tbody>
+          {/* 3.5 — column totals, summed from the same computeDerived()
+              pass 3.4 already runs (Σ over non-blank rows). */}
+          <tfoot><tr className="totals-row">
+            <td colSpan="2">Totals</td>
+            <td style={mode === 'area' ? { display: 'none' } : undefined}></td>
+            <td>{fmtTotal(derived.filter((d) => d && !d.isBlank).reduce((s, d) => s + d.lf, 0))}</td>
+            <td>{fmtTotal(derived.filter((d) => d && !d.isBlank).reduce((s, d) => s + d.gross, 0))}</td>
+            <td></td>
+            <td>{fmtTotal(derived.filter((d) => d && !d.isBlank).reduce((s, d) => s + d.netSF, 0))}</td>
+            <td></td>
+          </tr></tfoot>
         </table>
       </div>
-      <button className="add-row-btn" onClick={() => dispatch({ type: 'ADD_WALL_ROW' })}>+ Add wall area</button>
+      <button className="add-row-btn" onClick={() => { dispatch({ type: 'ADD_WALL_ROW' }); window._handleFormChange?.(); }}>+ Add wall area</button>
     </div>
   );
 }

@@ -54,6 +54,13 @@ function _resetAgentCache() {
   // draft's cached result even after these classic-script globals were
   // correctly cleared (see draft-switch-no-contamination.spec.js).
   window.__resetAgentCache?.();
+  // 3.5: reuses this exact same choke point (both draft-switch call
+  // sites below already call this function) rather than touching a
+  // second call site directly. Unlike submitResult's deliberately-left
+  // wrong-tab quirk, a pending row-undo surviving a draft switch is
+  // actively data-corrupting, not cosmetic — it could resurrect a row
+  // from a completely different draft into whatever's now active.
+  window.__resetRowUndo?.();
 }
 
 // ── PIPELINE COUNT HINT ─────────────────────────────────────────────────

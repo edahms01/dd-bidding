@@ -167,6 +167,13 @@ export function registerBridges(dispatch) {
   // switch/blank-draft activation, so Tab 8's cached result can't leak
   // across drafts.
   window.__resetAgentCache = () => _dispatch({ type: 'RESET_AGENT_CACHE' });
+
+  // ── Row-undo reset (3.5) — called from js/ui.js's _resetAgentCache(),
+  // the same choke point both real draft-switch call sites already use,
+  // rather than touching those call sites directly. A pending undo
+  // surviving a draft switch is actively data-corrupting (could
+  // resurrect a row from the wrong draft), not a cosmetic quirk.
+  window.__resetRowUndo = () => _dispatch({ type: 'SET_FIELD', path: ['ui', 'rowUndo'], value: null });
 }
 
 // ── Confidence read accessor ──

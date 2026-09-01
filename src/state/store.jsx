@@ -139,7 +139,14 @@ export const initialState = {
       loading: false,
       historyUnavailable: false,
       selectedOption: 'recommended'
-    }
+    },
+    // 3.5 — Undo-on-delete's pending state: null | {section, index, row}.
+    // Set by DELETE_ROW, consumed/cleared by UNDO_DELETE_ROW, and
+    // explicitly cleared on every draft switch/reset (RESET_BID above,
+    // and js/ui.js's _resetAgentCache() bridge) — unlike submitResult's
+    // deliberately-preserved wrong-tab quirk, a pending undo surviving a
+    // draft switch is actively data-corrupting, not cosmetic.
+    rowUndo: null
   },
   bid: {
     project: {
@@ -314,6 +321,13 @@ export function reducer(state, action) {
       // the old draft's stale typed values despite the state correctly
       // reporting a blank row. Reproduced directly on Assemblies before
       // this was generalized — see CLAUDE.md checklist.
+      // 3.5: also clears rowUndo — a pending undo referencing a row from
+      // the *previous* draft is actively data-corrupting (could
+      // resurrect that row into this fresh one), not a cosmetic
+      // wrong-tab-style quirk, so unlike submitResult (deliberately left
+      // alone above) this needs an explicit reset here too, not just at
+      // _resetAgentCache()'s bridge (js/ui.js) — belt and suspenders,
+      // since RESET_BID is reachable via more than one path.
       return {
         ...state,
         bid: {
@@ -322,7 +336,8 @@ export function reducer(state, action) {
           asmCounter: 1,
           walls: [blankWallRow()],
           ceilings: [blankCeilRow()]
-        }
+        },
+        ui: { ...state.ui, rowUndo: null }
       };
     case 'ADD_ASSEMBLY_ROW': {
       const num = state.bid.asmCounter + 1;
@@ -358,19 +373,78 @@ export function reducer(state, action) {
             i === action.index ? { ...r, [action.field]: action.value } : r)
         }
       };
-    case 'DELETE_ROW':
-      // Generic across row-array sections (assemblies now; walls/
-      // ceilings once they convert) — deletes by index, captured at
-      // render time in each row's own delete-button closure, so it
+    case 'DELETE_ROW': {
+      // Generic across row-array sections — deletes by index, captured
+      // at render time in each row's own delete-button closure, so it
       // always targets the row whose button was actually clicked
       // regardless of how the array has shifted since that row mounted.
+      //
+      // 3.5 — also stashes the removed row into state.ui.rowUndo for
+      // Undo. action.values (captured live from the DOM at delete time,
+      // via window.collectFormData() — see AssembliesPage.jsx/
+      // WallsPage.jsx/CeilingsPage.jsx's handleDelete()) is merged over
+      // rows[action.index], NOT used alone: every row field except Type
+      // ID is deliberately uncontrolled (no per-keystroke dispatch), so
+      // the reducer's own copy can be stale relative to what's actually
+      // typed in the DOM right before delete — undo restoring the stale
+      // reducer copy would silently discard a live edit the user never
+      // dispatched. The merge keeps non-DOM-backed bookkeeping (_num,
+      // _key) from the reducer copy while letting live values win for
+      // everything collectFormData() actually reads.
+      const rows = state.bid[action.section];
+      const deletedSnapshot = action.values ? { ...rows[action.index], ...action.values } : rows[action.index];
       return {
         ...state,
         bid: {
           ...state.bid,
-          [action.section]: state.bid[action.section].filter((_, i) => i !== action.index)
-        }
+          [action.section]: rows.filter((_, i) => i !== action.index)
+        },
+        ui: { ...state.ui, rowUndo: { section: action.section, index: action.index, row: deletedSnapshot } }
       };
+    }
+    case 'UNDO_DELETE_ROW': {
+      const u = state.ui.rowUndo;
+      if (!u) return state;
+      const rows = state.bid[u.section];
+      // Fresh _key — same discipline as every other newly-inserted row
+      // (freshRowKey()'s own comment: reusing a key risks React reusing
+      // a stale uncontrolled-input DOM node instead of mounting a new
+      // one). Restored at the same index it was removed from — a plain
+      // splice-style insert, correct regardless of what else has
+      // happened to the array since (e.g. a duplicate inserted after
+      // it — see the duplicate-then-undo spec).
+      const restored = { ...u.row, _key: freshRowKey() };
+      const next = [...rows.slice(0, u.index), restored, ...rows.slice(u.index)];
+      return {
+        ...state,
+        bid: { ...state.bid, [u.section]: next },
+        ui: { ...state.ui, rowUndo: null }
+      };
+    }
+    case 'DUPLICATE_ROW': {
+      // action.values — same live-DOM-capture reasoning as DELETE_ROW
+      // above, same reason: rows[action.index] alone can be stale.
+      const rows = state.bid[action.section];
+      const src = action.values ? { ...rows[action.index], ...action.values } : rows[action.index];
+      let copy;
+      if (action.section === 'assemblies') {
+        // Copying `id` verbatim would collide in calculator.js's asmMap
+        // (Object.fromEntries keeps only the last of any duplicate id,
+        // silently shadowing the original) — mint a fresh id instead,
+        // same prefix convention as AssembliesPage.jsx's own
+        // updateAsmId() (Wall -> 'W', anything else -> 'C').
+        const num = state.bid.asmCounter + 1;
+        const prefix = src.category === 'Ceiling' ? 'C' : 'W';
+        copy = { ...src, id: prefix + num, _num: num, _key: freshRowKey() };
+        const next = [...rows.slice(0, action.index + 1), copy, ...rows.slice(action.index + 1)];
+        return { ...state, bid: { ...state.bid, assemblies: next, asmCounter: num } };
+      }
+      // Walls/ceilings: sharing a typeId across rows is normal (two
+      // zones of the same assembly type), no rename needed.
+      copy = { ...src, _key: freshRowKey() };
+      const next = [...rows.slice(0, action.index + 1), copy, ...rows.slice(action.index + 1)];
+      return { ...state, bid: { ...state.bid, [action.section]: next } };
+    }
     case 'LOAD_ASSEMBLY_ROWS': {
       // Bridge target for js/forms.js's populateForm() (window.
       // __hydrateAssemblies, see bridges.js) — replaces the old

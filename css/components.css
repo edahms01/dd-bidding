@@ -80,6 +80,9 @@ td input,td select{font-size:13px;padding:6px 8px;background:var(--surface2);bor
 td input:focus,td select:focus{border-color:var(--action);outline:none}
 .del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:17px;padding:0 4px;line-height:1;font-family:inherit}
 .del-btn:hover{color:var(--danger)}
+.dup-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px;line-height:1;font-family:inherit}
+.dup-btn:hover{color:var(--action)}
+.row-actions{display:flex;align-items:center;gap:2px;white-space:nowrap}
 .add-row-btn{font-size:12px;color:var(--teal);cursor:pointer;padding:7px 0;display:inline-flex;align-items:center;gap:5px;background:none;border:none;font-family:inherit}
 .add-row-btn:hover{opacity:.75}
 .calc-cell{font-size:13px;font-weight:600;color:var(--text);padding:6px 8px;background:var(--bg);border-radius:6px;min-width:60px;display:inline-block}
@@ -107,6 +110,8 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
    warning badge — it's not a mistake, just not filled in yet, and
    3.5's column totals (Step 6) exclude rows carrying this class. */
 .row-blank{opacity:.45}
+.totals-row{font-weight:600;color:var(--text);border-top:2px solid var(--border2)}
+.totals-row td{padding-top:8px}
 
 /* ── DIMENSIONS/AREA MODE TOGGLE (3.3 — Walls/Ceilings) ── */
 /* Same visual language as .pill/.pill.on (Project's scope pills) —
@@ -115,6 +120,15 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .mode-toggle{display:inline-flex;gap:2px;padding:3px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;margin-bottom:16px}
 .mode-toggle-btn{padding:6px 14px;border-radius:17px;font-size:12px;font-weight:500;border:none;cursor:pointer;color:var(--text3);background:transparent;transition:all .15s;font-family:inherit}
 .mode-toggle-btn.on{background:var(--action-dim);color:var(--action)}
+
+/* ── ROW UNDO TOAST (3.5 — undo on delete) ── */
+/* Same bottom-right/dark-surface/border shape as js/forms.js's
+   _showFormToast() (inline-styled, not class-based — component-driven
+   here instead), plus an inline action button neither existing toast
+   supports. */
+.row-undo-toast{position:fixed;bottom:24px;right:24px;display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);padding:12px 16px 12px 18px;color:var(--text2);font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:1100}
+.row-undo-toast-btn{background:transparent;border:1px solid var(--action-border);color:var(--action);border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.row-undo-toast-btn:hover{background:var(--action-dim)}
 
 .divider{height:1px;background:var(--border);margin:20px 0}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}

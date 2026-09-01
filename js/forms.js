@@ -861,16 +861,30 @@ function _autosave() {
 
 const _debouncedAutosave = debounce(_autosave, AUTOSAVE_DEBOUNCE_MS);
 
+// A `function` declaration — unlike the `const _debouncedAutosave`
+// above, this automatically becomes window._handleFormChange, callable
+// directly from a React module. 3.5: real bug found running the actual
+// draft-switch-after-delete check (per the plan's own empirical
+// standard), not assumed safe on paper — row add/delete/duplicate/undo
+// (and 3.3's mode toggle before this) are plain reducer dispatches, not
+// native DOM input/change events, so this function's caller below (the
+// .workflow-area delegated listener) never saw them: hasUnsavedChanges
+// never got set, so _flushAndSwitch()'s `if (hasUnsavedChanges)
+// _autosave()` guard never flushed the pending change before handing
+// the form to a different draft — a row deleted with no other edit
+// afterward silently reappeared on the next draft switch. src/
+// AppShell.jsx's state.bid watcher now calls this exact function
+// directly for React-dispatched changes, rather than reimplementing its
+// three effects (hasUnsavedChanges, indicator, debounced autosave) or
+// stopping short at just the debounced-save piece, which would have
+// left the same _flushAndSwitch() gap only partially closed.
 function _handleFormChange() {
   hasUnsavedChanges = true;
   _setIndicator('saving');
   _debouncedAutosave();
   // 4.2: reactive calculation. Independent debounced timer from the
   // autosave one above (js/ui.js's window.scheduleRecalc, its own
-  // 500ms) — this is the uncontrolled-input-keystroke half of the
-  // trigger; row add/delete/hydration/controlled-field changes don't
-  // reliably bubble a native input/change event here, so those are
-  // covered separately by src/AppShell.jsx's state.bid watcher.
+  // 500ms).
   window.scheduleRecalc?.();
 }
 

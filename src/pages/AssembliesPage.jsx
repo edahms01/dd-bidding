@@ -113,7 +113,29 @@ function AssemblyRow({ row, index, dispatch }) {
       </td>
       <td><input type="text" defaultValue={row.notes} placeholder="notes" /></td>
       <td><input type="number" min="0" className="asm-waste" placeholder="def." defaultValue={row.wastePctOverride ?? ''} /></td>
-      <td><button className="del-btn" onClick={() => dispatch({ type: 'DELETE_ROW', section: 'assemblies', index })}>×</button></td>
+      <td className="row-actions">
+        {/* 3.5 — live-captured via window.collectFormData(), not
+            state.bid.assemblies[index] directly: every field here except
+            nothing (Assemblies has no controlled field at all) is
+            uncontrolled, so the reducer's own copy can be stale relative
+            to whatever's actually typed in the DOM right now. Same
+            reasoning as WallsPage.jsx/CeilingsPage.jsx. */}
+        <button className="dup-btn" title="Duplicate" onClick={() => {
+          const values = window.collectFormData?.()?.assemblies?.[index];
+          dispatch({ type: 'DUPLICATE_ROW', section: 'assemblies', index, values });
+          // 3.5 — this is a plain reducer dispatch, not a native DOM
+          // input/change event, so js/forms.js's .workflow-area listener
+          // (autosave's trigger) never sees it on its own — see
+          // AppShell.jsx's reactive-calc effect comment for why that's
+          // fixed per-action here rather than with a blanket watcher.
+          window._handleFormChange?.();
+        }}>⧉</button>
+        <button className="del-btn" onClick={() => {
+          const values = window.collectFormData?.()?.assemblies?.[index];
+          dispatch({ type: 'DELETE_ROW', section: 'assemblies', index, values });
+          window._handleFormChange?.();
+        }}>×</button>
+      </td>
     </tr>
   );
 }
@@ -137,7 +159,7 @@ export default function AssembliesPage({ active }) {
             <col style={{ width: 60 }} /><col style={{ width: 84 }} /><col style={{ width: 82 }} />
             <col style={{ width: 68 }} /><col style={{ width: 60 }} /><col style={{ width: 108 }} />
             <col style={{ width: 74 }} /><col style={{ width: 62 }} /><col style={{ width: 60 }} />
-            <col /><col style={{ width: 62 }} /><col style={{ width: 36 }} />
+            <col /><col style={{ width: 62 }} /><col style={{ width: 58 }} />
           </colgroup>
           <thead><tr>
             <th>Type ID</th><th>Category</th><th>Stud size</th><th>Spacing</th>
@@ -149,7 +171,7 @@ export default function AssembliesPage({ active }) {
           </tbody>
         </table>
       </div>
-      <button className="add-row-btn" onClick={() => dispatch({ type: 'ADD_ASSEMBLY_ROW' })}>+ Add assembly type</button>
+      <button className="add-row-btn" onClick={() => { dispatch({ type: 'ADD_ASSEMBLY_ROW' }); window._handleFormChange?.(); }}>+ Add assembly type</button>
     </div>
   );
 }

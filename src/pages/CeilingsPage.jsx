@@ -83,10 +83,30 @@ function CeilRow({ row, index, dispatch, assemblies, derived, mode }) {
         )}
       </td>
       <td><span ref={netRef} className="calc-cell cnet">{fmtNet(row.grossSF, row.openings)}</span></td>
-      <td><button className="del-btn" onClick={() => dispatch({ type: 'DELETE_ROW', section: 'ceilings', index })}>×</button></td>
+      <td className="row-actions">
+        {/* 3.5 — live-captured via window.collectFormData(), same
+            reasoning as WallsPage.jsx/AssembliesPage.jsx. */}
+        <button className="dup-btn" title="Duplicate" onClick={() => {
+          const live = window.collectFormData?.()?.ceilings?.[index];
+          const values = live ? { location: live.location, typeId: live.typeId, height: live.height, grossSF: live.grossSF, soffitLF: live.soffitLF, openings: live.openings } : undefined;
+          dispatch({ type: 'DUPLICATE_ROW', section: 'ceilings', index, values });
+          // 3.5 — plain reducer dispatch, not a native DOM event; see
+          // AppShell.jsx's reactive-calc effect comment for why autosave
+          // is fixed per-action here, not with a blanket watcher.
+          window._handleFormChange?.();
+        }}>⧉</button>
+        <button className="del-btn" onClick={() => {
+          const live = window.collectFormData?.()?.ceilings?.[index];
+          const values = live ? { location: live.location, typeId: live.typeId, height: live.height, grossSF: live.grossSF, soffitLF: live.soffitLF, openings: live.openings } : undefined;
+          dispatch({ type: 'DELETE_ROW', section: 'ceilings', index, values });
+          window._handleFormChange?.();
+        }}>×</button>
+      </td>
     </tr>
   );
 }
+
+function fmtTotal(n) { return n > 0 ? n.toLocaleString() : '—'; }
 
 export default function CeilingsPage({ active }) {
   const [state, dispatch] = useStore();
@@ -117,7 +137,7 @@ export default function CeilingsPage({ active }) {
         isBlank,
         zeroHeight: !isBlank && height === 0,
         openingsExceedGross: gross > 0 && openings > gross,
-        gross, openings, soffitLF
+        gross, openings, soffitLF, netSF: Math.max(0, gross - openings)
       };
     });
   }, []);
@@ -158,7 +178,7 @@ export default function CeilingsPage({ active }) {
           <colgroup>
             <col style={{ width: 150 }} /><col style={{ width: 64 }} /><col style={{ width: 78, visibility: mode === 'area' ? 'collapse' : 'visible' }} />
             <col style={{ width: 88 }} /><col style={{ width: 88 }} /><col style={{ width: 92 }} />
-            <col style={{ width: 72 }} /><col style={{ width: 36 }} />
+            <col style={{ width: 72 }} /><col style={{ width: 58 }} />
           </colgroup>
           <thead><tr>
             <th>Location</th><th>Type ID</th><th style={mode === 'area' ? { display: 'none' } : undefined}>Height (ft)</th>
@@ -167,9 +187,20 @@ export default function CeilingsPage({ active }) {
           <tbody id="ceil-body">
             {rows.map((row, i) => <CeilRow key={row._key} row={row} index={i} dispatch={dispatch} assemblies={assemblies} derived={derived[i]} mode={mode} />)}
           </tbody>
+          {/* 3.5 — column totals, summed from the same computeDerived()
+              pass 3.4 already runs (Σ over non-blank rows). */}
+          <tfoot><tr className="totals-row">
+            <td colSpan="2">Totals</td>
+            <td style={mode === 'area' ? { display: 'none' } : undefined}></td>
+            <td>{fmtTotal(derived.filter((d) => d && !d.isBlank).reduce((s, d) => s + d.gross, 0))}</td>
+            <td>{fmtTotal(derived.filter((d) => d && !d.isBlank).reduce((s, d) => s + d.soffitLF, 0))}</td>
+            <td></td>
+            <td>{fmtTotal(derived.filter((d) => d && !d.isBlank).reduce((s, d) => s + d.netSF, 0))}</td>
+            <td></td>
+          </tr></tfoot>
         </table>
       </div>
-      <button className="add-row-btn" onClick={() => dispatch({ type: 'ADD_CEILING_ROW' })}>+ Add ceiling area</button>
+      <button className="add-row-btn" onClick={() => { dispatch({ type: 'ADD_CEILING_ROW' }); window._handleFormChange?.(); }}>+ Add ceiling area</button>
     </div>
   );
 }

@@ -29,6 +29,7 @@ import HistoryPage from './pages/HistoryPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
+import RowUndoToast from './components/RowUndoToast.jsx';
 
 // 4.1: tabs where the rail shows — "visible from Assemblies onward" per
 // the decision record, not project/conditions/rates (which either
@@ -84,10 +85,28 @@ export default function AppShell() {
   // Rates/Markup) don't reliably fire a native input/change event that
   // bubbles to .workflow-area. Every bid-touching reducer branch returns
   // a new state.bid reference, so this fires on every relevant dispatch.
-  // Overlap with the forms.js path is harmless — both call the same
-  // debounced window.scheduleRecalc singleton (js/ui.js), which only
-  // recomputes numbers, never relaunches the bid agent (see js/ui.js's
-  // calculateOnly()/runCalculation() split).
+  //
+  // Deliberately does NOT also drive autosave/hasUnsavedChanges here —
+  // tried that for 3.5 (calling window._handleFormChange() on every
+  // state.bid change) and reverted it after it broke 11 specs: this
+  // effect fires on hydration too (draft switch/import/reset/boot-resume,
+  // not just genuine user edits), and every one of those flows already
+  // has its own deliberate hasUnsavedChanges/save handling (switchToDraft
+  // (), handleImportFile(), _createAndActivateBlankDraft(), etc.) —
+  // firing _handleFormChange() indiscriminately fought those, most
+  // visibly by marking hasUnsavedChanges true right after a fresh import
+  // hydrated, which made handleImportFile()'s OWN "overwrite unsaved
+  // changes?" confirm guard fire on the *next* import and silently abort
+  // it (auto-dismissed by Playwright, field left blank). Reactive calc
+  // is safe to run unconditionally on hydration (recomputing numbers
+  // from freshly-loaded data is always correct); autosave is not (it's
+  // a write, and firing it outside a flow that already accounts for
+  // hasUnsavedChanges can clobber that flow's own bookkeeping). See
+  // AssembliesPage.jsx/WallsPage.jsx/CeilingsPage.jsx/RowUndoToast.jsx
+  // for 3.5's actual fix — a direct window._handleFormChange() call at
+  // each specific row add/delete/duplicate/undo action, the same
+  // per-action shape 3.3's mode toggle already used (RatesPage.jsx's
+  // needsImmediateSave precedent), not a blanket watcher.
   useEffect(() => {
     window.scheduleRecalc?.();
   }, [state.bid]);
@@ -233,6 +252,7 @@ export default function AppShell() {
       </div>
     </div>
     <FinalizeModal />
+    <RowUndoToast />
     </Fragment>
   );
 }
