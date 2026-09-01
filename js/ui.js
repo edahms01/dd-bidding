@@ -597,7 +597,7 @@ async function renderHistory() {
   }
 
   const rows = !bids.length
-    ? `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">No bids submitted yet — complete a bid and click "Submit bid →" in Tab 7.</td></tr>`
+    ? `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">No bids submitted yet — finalize a bid from the Bid Strategy step to see it here.</td></tr>`
     : bids.map(b => {
         const id = b.bid_id;
         return `
@@ -979,7 +979,7 @@ function _renderAgentTabLegacy() {
   if (!_agentResult) {
     page.innerHTML = hdr + `
       <div class="empty-state">
-        Complete your bid setup and click "Generate bid output →" on Tab 6 to get the agent's recommendation.
+        Fill in your bid through the Cost Summary step to get a recommendation.
       </div>`;
     return;
   }

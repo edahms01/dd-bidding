@@ -214,22 +214,22 @@ export default function OutputPage({ active }) {
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-output">
       <div className="page-hdr">
-        <div><div className="page-title">Initial Bid</div><div className="page-sub">Direct cost breakdown and pricing</div></div>
+        <div><div className="page-title">Cost Summary</div><div className="page-sub">Direct cost breakdown and pricing</div></div>
         <div className="page-actions">
-          <button className="btn btn-ghost" onClick={() => window.goto('ceilings')}>← Back</button>
+          <button className="btn btn-ghost" onClick={() => window.goto('rates')}>← Back</button>
           {/* 4.2: manual Recalculate removed — calculation is reactive now
               (window.scheduleRecalc, js/ui.js), wired from js/forms.js's
               autosave-change handler and AppShell.jsx's state.bid watcher.
               The button implied a number could go stale with nothing
               indicating when; nothing here should need it anymore. */}
-          <button className="btn btn-primary" onClick={() => window.goto('agent')}>Next: Agent Recommendation →</button>
+          <button className="btn btn-primary" onClick={() => window.goto('market')}>Next: Market Read →</button>
         </div>
       </div>
 
       <div id="output-phase3">
         {output
           ? <Phase3 output={output} />
-          : <div className="empty-state">Complete rates and click "Generate bid output →" to calculate.</div>}
+          : <div className="empty-state">Enter rates and takeoff quantities — the cost summary calculates automatically.</div>}
       </div>
 
       <div className="section-block">

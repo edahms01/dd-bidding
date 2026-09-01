@@ -197,7 +197,7 @@ export default function HistoryPage({ active }) {
                 </thead>
                 <tbody>
                   {bids.length === 0 ? (
-                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids submitted yet — complete a bid and click "Submit bid →" in Tab 7.</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids submitted yet — finalize a bid from the Bid Strategy step to see it here.</td></tr>
                   ) : bids.map((b) => (
                     <Fragment key={b.bid_id}>
                       <tr>

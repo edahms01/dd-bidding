@@ -26,6 +26,7 @@ import AssembliesPage from './pages/AssembliesPage.jsx';
 import WallsPage from './pages/WallsPage.jsx';
 import CeilingsPage from './pages/CeilingsPage.jsx';
 import OutputPage from './pages/OutputPage.jsx';
+import MarketReadPage from './pages/MarketReadPage.jsx';
 import AgentPage from './pages/AgentPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -37,17 +38,23 @@ import RowUndoToast from './components/RowUndoToast.jsx';
 // the decision record, not project/conditions/rates (which either
 // precede any takeoff data existing at all, or already have their own
 // totals display — RatesPage.jsx's own crude tile).
-const RAIL_TABS = ['assemblies', 'walls', 'ceilings', 'output', 'agent'];
+const RAIL_TABS = ['assemblies', 'walls', 'ceilings', 'output', 'market', 'agent'];
 
+// Phase C 2.1 — 9 steps in cost-then-price order. Internal keys are
+// unchanged from the pre-C set (conditions/output/agent kept on purpose —
+// see CLAUDE.md's key-rename decision); only `label` moved, and `market`
+// is the one new key (the price-driving half split off the old
+// Conditions page). `num` is the display index, renumbered here.
 const WORKFLOW_TABS = [
   { id: 'project',     num: 1, label: 'Project' },
-  { id: 'conditions',  num: 2, label: 'Conditions' },
-  { id: 'rates',       num: 3, label: 'Rates' },
-  { id: 'assemblies',  num: 4, label: 'Assemblies' },
-  { id: 'walls',       num: 5, label: 'Walls' },
-  { id: 'ceilings',    num: 6, label: 'Ceilings' },
-  { id: 'output',      num: 7, label: 'Initial Bid' },
-  { id: 'agent',       num: 8, label: 'Agent Recommendation' }
+  { id: 'conditions',  num: 2, label: 'Site Conditions' },
+  { id: 'assemblies',  num: 3, label: 'Assemblies' },
+  { id: 'walls',       num: 4, label: 'Walls' },
+  { id: 'ceilings',    num: 5, label: 'Ceilings' },
+  { id: 'rates',       num: 6, label: 'Rates' },
+  { id: 'output',      num: 7, label: 'Cost Summary' },
+  { id: 'market',      num: 8, label: 'Market Read' },
+  { id: 'agent',       num: 9, label: 'Bid Strategy' }
 ];
 
 export default function AppShell() {
@@ -313,6 +320,7 @@ export default function AppShell() {
             <WallsPage active={activeSection === 'workflow' && activeTab === 'walls'} />
             <CeilingsPage active={activeSection === 'workflow' && activeTab === 'ceilings'} />
             <OutputPage active={activeSection === 'workflow' && activeTab === 'output'} />
+            <MarketReadPage active={activeSection === 'workflow' && activeTab === 'market'} />
             <AgentPage active={activeSection === 'workflow' && activeTab === 'agent'} />
             <DashboardPage active={activeSection === 'dashboard'} />
             <HistoryPage active={activeSection === 'history'} />

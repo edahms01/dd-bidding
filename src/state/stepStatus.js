@@ -22,6 +22,8 @@
 //   - Bid Strategy -> ui.agent.cachedResult AND no unresolved
 //                    references, same reasoning.
 //   - Project / Site Conditions -> presence of their few key inputs.
+//   - Market Read -> confidence + the two market fields the agent
+//                    weighs most (competition level, GC relationship).
 //   - Assemblies  -> whether the estimator has actually engaged with the
 //                    table (see below) — a self-contained signal, no
 //                    reference to downstream steps.
@@ -31,9 +33,9 @@
 // hasUnresolvedReferences() already owns). This function is pure and
 // display-only.
 //
-// Returns { [tabKey]: 'empty' | 'partial' | 'complete' } for the eight
-// current workflow tabs. Step 2 adds the `market` key here alongside the
-// Conditions split.
+// Returns { [tabKey]: 'empty' | 'partial' | 'complete' } for all nine
+// workflow tabs (project, conditions, assemblies, walls, ceilings,
+// rates, output, market, agent).
 // ─────────────────────────────────────────────────────────────────────
 import { isOrphanTypeId, hasUnresolvedReferences } from './validation.js';
 
@@ -84,9 +86,16 @@ export function stepStatus(bid, ui) {
 
   // Site Conditions — the cost-driving numeric inputs. Flags
   // (curvedWalls/exteriorExposure/phasedWork/access/parking) always
-  // carry a value, so they carry no signal; confidence/notes move to
-  // Market Read in Step 2 and are not counted here.
+  // carry a value, so they carry no signal; confidence/notes render on
+  // Market Read now and count there, not here.
   const conditions = byKeyFields(b.conditions, ['maxHt', 'wastePct', 'trips']);
+
+  // Market Read — the price-driving judgement. `confidence` (drives
+  // contingency) plus the two intelligence fields the agent leans on
+  // most. Spans two slices, so computed inline rather than byKeyFields.
+  const marketVals = [b.conditions?.confidence, b.intelligence?.competitionLevel, b.intelligence?.gcRelationship];
+  const marketN = marketVals.filter(filled).length;
+  const market = marketN === 0 ? 'empty' : marketN === marketVals.length ? 'complete' : 'partial';
 
   // Rates — the L/M/X totals the Rates bar already computes.
   const rt = u.rateTotals || { l: 0, m: 0, x: 0 };
@@ -126,5 +135,5 @@ export function stepStatus(bid, ui) {
   const agentDone = u.agent && u.agent.cachedResult != null;
   const agent = !agentDone ? 'empty' : orphaned ? 'partial' : 'complete';
 
-  return { project, conditions, rates, assemblies: assembliesStatus, walls, ceilings, output, agent };
+  return { project, conditions, rates, assemblies: assembliesStatus, walls, ceilings, output, market, agent };
 }

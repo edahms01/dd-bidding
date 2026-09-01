@@ -221,8 +221,8 @@ export default function RatesPage({ active }) {
           <button className="btn btn-ghost btn-sm" onClick={handleDeleteTemplate} title="Delete selected template">🗑</button>
           <button className="btn btn-ghost btn-sm" onClick={handleLoadTemplate}>Load</button>
           <button className="btn btn-ghost btn-sm" onClick={handleSaveTemplate}>Save as template</button>
-          <button className="btn btn-ghost" onClick={() => window.goto('conditions')}>← Back</button>
-          <button className="btn btn-primary" onClick={() => window.goto('assemblies')}>Next: Assemblies →</button>
+          <button className="btn btn-ghost" onClick={() => window.goto('ceilings')}>← Back</button>
+          <button className="btn btn-primary" onClick={() => window.goto('output')}>Next: Cost Summary →</button>
         </div>
       </div>
 

@@ -20,30 +20,30 @@
 // through steps and hammering Back/Forward (tests/e2e/url-routing.spec.js),
 // not by reasoning alone.
 //
-// Slugs in this phase are the internal tab keys verbatim. Phase C Step 2
-// (the reorder + renames) introduces the public slugs the decision
-// record names (#/site-conditions, #/cost-summary, #/market-read,
-// #/bid-strategy) plus the `market` step; Step 4 adds #/bids and
-// #/bids/<id>, Step 5 #/bid-decision. Keeping the slug<->key mapping in
-// this one table is what makes those later changes a table edit rather
-// than a hunt.
+// The slug<->key mapping lives in this one table so a rename is a table
+// edit, not a hunt. Step 2 (the reorder + renames) put the decision
+// record's public slugs here and added the `market` step; internal tab
+// keys (conditions/output/agent) are deliberately unchanged (CLAUDE.md's
+// key-rename decision), so the slug and the key differ for those three.
+// Step 4 adds #/bids and #/bids/<id>, Step 5 #/bid-decision.
 // ─────────────────────────────────────────────────────────────────────
 
 export const HASH_PREFIX = '#/';
 
 // { slug, section, tab } — `tab` only meaningful when section === 'workflow'.
-// Order here is for readability only; lookup is by slug or by section+tab.
+// Order here matches the step bar; lookup is by slug or by section+tab.
 export const ROUTES = [
-  { slug: 'project',    section: 'workflow', tab: 'project' },
-  { slug: 'conditions', section: 'workflow', tab: 'conditions' },
-  { slug: 'rates',      section: 'workflow', tab: 'rates' },
-  { slug: 'assemblies', section: 'workflow', tab: 'assemblies' },
-  { slug: 'walls',      section: 'workflow', tab: 'walls' },
-  { slug: 'ceilings',   section: 'workflow', tab: 'ceilings' },
-  { slug: 'output',     section: 'workflow', tab: 'output' },
-  { slug: 'agent',      section: 'workflow', tab: 'agent' },
-  { slug: 'history',    section: 'history',  tab: null },
-  { slug: 'dashboard',  section: 'dashboard', tab: null }
+  { slug: 'project',         section: 'workflow', tab: 'project' },
+  { slug: 'site-conditions', section: 'workflow', tab: 'conditions' },
+  { slug: 'assemblies',      section: 'workflow', tab: 'assemblies' },
+  { slug: 'walls',           section: 'workflow', tab: 'walls' },
+  { slug: 'ceilings',        section: 'workflow', tab: 'ceilings' },
+  { slug: 'rates',           section: 'workflow', tab: 'rates' },
+  { slug: 'cost-summary',    section: 'workflow', tab: 'output' },
+  { slug: 'market-read',     section: 'workflow', tab: 'market' },
+  { slug: 'bid-strategy',    section: 'workflow', tab: 'agent' },
+  { slug: 'history',         section: 'history',  tab: null },
+  { slug: 'dashboard',       section: 'dashboard', tab: null }
 ];
 
 // "#/walls" | "#walls" | "#/walls/" | "walls"  ->  { section, tab } | null

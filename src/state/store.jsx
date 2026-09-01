@@ -51,6 +51,11 @@ function freshRowKey() { return _nextRowKey++; }
 // is the separate, never-reset React key described above — the two
 // numbers coincide for a freshly-added row but diverge after the first
 // hydration or reset, on purpose.
+// NOTE: src/state/stepStatus.js's ASM_DEFAULTS mirrors the non-id/
+// non-bookkeeping fields below to decide whether an assembly row has
+// been touched (the Assemblies step-completion indicator). If these
+// defaults change, update ASM_DEFAULTS to match or that indicator goes
+// subtly wrong.
 function blankAssemblyRow(num) {
   return {
     id: 'W' + num, category: 'Wall', studSize: '1-5/8"', spacing: '16"',
