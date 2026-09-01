@@ -339,7 +339,10 @@ function populateForm(state) {
   // rebuild only when the bridge isn't registered (Vitest/non-browser
   // contexts, or before AppShell has mounted).
   if (window.__hydrateWalls) {
-    if (state.walls !== undefined) window.__hydrateWalls(state.walls);
+    // 3.3: state.wallsMode is undefined for any pre-3.3 draft/import —
+    // LOAD_WALL_ROWS (store.jsx) falls back to the schema default
+    // ('dimensions') itself, not handled here.
+    if (state.walls !== undefined) window.__hydrateWalls(state.walls, state.wallsMode);
   } else {
     const wallBody = document.getElementById('wall-body');
     if (wallBody && state.walls !== undefined) {
@@ -362,7 +365,7 @@ function populateForm(state) {
 
   // ── Ceilings (CeilingsPage is now React-owned) ── same shape as Walls above.
   if (window.__hydrateCeilings) {
-    if (state.ceilings !== undefined) window.__hydrateCeilings(state.ceilings);
+    if (state.ceilings !== undefined) window.__hydrateCeilings(state.ceilings, state.ceilingsMode);
   } else {
     const ceilBody = document.getElementById('ceil-body');
     if (ceilBody && state.ceilings !== undefined) {
@@ -858,10 +861,31 @@ function _autosave() {
 
 const _debouncedAutosave = debounce(_autosave, AUTOSAVE_DEBOUNCE_MS);
 
+// A `function` declaration — unlike the `const _debouncedAutosave`
+// above, this automatically becomes window._handleFormChange, callable
+// directly from a React module. 3.5: real bug found running the actual
+// draft-switch-after-delete check (per the plan's own empirical
+// standard), not assumed safe on paper — row add/delete/duplicate/undo
+// (and 3.3's mode toggle before this) are plain reducer dispatches, not
+// native DOM input/change events, so this function's caller below (the
+// .workflow-area delegated listener) never saw them: hasUnsavedChanges
+// never got set, so _flushAndSwitch()'s `if (hasUnsavedChanges)
+// _autosave()` guard never flushed the pending change before handing
+// the form to a different draft — a row deleted with no other edit
+// afterward silently reappeared on the next draft switch. src/
+// AppShell.jsx's state.bid watcher now calls this exact function
+// directly for React-dispatched changes, rather than reimplementing its
+// three effects (hasUnsavedChanges, indicator, debounced autosave) or
+// stopping short at just the debounced-save piece, which would have
+// left the same _flushAndSwitch() gap only partially closed.
 function _handleFormChange() {
   hasUnsavedChanges = true;
   _setIndicator('saving');
   _debouncedAutosave();
+  // 4.2: reactive calculation. Independent debounced timer from the
+  // autosave one above (js/ui.js's window.scheduleRecalc, its own
+  // 500ms).
+  window.scheduleRecalc?.();
 }
 
 window.addEventListener('beforeunload', (e) => {

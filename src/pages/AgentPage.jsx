@@ -35,6 +35,7 @@
 // tab switches, only the underlying result does.
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
+import { hasUnresolvedReferences } from '../state/validation.js';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 
@@ -62,7 +63,7 @@ function WinLikelihoodPill({ val }) {
   return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '—'}</span>;
 }
 
-function Header({ options, dispatch }) {
+function Header({ options, dispatch, blocked }) {
   return (
     <div className="page-hdr">
       <div>
@@ -76,8 +77,21 @@ function Header({ options, dispatch }) {
             gone, they had no remaining classic-script consumer once
             Agent/Output converted (see bridges.js), and options is
             already available here as a prop (state.ui.agent.cachedResult
-            — the same value _lastAgentResult held). */}
-        <button id="agent-finalize-btn" className="btn btn-primary" onClick={() => dispatch({ type: 'OPEN_FINALIZE_MODAL', options: options || [] })}>Finalize bid →</button>
+            — the same value _lastAgentResult held).
+            3.1: disabled while an orphaned Walls/Ceilings Type ID
+            reference exists (src/state/validation.js) — defense-in-depth
+            alongside FinalizeModal.jsx's own confirmDisabled check, so a
+            blocked submission can't even open the modal in the first
+            place. */}
+        <button
+          id="agent-finalize-btn"
+          className="btn btn-primary"
+          disabled={blocked}
+          title={blocked ? 'Resolve every unrecognized Type ID reference on Walls/Ceilings before finalizing.' : undefined}
+          onClick={() => dispatch({ type: 'OPEN_FINALIZE_MODAL', options: options || [] })}
+        >
+          Finalize bid →
+        </button>
       </div>
     </div>
   );
@@ -110,10 +124,10 @@ function OptionCard({ opt, isSelected, dispatch }) {
   );
 }
 
-function AgentResult({ r, selectedOption, historyUnavailable, dispatch }) {
+function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked }) {
   return (
     <>
-      <Header options={r.options} dispatch={dispatch} />
+      <Header options={r.options} dispatch={dispatch} blocked={blocked} />
       {historyUnavailable && (
         <div style={{ background: 'rgba(232,124,42,.08)', border: '1px solid rgba(232,124,42,.3)', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 20, fontSize: 12, color: 'var(--accent)' }}>
           Historical bid data unavailable — recommendation based on this bid only.
@@ -129,6 +143,18 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch }) {
 
       <div className="section-block">
         <div className="section-label">Bid options</div>
+        {/* Phase B interim caveat (2026-08-28) — the real fix (re-validate/
+            relaunch against fresh inputs) is Phase E's job, per docs/
+            dirigo-ux-decisions.md §9.9. This one line exists because 4.2's
+            reactive calculation is what turned a pre-existing, dormant
+            staleness gap into an actively misleading one within a single
+            session (verified directly: the rail's bid price moving by
+            tens of thousands of dollars while these cards sat frozen) —
+            Phase B's own change made it worse, so a cheap mitigation is
+            fair scope here even though the full fix isn't. */}
+        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
+          These options may reflect an earlier version of your inputs.
+        </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
           {(r.options || []).map((opt) => (
             <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} />
@@ -205,14 +231,19 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch }) {
 export default function AgentPage({ active }) {
   const [state, dispatch] = useStore();
   const { cachedResult, loading, historyUnavailable, selectedOption } = state.ui.agent;
+  // 3.1 — see src/state/validation.js. Derived from state.bid directly
+  // (not calculator.js's per-row error flag, which also fires for a
+  // genuinely blank/never-touched typeId — see that file's header
+  // comment for why that would be wrong here).
+  const blocked = hasUnresolvedReferences(state.bid);
 
   let body;
   if (cachedResult) {
-    body = <AgentResult r={cachedResult} selectedOption={selectedOption} historyUnavailable={historyUnavailable} dispatch={dispatch} />;
+    body = <AgentResult r={cachedResult} selectedOption={selectedOption} historyUnavailable={historyUnavailable} dispatch={dispatch} blocked={blocked} />;
   } else if (loading) {
     body = (
       <>
-        <Header options={[]} dispatch={dispatch} />
+        <Header options={[]} dispatch={dispatch} blocked={blocked} />
         <div style={{ textAlign: 'center', padding: '60px 24px' }}>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 6 }}>Agent is analyzing your bid…</div>
           <div style={{ fontSize: 11, color: 'var(--text3)' }}>This takes a few seconds.</div>
@@ -222,7 +253,7 @@ export default function AgentPage({ active }) {
   } else {
     body = (
       <>
-        <Header options={[]} dispatch={dispatch} />
+        <Header options={[]} dispatch={dispatch} blocked={blocked} />
         <div className="empty-state">Complete your bid setup and click "Generate bid output →" on Tab 6 to get the agent's recommendation.</div>
       </>
     );

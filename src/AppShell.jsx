@@ -28,6 +28,14 @@ import AgentPage from './pages/AgentPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
+import BidTotalRail from './components/BidTotalRail.jsx';
+import RowUndoToast from './components/RowUndoToast.jsx';
+
+// 4.1: tabs where the rail shows — "visible from Assemblies onward" per
+// the decision record, not project/conditions/rates (which either
+// precede any takeoff data existing at all, or already have their own
+// totals display — RatesPage.jsx's own crude tile).
+const RAIL_TABS = ['assemblies', 'walls', 'ceilings', 'output', 'agent'];
 
 const WORKFLOW_TABS = [
   { id: 'project',     num: 1, label: 'Project' },
@@ -69,6 +77,39 @@ export default function AppShell() {
     window.dispatchEvent(new CustomEvent('dirigo:shell-ready'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 4.2: reactive calculation. Covers the half js/forms.js's
+  // _handleFormChange() (uncontrolled-input keystrokes) can't —
+  // React-dispatched row add/delete/duplicate/undo, hydration on draft
+  // switch/import/reset, and controlled fields (Project/Conditions/
+  // Rates/Markup) don't reliably fire a native input/change event that
+  // bubbles to .workflow-area. Every bid-touching reducer branch returns
+  // a new state.bid reference, so this fires on every relevant dispatch.
+  //
+  // Deliberately does NOT also drive autosave/hasUnsavedChanges here —
+  // tried that for 3.5 (calling window._handleFormChange() on every
+  // state.bid change) and reverted it after it broke 11 specs: this
+  // effect fires on hydration too (draft switch/import/reset/boot-resume,
+  // not just genuine user edits), and every one of those flows already
+  // has its own deliberate hasUnsavedChanges/save handling (switchToDraft
+  // (), handleImportFile(), _createAndActivateBlankDraft(), etc.) —
+  // firing _handleFormChange() indiscriminately fought those, most
+  // visibly by marking hasUnsavedChanges true right after a fresh import
+  // hydrated, which made handleImportFile()'s OWN "overwrite unsaved
+  // changes?" confirm guard fire on the *next* import and silently abort
+  // it (auto-dismissed by Playwright, field left blank). Reactive calc
+  // is safe to run unconditionally on hydration (recomputing numbers
+  // from freshly-loaded data is always correct); autosave is not (it's
+  // a write, and firing it outside a flow that already accounts for
+  // hasUnsavedChanges can clobber that flow's own bookkeeping). See
+  // AssembliesPage.jsx/WallsPage.jsx/CeilingsPage.jsx/RowUndoToast.jsx
+  // for 3.5's actual fix — a direct window._handleFormChange() call at
+  // each specific row add/delete/duplicate/undo action, the same
+  // per-action shape 3.3's mode toggle already used (RatesPage.jsx's
+  // needsImmediateSave precedent), not a blanket watcher.
+  useEffect(() => {
+    window.scheduleRecalc?.();
+  }, [state.bid]);
 
   return (
     <Fragment>
@@ -191,6 +232,10 @@ export default function AppShell() {
             </nav>
           )}
 
+          {activeSection === 'workflow' && RAIL_TABS.includes(activeTab) && (
+            <BidTotalRail output={state.ui.output} />
+          )}
+
           <div className="body">
             <ProjectPage active={activeSection === 'workflow' && activeTab === 'project'} />
             <ConditionsPage active={activeSection === 'workflow' && activeTab === 'conditions'} />
@@ -207,6 +252,7 @@ export default function AppShell() {
       </div>
     </div>
     <FinalizeModal />
+    <RowUndoToast />
     </Fragment>
   );
 }

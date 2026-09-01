@@ -253,5 +253,7 @@
       "Plastering"
     ],
     "exclusions": "Excludes paint and ACT grid. GC supplies blocking."
-  }
+  },
+  "wallsMode": "dimensions",
+  "ceilingsMode": "dimensions"
 }
