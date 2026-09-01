@@ -86,6 +86,11 @@ export const initialState = {
     // activeSection === 'workflow'.
     activeTab: 'project',
     navCollapsed: !!localStorage.getItem('dirigo_nav_collapsed'),
+    // Phase C 2.2 — the Rates L/M/X class-sum totals, published by
+    // RatesPage.jsx's recomputeTotals() (the calc() port) so
+    // stepStatus.js can read the same signal the Rates totals bar shows
+    // without re-deriving "are the rates filled in" a second way.
+    rateTotals: { l: 0, m: 0, x: 0 },
     // Bridge target for js/ui.js's renderOutput() (window.__renderOutput,
     // see bridges.js) — the derived calculation result runCalculation()
     // computes (js/ui.js), not form input. null until the first
@@ -510,6 +515,17 @@ export function reducer(state, action) {
       return { ...state, ui: { ...state.ui, activeSection: action.section } };
     case 'SET_NAV_COLLAPSED':
       return { ...state, ui: { ...state.ui, navCollapsed: action.value } };
+    case 'SET_RATE_TOTALS':
+      // Phase C 2.2 — RatesPage.jsx publishes its L/M/X class-sum here so
+      // stepStatus.js reads one source of truth. No-op if unchanged so a
+      // per-keystroke recompute that lands on the same numbers doesn't
+      // spin an extra render.
+      {
+        const cur = state.ui.rateTotals;
+        const nx = action.totals;
+        if (cur.l === nx.l && cur.m === nx.m && cur.x === nx.x) return state;
+        return { ...state, ui: { ...state.ui, rateTotals: nx } };
+      }
     case 'RENDER_OUTPUT':
       // Bridge target for js/ui.js's runCalculation() (window.
       // __renderOutput, see bridges.js) — replaces renderOutput()'s old

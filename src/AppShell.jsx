@@ -14,9 +14,11 @@
 // every LegacyPage the moment the user navigated away — a real
 // behavior regression, not a refactor.
 // ─────────────────────────────────────────────────────────────────────
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { useStore } from './state/store.jsx';
 import { registerBridges } from './state/bridges.js';
+import { parseHash, canonicalHash } from './state/router.js';
+import { stepStatus } from './state/stepStatus.js';
 import ProjectPage from './pages/ProjectPage.jsx';
 import ConditionsPage from './pages/ConditionsPage.jsx';
 import RatesPage from './pages/RatesPage.jsx';
@@ -51,6 +53,16 @@ const WORKFLOW_TABS = [
 export default function AppShell() {
   const [state, dispatch] = useStore();
   const { activeSection, activeTab, navCollapsed } = state.ui;
+
+  // Phase C 2.2 — URL routing. stateRef gives the once-registered
+  // hashchange listener the *current* section/tab without re-subscribing
+  // on every nav; urlSyncedOnce lets the state->URL effect skip its
+  // first run (first-mount URL handling belongs to the URL->state effect)
+  // so "app booted" isn't its own Back target. See src/state/router.js.
+  const stateRef = useRef({ activeSection, activeTab });
+  stateRef.current = { activeSection, activeTab };
+  const urlSyncedOnce = useRef(false);
+  const steps = stepStatus(state.bid, state.ui);
 
   useEffect(() => {
     registerBridges(dispatch);
@@ -110,6 +122,59 @@ export default function AppShell() {
   useEffect(() => {
     window.scheduleRecalc?.();
   }, [state.bid]);
+
+  // Phase C 2.2 — URL -> state. Parse location.hash on mount (deep link)
+  // and on every browser Back/Forward or manual edit, dispatching to
+  // match. Registered once; reads live state through stateRef so it
+  // never needs re-subscribing. An unrecognized hash is ignored (the
+  // state->URL effect below will re-assert a canonical one).
+  useEffect(() => {
+    function applyHash() {
+      const cur = stateRef.current;
+      const parsed = parseHash(window.location.hash);
+      if (!parsed) {
+        // Empty or garbage hash — snap the URL back to the canonical
+        // form for whatever step is showing. replaceState doesn't fire
+        // hashchange, so this can't loop.
+        const c = canonicalHash(cur.activeSection, cur.activeTab);
+        if (window.location.hash !== c) window.history.replaceState(null, '', c);
+        return;
+      }
+      if (parsed.section === 'workflow') {
+        if (cur.activeSection !== 'workflow' || cur.activeTab !== parsed.tab) {
+          // Route through window.goto so a Back/Forward or deep link to
+          // #/output / #/agent fires the same per-tab side effects
+          // (runCalculation / renderAgentTab) a normal tab click does —
+          // registerBridges() has run by the time this effect exists.
+          if (window.goto) window.goto(parsed.tab);
+          else dispatch({ type: 'GOTO_TAB', id: parsed.tab });
+        }
+      } else if (cur.activeSection !== parsed.section) {
+        dispatch({ type: 'GOTO_SECTION', section: parsed.section });
+      }
+    }
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Phase C 2.2 — state -> URL. The first run is skipped entirely: the
+  // URL -> state effect above already owns first-mount URL handling
+  // (replaceState for an empty/garbage hash, a dispatch for a valid deep
+  // link), and a push here would add a spurious "app booted" history
+  // entry. Every later navigation pushState's so it's a real Back
+  // target. The `hash !== desired` guard makes this a no-op for
+  // Back/Forward-driven dispatches (the browser already set the hash) —
+  // that guard is what prevents the bounce-between-two-entries failure.
+  useEffect(() => {
+    if (!urlSyncedOnce.current) {
+      urlSyncedOnce.current = true;
+      return;
+    }
+    const desired = canonicalHash(activeSection, activeTab);
+    if (window.location.hash !== desired) window.history.pushState(null, '', desired);
+  }, [activeSection, activeTab]);
 
   return (
     <Fragment>
@@ -221,7 +286,11 @@ export default function AppShell() {
                 <Fragment key={t.id}>
                   {i > 0 && <div className="tab-sep">›</div>}
                   <div
-                    className={'tab' + (activeTab === t.id ? ' active' : '')}
+                    className={
+                      'tab' +
+                      (activeTab === t.id ? ' active' : '') +
+                      (steps[t.id] === 'complete' ? ' done' : steps[t.id] === 'partial' ? ' partial' : '')
+                    }
                     onClick={() => window.goto(t.id)}
                     id={'tab-' + t.id}
                   >

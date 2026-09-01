@@ -94,12 +94,18 @@ export default function RatesPage({ active }) {
 
   const recomputeTotals = useCallback(() => {
     if (!rootRef.current) return;
-    setTotals({
+    const next = {
       l: sumClassIn(rootRef.current, 'L'),
       m: sumClassIn(rootRef.current, 'M'),
       x: sumClassIn(rootRef.current, 'X')
-    });
-  }, []);
+    };
+    setTotals(next);
+    // Phase C 2.2 — publish the same L/M/X sum stepStatus.js reads for
+    // the Rates tab's completion indicator. SET_RATE_TOTALS no-ops when
+    // the numbers are unchanged (store.jsx), so the onInput/hydration
+    // firings that don't move a total are free.
+    dispatch({ type: 'SET_RATE_TOTALS', totals: next });
+  }, [dispatch]);
 
   // Mirrors calc() being called explicitly at the end of populateForm()/
   // applyRateTemplate() — recompute whenever rates hydrate from a draft
