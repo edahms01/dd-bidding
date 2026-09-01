@@ -102,8 +102,11 @@ export function registerBridges(dispatch) {
   // ── Walls/Ceilings row hydration — same reasoning/shape as
   // __hydrateAssemblies above (WallsPage/CeilingsPage own their
   // <tbody>s via .map() now too).
-  window.__hydrateWalls = (rows) => flushSync(() => _dispatch({ type: 'LOAD_WALL_ROWS', rows }));
-  window.__hydrateCeilings = (rows) => flushSync(() => _dispatch({ type: 'LOAD_CEILING_ROWS', rows }));
+  // 3.3: optional 2nd arg (mode) rides along on the same dispatch —
+  // LOAD_WALL_ROWS/LOAD_CEILING_ROWS (store.jsx) fall back to the
+  // schema default when it's undefined (pre-3.3 draft/import).
+  window.__hydrateWalls = (rows, mode) => flushSync(() => _dispatch({ type: 'LOAD_WALL_ROWS', rows, mode }));
+  window.__hydrateCeilings = (rows, mode) => flushSync(() => _dispatch({ type: 'LOAD_CEILING_ROWS', rows, mode }));
 
   // ── Output — replaces js/ui.js's renderOutput() direct #output-phase3/
   // #output-bid.innerHTML writes. No flushSync: nothing reads the DOM
@@ -179,4 +182,19 @@ export function registerBridges(dispatch) {
 // just a dispatch function.
 export function registerConfidenceReader(getConfidence) {
   window.__getConfidence = getConfidence;
+}
+
+// ── Walls/Ceilings mode read accessors (3.3) ──
+// Same shape and reasoning as registerConfidenceReader() above:
+// wallsMode/ceilingsMode (a page-level toggle, not a form value) have no
+// DOM representation for collectFormData() to read the normal way —
+// registered from WallsPage.jsx/CeilingsPage.jsx themselves (page owns
+// its own bridge, matching ConditionsPage.jsx's precedent), not
+// centralized in registerBridges(), since each needs live access to its
+// own page's reducer slice specifically.
+export function registerWallsModeReader(getMode) {
+  window.__getWallsMode = getMode;
+}
+export function registerCeilingsModeReader(getMode) {
+  window.__getCeilingsMode = getMode;
 }

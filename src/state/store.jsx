@@ -190,6 +190,14 @@ export const initialState = {
     // blank row in each table.
     walls: [blankWallRow()],
     ceilings: [blankCeilRow()],
+    // 3.3 — page-level "Enter by dimensions" / "Enter by area" toggle,
+    // one per table, persists per draft (it's a plain state.bid key, so
+    // it flows through collectFormData()/buildExportPayload()/
+    // buildDraftRecord() the same way every other bid field already
+    // does — no separate persistence path). RESET_BID picks this up for
+    // free via its wholesale deep-clone of initialState.bid below.
+    wallsMode: 'dimensions',
+    ceilingsMode: 'dimensions',
     // Matches the original static markup's blank <input>s exactly —
     // contingencyPct gets pre-filled from confidence by runCalculation()
     // itself (js/ui.js's _currentConfidence()-driven logic), not here.
@@ -394,7 +402,14 @@ export function reducer(state, action) {
         grossSF: w.grossSF != null ? w.grossSF : '', openings: w.openings != null ? w.openings : '',
         _key: freshRowKey()
       }));
-      return { ...state, bid: { ...state.bid, walls: rows } };
+      // 3.3 — action.mode is undefined for any pre-3.3 draft/import that
+      // never carried this field; falls back to the schema default
+      // ('dimensions'), NOT state.bid.wallsMode (the currently-active
+      // session's mode) — this is a wholesale hydration, same as the
+      // rows themselves, not a merge, so a switched-to draft that never
+      // set a mode shouldn't silently inherit whatever mode happened to
+      // be active in the browser from a *different* draft.
+      return { ...state, bid: { ...state.bid, walls: rows, wallsMode: action.mode ?? 'dimensions' } };
     }
     case 'LOAD_CEILING_ROWS': {
       // Bridge target for populateForm()'s Ceilings section (window.
@@ -405,7 +420,8 @@ export function reducer(state, action) {
         soffitLF: c.soffitLF != null ? c.soffitLF : '', openings: c.openings != null ? c.openings : '',
         _key: freshRowKey()
       }));
-      return { ...state, bid: { ...state.bid, ceilings: rows } };
+      // 3.3 — see LOAD_WALL_ROWS's comment above, same reasoning.
+      return { ...state, bid: { ...state.bid, ceilings: rows, ceilingsMode: action.mode ?? 'dimensions' } };
     }
     case 'TOGGLE_SCOPE': {
       const scope = state.bid.project.scope;

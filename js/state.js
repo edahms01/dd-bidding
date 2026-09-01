@@ -211,7 +211,17 @@ function collectFormData() {
     openDraftCount:     getOpenDraftCount(getAllDrafts(), activeDraftId)
   };
 
-  return { assemblies, walls, ceilings, conditions, rates, rateEscalation, markupInputs, intelligence, project };
+  // 3.3: wallsMode/ceilingsMode are a page-level toggle, not a form
+  // value — no DOM element to read the normal way. Same accessor shape
+  // as conditions.confidence above (window.__getWallsMode/
+  // __getCeilingsMode, registered by WallsPage.jsx/CeilingsPage.jsx via
+  // src/state/bridges.js's registerWallsModeReader/
+  // registerCeilingsModeReader), with the schema default as the
+  // non-browser/pre-mount fallback.
+  const wallsMode = (typeof window !== 'undefined' && window.__getWallsMode) ? window.__getWallsMode() : 'dimensions';
+  const ceilingsMode = (typeof window !== 'undefined' && window.__getCeilingsMode) ? window.__getCeilingsMode() : 'dimensions';
+
+  return { assemblies, walls, ceilings, conditions, rates, rateEscalation, markupInputs, intelligence, project, wallsMode, ceilingsMode };
 }
 
 // Assembles a bid record ready for saveBid(). bid_id and date_submitted are

@@ -108,6 +108,14 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
    3.5's column totals (Step 6) exclude rows carrying this class. */
 .row-blank{opacity:.45}
 
+/* ── DIMENSIONS/AREA MODE TOGGLE (3.3 — Walls/Ceilings) ── */
+/* Same visual language as .pill/.pill.on (Project's scope pills) —
+   rounded, action-blue when active — but a genuine two-option exclusive
+   toggle rather than independently-clickable chips. */
+.mode-toggle{display:inline-flex;gap:2px;padding:3px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;margin-bottom:16px}
+.mode-toggle-btn{padding:6px 14px;border-radius:17px;font-size:12px;font-weight:500;border:none;cursor:pointer;color:var(--text3);background:transparent;transition:all .15s;font-family:inherit}
+.mode-toggle-btn.on{background:var(--action-dim);color:var(--action)}
+
 .divider{height:1px;background:var(--border);margin:20px 0}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}
 

@@ -339,7 +339,10 @@ function populateForm(state) {
   // rebuild only when the bridge isn't registered (Vitest/non-browser
   // contexts, or before AppShell has mounted).
   if (window.__hydrateWalls) {
-    if (state.walls !== undefined) window.__hydrateWalls(state.walls);
+    // 3.3: state.wallsMode is undefined for any pre-3.3 draft/import —
+    // LOAD_WALL_ROWS (store.jsx) falls back to the schema default
+    // ('dimensions') itself, not handled here.
+    if (state.walls !== undefined) window.__hydrateWalls(state.walls, state.wallsMode);
   } else {
     const wallBody = document.getElementById('wall-body');
     if (wallBody && state.walls !== undefined) {
@@ -362,7 +365,7 @@ function populateForm(state) {
 
   // ── Ceilings (CeilingsPage is now React-owned) ── same shape as Walls above.
   if (window.__hydrateCeilings) {
-    if (state.ceilings !== undefined) window.__hydrateCeilings(state.ceilings);
+    if (state.ceilings !== undefined) window.__hydrateCeilings(state.ceilings, state.ceilingsMode);
   } else {
     const ceilBody = document.getElementById('ceil-body');
     if (ceilBody && state.ceilings !== undefined) {
