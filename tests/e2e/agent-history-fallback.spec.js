@@ -26,7 +26,7 @@ test('a failed history fetch during an agent run degrades gracefully with a visi
   await page.click('#tab-agent');
   await page.waitForTimeout(1500);
 
-  await expect(page.locator('.page-title:has-text("Agent Recommendation")')).toBeVisible();
+  await expect(page.locator('.page-title:has-text("Bid Strategy")')).toBeVisible();
   await expect(page.locator('text=Historical bid data unavailable')).toBeVisible();
 
   await page.unroute('**/.netlify/functions/bids');
@@ -61,7 +61,7 @@ test('a legitimate zero-prior-bids GC (successful fetch, not a failure) never sh
   const summary = await page.evaluate(() => getHistorySummary('Totally New GC With No History', ''));
   expect(summary.totalBids).toBe(0); // the resolved (not rejected) zeroed shape
 
-  await expect(page.locator('.page-title:has-text("Agent Recommendation")')).toBeVisible();
+  await expect(page.locator('.page-title:has-text("Bid Strategy")')).toBeVisible();
   await expect(page.locator('text=Historical bid data unavailable')).toHaveCount(0);
 
   const flagVal = await page.evaluate(() => _agentHistoryUnavailable);

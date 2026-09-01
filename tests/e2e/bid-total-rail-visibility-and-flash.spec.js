@@ -8,7 +8,7 @@ import { clearAll, loadSeed } from './helpers.js';
 
 const RAIL = '.bid-total-rail';
 
-test('the rail is absent on Project/Conditions/Rates, present from Assemblies through Agent', async ({ page }) => {
+test('the rail is absent on Project/Site Conditions/Rates, present from Assemblies through Bid Strategy', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
   await loadSeed(page);
@@ -23,7 +23,7 @@ test('the rail is absent on Project/Conditions/Rates, present from Assemblies th
   await page.click('#tab-rates');
   await expect(page.locator(RAIL)).toHaveCount(0);
 
-  for (const tab of ['tab-assemblies', 'tab-walls', 'tab-ceilings', 'tab-output', 'tab-agent']) {
+  for (const tab of ['tab-assemblies', 'tab-walls', 'tab-ceilings', 'tab-output', 'tab-market', 'tab-agent']) {
     await page.click('#' + tab);
     await expect(page.locator(RAIL)).toBeVisible();
   }

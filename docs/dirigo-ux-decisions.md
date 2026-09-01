@@ -32,12 +32,14 @@ New defect found during verification, not in the original report:
 
 ## 2. Decisions — Information architecture
 
-**2.1 Step reorder + Conditions split — APPROVED (9 steps).**
+**2.1 Step reorder + Conditions split — APPROVED (9 steps). Implemented (Phase C, Step 2, 2026-09-01).**
 Rates currently precedes any quantities, so unit prices are entered with nothing to multiply against. Conditions currently mixes cost-driving site facts with price-driving market judgement, and asks the market questions before the estimator knows the job's size.
 
 New sequence: Project → Site Conditions → Assemblies → Walls → Ceilings → Rates → Cost Summary → Market Read → Bid Strategy.
 
 "Initial Bid" renames to Cost Summary (it is a cost sheet, not a bid). "Agent Recommendation" renames to Bid Strategy — name the outcome, not the vendor.
+
+Implementation: only `label`s changed and one new key (`market`) was added — the internal tab keys `conditions`/`output`/`agent` stay (see the key-rename decision in `CLAUDE.md`), so the wrong-tab finalize bug (`#output-bid`, still on the `output` page) reproduces identically and the golden-export fixture is untouched. The Conditions split is UI/routing only: `confidence`/`notes` still live in the `bid.conditions` slice, `intelligence` still its own slice — `MarketReadPage.jsx` just renders them on a later step, and carries the two on-become-active effects (`registerConfidenceReader`, `_renderPipelineHint`) whose targets moved with it. Public route slugs are now `#/site-conditions`, `#/cost-summary`, `#/market-read`, `#/bid-strategy` (`src/state/router.js`).
 
 **2.2 Step completion state + URL routing — APPROVED. Implemented (Phase C, Step 1, 2026-09-01).**
 Empty / partial / complete indication per step, derived from whether required fields hold values. Deep-linkable steps (`#/walls`) so browser back works and a step can be bookmarked. Navigation stays unrestricted — show completion, don't gate. Block only final submit.
@@ -46,8 +48,10 @@ Built as a hash router with no new dependency (`src/state/router.js` — a slug�
 
 Completion (`src/state/stepStatus.js`, pure `stepStatus(bid, ui)`) is built only on signals that already existed — no new "is this step done" validation. Rates reuses the L/M/X class-sum the Rates totals bar already shows (RatesPage now publishes it into `ui.rateTotals`); Walls/Ceilings require `isOrphanTypeId()` to be clean, so a table with an orphaned reference never shows a green check — and **Cost Summary and Bid Strategy inherit the same rule** (`complete` also needs `hasUnresolvedReferences()` false), so a total or recommendation built on an unresolved reference reads amber alongside the Walls step feeding it, never green. Project/Site Conditions key on field presence. **Assemblies uses a self-contained "has the estimator engaged with the table" signal** — a second row, or any field moved off its `blankAssemblyRow()` default, or a note/waste override; a single untouched default row stays neutral. (An earlier version keyed Assemblies off whether a Walls/Ceilings row referenced it, which answered "has a later step caught up" rather than "is this step done" — changed at Eric's review.)
 
-**2.3 Remove numbered step references from copy — APPROVED.**
+**2.3 Remove numbered step references from copy — APPROVED. Implemented (Phase C, Step 2, 2026-09-01).**
 `agent.js` still directs users to a setup panel on "Tab 9"; the agent is Tab 8. Reference steps by name, ideally as a button that navigates there. No numbers in prose — they break silently on every reorder, and we are about to reorder.
+
+Implementation: the live numbered strings were `AgentPage.jsx`'s empty state ("…on Tab 6…" → "Fill in your bid through the Cost Summary step" + a nav button) and `HistoryPage.jsx`'s empty state ("…in Tab 7." → "…finalize a bid from the Bid Strategy step…"). The dead `js/ui.js` twins (`renderHistory`/`renderAgentTab` empty branches, unreachable since A2) were updated to match rather than left showing stale numbers. `js/agent.js` itself has carried no "Tab N" string since the Track A rework — the §2.3 text above predates that.
 
 **2.4 Stable shell on History — APPROVED.**
 Selecting Bid History currently hides the step bar entirely, so the app reads as a different application. Keep the frame; replace the step bar with a History toolbar (filter by GC, outcome, date range).
@@ -351,7 +355,7 @@ The submitted and failure panels render into `#output-bid` on Tab 7 while finali
 | **A2 — React migration** ✅ | Spike (Rates + History) → full migration (all pages) → parity gate. Absorbs 3.2, 6.4. | **Complete.** Every page is React. No ESM conversion — `window.*` bridges proved sufficient (§9.8). Final: 51/51 Playwright unmodified, 98/98 Vitest, golden-export byte-identical. |
 | **A2.5 — Finalize persistence fix** ✅ | Single defect from §9.9 | **Complete (2026-08-27).** Standalone, before B. Surfaced a new lead (agent-option display staleness, §9.9) — assigned to Phase E, not a blocker for B. |
 | **B — Takeoff integrity** ✅ | 3.1, 3.3, 3.4, 3.5, 4.1, 4.2 | **Complete (2026-08-28).** First feature phase on the new foundation. Also shipped an interim staleness caveat near the Agent tab's cards (§9.9) — Eric's call, since 4.2 is what made that pre-existing defect actively misleading, not just theoretically present. |
-| **C — Navigation** 🔨 | 2.1, 2.2, 2.3, 2.4, 2.5, 8.4 | 8.4 included as a new nav destination. **Step 1 (2.2 — URL routing + step-completion indicators) complete 2026-09-01.** Remaining, in order: 2.1+2.3 reorder/split/renames → 2.4 stable History shell → 2.5 New Bid fix + unified Bids list → 8.4 gate. |
+| **C — Navigation** 🔨 | 2.1, 2.2, 2.3, 2.4, 2.5, 8.4 | 8.4 included as a new nav destination. **Steps 1–2 complete 2026-09-01** (2.2 routing + step indicators; 2.1 9-step reorder + Conditions→Site Conditions/Market Read split; 2.3 numbered-copy removal). Remaining, in order: 2.4 stable History shell → 2.5 New Bid fix + unified Bids list → 8.4 gate. |
 | **D — Mobile** | Tier 1, sticky columns, `100dvh`, Tier 2 | Blocked by A and B |
 | **E — Agent** | 5.1, 5.3, 5.2, 5.5, 5.6, 4.3, agent-option display-staleness fix (§9.9) | 5.1 blocks 5.3; depends on A2.5 (complete). Staleness fix rides along with 5.5/5.6 — same modal, same visit. |
 | **F — Intelligence** | 8.1, 8.2, 8.3 | Computation layer already exists and is tested |

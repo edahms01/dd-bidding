@@ -50,7 +50,7 @@ test('seed data marks the input steps complete', async ({ page }) => {
   await loadSeed(page);
   await page.waitForTimeout(1400); // seed runs the calc + pre-runs the agent (500ms)
 
-  for (const id of ['tab-project', 'tab-conditions', 'tab-rates', 'tab-assemblies', 'tab-walls', 'tab-ceilings', 'tab-output']) {
+  for (const id of ['tab-project', 'tab-conditions', 'tab-assemblies', 'tab-walls', 'tab-ceilings', 'tab-rates', 'tab-output', 'tab-market', 'tab-agent']) {
     await expect(page.locator('#' + id), id).toHaveClass(/\bdone\b/);
   }
 });

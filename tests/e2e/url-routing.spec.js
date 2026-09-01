@@ -53,7 +53,7 @@ test('browser Back / Forward walk the visited steps cleanly — no bounce, no du
   await clearAll(page); // #/project
 
   await page.click('#tab-conditions');
-  await expect.poll(() => hash(page)).toBe('#/conditions');
+  await expect.poll(() => hash(page)).toBe('#/site-conditions');
   await page.click('#tab-rates');
   await expect.poll(() => hash(page)).toBe('#/rates');
   await page.click('#tab-assemblies');
@@ -64,7 +64,7 @@ test('browser Back / Forward walk the visited steps cleanly — no bounce, no du
   await expect(page.locator('#page-rates')).toHaveClass(/active/);
 
   await page.goBack();
-  await expect.poll(() => hash(page)).toBe('#/conditions');
+  await expect.poll(() => hash(page)).toBe('#/site-conditions');
 
   await page.goBack();
   await expect.poll(() => hash(page)).toBe('#/project');
@@ -73,7 +73,7 @@ test('browser Back / Forward walk the visited steps cleanly — no bounce, no du
   // Forward replays the exact same sequence — proves each nav was a
   // single distinct entry, not a pair the URL bounces between.
   await page.goForward();
-  await expect.poll(() => hash(page)).toBe('#/conditions');
+  await expect.poll(() => hash(page)).toBe('#/site-conditions');
   await page.goForward();
   await expect.poll(() => hash(page)).toBe('#/rates');
   await expect(page.locator('#page-rates')).toHaveClass(/active/);
