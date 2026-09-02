@@ -43,7 +43,10 @@ export const ROUTES = [
   { slug: 'market-read',     section: 'workflow', tab: 'market' },
   { slug: 'bid-strategy',    section: 'workflow', tab: 'agent' },
   { slug: 'bids',            section: 'bids',        tab: null },
-  { slug: 'bid-decision',    section: 'biddecision', tab: null }
+  { slug: 'bid-decision',    section: 'biddecision', tab: null },
+  // Phase D — mobile read-only rollup of the current bid, reached from
+  // the mobile-only "Bid summary" drawer item.
+  { slug: 'summary',         section: 'summary',     tab: null }
 ];
 
 // "#/walls" | "#walls" | "#/walls/" | "walls" -> { section, tab, rest }

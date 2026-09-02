@@ -173,7 +173,7 @@ export default function CeilingsPage({ active }) {
         </div>
       </div>
       <ModeToggle mode={mode} onChange={setMode} />
-      <div className="tbl-wrap">
+      <div className="tbl-wrap sticky-col">
         <table>
           <colgroup>
             <col style={{ width: 150 }} /><col style={{ width: 64 }} /><col style={{ width: 78, visibility: mode === 'area' ? 'collapse' : 'visible' }} />

@@ -1,4 +1,230 @@
-/* ── RESPONSIVE ──────────────────────────────────────────────────────
-   Empty stub. Mobile/responsive work is Phase D — see
-   docs/dirigo-ux-decisions.md §7. This file exists now so Phase D adds
-   to a known place rather than restructuring the CSS layer order. */
+/* ── RESPONSIVE — Phase D mobile pass ────────────────────────────────
+   Loaded last in the @import chain (css/styles.css), so it wins the
+   cascade without any reordering. Two breakpoints, per
+   docs/dirigo-ux-decisions.md §7: 768px = the phone/tablet line,
+   480px = extra squeeze. Additive only — the desktop rules in
+   base.css / components.css / pages.css are left untouched.
+
+   The `100vh -> 100dvh` shell fix is a global improvement, not
+   breakpoint-scoped, and lives in components.css (.shell).
+
+   Step 1 (structural must-fixes) is everything below. Layout stacking,
+   totals-bar wrap and sticky table columns land in Step 2. */
+
+/* Desktop: the mobile-only drawer trigger, backdrop, and the
+   drawer-only "Bid summary" nav item are inert. */
+.nav-hamburger { display: none; }
+.nav-item-mobile { display: none; }
+
+@media (min-width: 769px) {
+  .nav-backdrop { display: none; }
+}
+
+@media (max-width: 768px) {
+
+  /* ── Off-canvas left-nav drawer ──────────────────────────────────
+     Below 768px the left nav leaves the flex flow entirely
+     (position:fixed) so .workflow-area gets the full width; a header
+     hamburger slides it in over the content, with a tap-anywhere
+     backdrop. navCollapsed (the desktop 200<->48px width toggle,
+     persisted) is neutralised here — the drawer is always full,
+     labelled width when open. state.ui.navDrawerOpen (ephemeral)
+     drives .drawer-open. */
+  .nav-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-left: -8px;                 /* sit flush to the edge, keep the 44px hit box */
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .leftnav#app-leftnav {
+    position: fixed;
+    top: 52px;                         /* clears the fixed 52px header */
+    left: 0;
+    bottom: 0;
+    width: min(78vw, 260px);
+    z-index: 1300;                     /* above toasts (1100) and the finalize modal (1000) */
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+    border-right: 1px solid var(--border2);
+  }
+  .leftnav#app-leftnav.drawer-open { transform: translateX(0); }
+
+  /* Undo .collapsed's desktop effects inside the drawer */
+  .leftnav#app-leftnav.collapsed { width: min(78vw, 260px); }
+  .leftnav#app-leftnav.collapsed .nav-label { display: inline; }
+  .leftnav#app-leftnav.collapsed .nav-item {
+    padding: 10px 14px;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .nav-backdrop {
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Heavier than a light-theme scrim would need — against already-dark
+       content a 40-50% wash reads as a faint tint, not a mode shift. */
+    background: rgba(0, 0, 0, .72);
+    z-index: 1290;
+  }
+
+  /* The desktop in-nav collapse toggle has no meaning on a phone. */
+  .nav-toggle { display: none; }
+
+  /* The read-only bid summary is a phone affordance — show it in the drawer. */
+  .nav-item-mobile { display: flex; }
+
+  /* ── Header: fit the 52px bar to a phone ─────────────────────────
+     The full .header-actions row (project badge + autosave indicator +
+     Export + Import + New Bid) overflows ~390px badly, pushing the
+     primary "+ New Bid" action off-screen. On mobile the project name
+     already lives in the drawer's "Current bid" item, and Export/Import
+     are a desktop JSON round-trip, not a phone task — drop all four,
+     keep the hamburger, the logo, and New Bid. */
+  .header { padding: 0 12px; gap: 8px; }
+  .header .proj-badge,
+  .header #autosave-indicator,
+  .header-actions > .btn-ghost { display: none; }
+  .header-actions { gap: 6px; min-width: 0; }
+  .logo-mark { min-width: 0; overflow: hidden; }
+  .logo-name, .logo-sub { white-space: nowrap; }
+
+  /* ── Step bar → horizontally scrollable chips ────────────────────
+     .workflow-area / .body are overflow:hidden, so the scroll has to
+     live on .tabs itself. id+class beats the parent's rules. */
+  #app-tabs.tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;             /* the chips are their own affordance under a ~44px strip */
+    padding: 0 12px;
+  }
+  #app-tabs.tabs::-webkit-scrollbar { display: none; }
+  #app-tabs .tab { flex-shrink: 0; }
+
+  /* ── Inputs to 16px — stops iOS auto-zoom on focus ───────────────── */
+  input[type=text], input[type=number], input[type=date], select, textarea,
+  td input, td select,
+  .ri, .fi, .si, .esc-input, .ai,
+  .bids-toolbar .ht-input {
+    font-size: 16px;
+  }
+  /* #modal-custom-amount carries an inline fontSize:13 (FinalizeModal.jsx,
+     Phase B-era JSX deliberately left untouched — see the Phase D plan).
+     A media-query !important is the intended override for that one node. */
+  #modal-custom-amount { font-size: 16px !important; }
+
+  /* ── Demo controls hidden on phones (earmarked in components.css) ── */
+  .dev-toolbar { display: none; }
+
+  /* ── Tap targets to >=44px ───────────────────────────────────────── */
+  .btn, .btn-sm { min-height: 44px; }
+  .tab { min-height: 44px; }
+  .nav-item { min-height: 44px; }
+  .add-row-btn { min-height: 44px; }
+  .row-undo-toast-btn { min-height: 44px; }
+  .conf-btn { min-height: 44px; }
+  .modal-close { min-width: 44px; min-height: 44px; }
+  select, td select { min-height: 44px; }
+  /* Inside a 3px-padded pill: 40 + 3 + 3 clears 44. */
+  .mode-toggle-btn { min-height: 40px; padding: 8px 16px; }
+  /* Row action buttons (⧉ duplicate / × delete) — real boxes, real gap. */
+  .del-btn, .dup-btn { min-width: 44px; min-height: 44px; }
+  .row-actions { gap: 6px; }
+
+  /* ═══ Step 2 — layout stacking, totals wrap, sticky columns ═══════ */
+
+  /* ── Multi-column grids collapse to one column ───────────────────
+     Each selector is .grid.gN / .rgrid.gN (0,0,2,0) so it beats the
+     .gN column rule in components.css; .g2 stays two-up nowhere below
+     768 — a phone is one column throughout. */
+  .grid.g2, .grid.g3, .grid.g4, .grid.g5, .grid.g6,
+  .rgrid.g3, .rgrid.g4, .rgrid.g5,
+  .adder-row { grid-template-columns: 1fr; }
+  .flag-grid { grid-template-columns: 1fr; }
+  .conf-row { flex-wrap: wrap; }
+  .conf-row .conf-btn { flex: 1 1 100%; }
+
+  /* ── Page scaffold: reclaim the side padding, stack the header ── */
+  .page { padding: 16px; }
+  .page-hdr { flex-direction: column; align-items: stretch; gap: 12px; }
+  .page-hdr .page-actions { flex-wrap: wrap; }
+
+  /* ── Sticky first column ─────────────────────────────────────────
+     Opt-in via .sticky-col on the .tbl-wrap (takeoff tables + Bids
+     list + Cost Summary breakdown; NOT the 3-col Bid Strategy signal
+     table). The cell needs an opaque bg or the scrolled content shows
+     through; the shadow is the scroll affordance §7 asked for. */
+  .sticky-col th:first-child,
+  .sticky-col td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+    border-right: 1px solid var(--border2);
+  }
+  .sticky-col thead th:first-child { background: var(--bg); }
+  .sticky-col tbody tr:hover td:first-child { background: var(--surface2); }
+  /* Scroll-shadow (§7) as a pseudo-element gradient, not box-shadow:
+     box-shadow on a table cell under border-collapse:collapse gets
+     clipped by neighbouring cells and barely renders. A gradient
+     spilling into the next column reads unambiguously as "more content
+     this way" against the app's near-black surfaces (same lesson as the
+     drawer backdrop). */
+  .sticky-col th:first-child::after,
+  .sticky-col td:first-child::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: -1px;
+    right: -16px;
+    width: 16px;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(0, 0, 0, .55), rgba(0, 0, 0, 0));
+  }
+  /* BidUpdateRow (Log outcome) is one colSpan cell. It IS the row's
+     first cell, so it would inherit the sticky-first-child rule — but
+     here that's what we want: pin it to the viewport's left edge so the
+     Step-2-stacked form stays usable while the parent Bids table is
+     scrolled sideways, minus the scroll-shadow, and clamp the form
+     content to the viewport so fields don't run off-screen. */
+  .sticky-col tr.bid-update-row td { border-right: none; background: var(--surface2); }
+  .sticky-col tr.bid-update-row td::after { display: none; }
+  .sticky-col tr.bid-update-row td > * { max-width: calc(100vw - 24px); }
+
+  /* ── BidTotalRail: tighter on a phone (stays 3-across — it fits) ── */
+  .bid-total-rail { padding: 10px 12px; }
+  .bid-total-rail .total-item { padding: 0 8px; }
+
+  /* ── RowUndoToast: a full-width strip clear of the "+ Add area"
+     button and the horizontally-scrolling table's action column. */
+  .row-undo-toast { left: 12px; right: 12px; bottom: 12px; justify-content: space-between; }
+
+  /* ── Bids list: let the row-action buttons wrap, not force width ── */
+  #page-bids td:last-child { white-space: normal; }
+}
+
+@media (max-width: 480px) {
+  /* ── Totals bars → 2×2 (§7) ──────────────────────────────────────
+     Only the .totals-bar (Rates / Cost Summary / Bids). The slim
+     bid-total-rail stays 3-across — it already fits 390px. */
+  .totals-bar { flex-wrap: wrap; row-gap: 14px; }
+  .totals-bar .total-item { flex: 1 1 44%; }
+  .totals-bar .total-div { display: none; }
+
+  /* ── Finalize modal → near full width ── */
+  .modal { max-width: calc(100vw - 24px); padding: 18px; }
+
+  .page { padding: 14px; }
+}

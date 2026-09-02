@@ -84,14 +84,21 @@ function blankCeilRow() {
 
 export const initialState = {
   ui: {
-    // 'workflow' | 'bids' | 'biddecision' (Phase C: 'history'/'dashboard'
-    // collapsed into 'bids' in 2.5; 'biddecision' is 8.4's standalone
-    // gate, reached only from the Bids list, not the 9-step flow).
+    // 'workflow' | 'bids' | 'biddecision' | 'summary' (Phase C: 'history'/
+    // 'dashboard' collapsed into 'bids' in 2.5; 'biddecision' is 8.4's
+    // standalone gate, reached only from the Bids list; 'summary' is
+    // Phase D's read-only mobile rollup, reached only from the
+    // mobile-only drawer item — see BidSummaryPage.jsx).
     activeSection: 'workflow',
     // which of the 8 workflow tabs, only meaningful when
     // activeSection === 'workflow'.
     activeTab: 'project',
     navCollapsed: !!localStorage.getItem('dirigo_nav_collapsed'),
+    // Phase D — mobile off-canvas nav drawer. Distinct from navCollapsed
+    // (the desktop 200px<->48px width toggle, which persists): this is
+    // the below-768px slide-in drawer's open/closed state, ephemeral by
+    // design — a phone session always starts with the drawer closed.
+    navDrawerOpen: false,
     // Phase C 2.2 — the Rates L/M/X class-sum totals, published by
     // RatesPage.jsx's recomputeTotals() (the calc() port) so
     // stepStatus.js can read the same signal the Rates totals bar shows
@@ -528,6 +535,9 @@ export function reducer(state, action) {
       return { ...state, ui: { ...state.ui, activeSection: action.section } };
     case 'SET_NAV_COLLAPSED':
       return { ...state, ui: { ...state.ui, navCollapsed: action.value } };
+    case 'SET_NAV_DRAWER':
+      // Phase D — mobile drawer open/closed. Not persisted (see initialState).
+      return { ...state, ui: { ...state.ui, navDrawerOpen: action.value } };
     case 'SET_BIDS_FILTER':
       // Phase C 2.4/2.5 — one field of the Bids list toolbar's filter.
       return { ...state, ui: { ...state.ui, bidsFilters: { ...state.ui.bidsFilters, [action.key]: action.value } } };

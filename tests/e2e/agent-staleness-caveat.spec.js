@@ -16,5 +16,8 @@ test('the Bid options section shows a stale-inputs caveat above the cards', asyn
   await page.waitForTimeout(800);
 
   await page.click('#tab-agent');
-  await expect(page.locator('text=These options may reflect an earlier version of your inputs.')).toBeVisible();
+  // Scoped to #page-agent: Phase D's BidSummaryPage carries the same
+  // one-line caveat above its own stacked agent options, so the bare
+  // text locator now matches two (always-mounted) elements.
+  await expect(page.locator('#page-agent >> text=These options may reflect an earlier version of your inputs.')).toBeVisible();
 });

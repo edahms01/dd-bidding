@@ -181,7 +181,7 @@ export default function BidsPage({ active }) {
             <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>Showing {shown.length} of {rows.length}</span>
           )}
         </div>
-        <div className="tbl-wrap">
+        <div className="tbl-wrap sticky-col">
           <table>
             <thead><tr><th>Project</th><th>GC</th><th>Building type</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead>
             <tbody>
