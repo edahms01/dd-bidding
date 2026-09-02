@@ -69,7 +69,7 @@ test('double-clicking Finalize during the network round trip creates exactly one
   expect(submittedCount).toBe(1);
 });
 
-test('renderHistory() shows a visible error state on a failed fetch, distinct from the empty-table message', async ({ page }) => {
+test('the Bids list shows a visible error note when the submitted-bids fetch fails', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
   await loadSeed(page);
@@ -83,7 +83,9 @@ test('renderHistory() shows a visible error state on a failed fetch, distinct fr
     }
   });
 
-  await page.click('.nav-item[title="Bid History"]');
-  await expect(page.locator("text=Couldn't load bid history")).toBeVisible();
-  await expect(page.locator('text=No bids submitted yet')).toHaveCount(0);
+  await page.click('.nav-item[title="Bids"]');
+  // Phase C 2.5 — drafts (sync) are unaffected; only the async bids fetch
+  // failed, so the note is scoped and the draft list still renders.
+  await expect(page.locator("text=Couldn't load submitted bids")).toBeVisible();
+  await expect(page.locator('#page-bids tbody')).toContainText('Harborview'); // the seed draft
 });

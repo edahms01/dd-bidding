@@ -13,7 +13,7 @@ test("updating a bid's outcome/split actual costs via the Update row persists ac
   await loadSeed(page);
   await page.waitForTimeout(1500);
 
-  await page.click('.nav-item[title="Bid History"]');
+  await page.click('.nav-item[title="Bids"]');
   const bid = await page.evaluate(() =>
     fetch('/.netlify/functions/bids').then(r => r.json()).then(bids => bids[0])
   );
@@ -55,7 +55,7 @@ test('logging only one of the two split actual costs on a legacy record leaves c
   await loadSeed(page);
   await page.waitForTimeout(1500);
 
-  await page.click('.nav-item[title="Bid History"]');
+  await page.click('.nav-item[title="Bids"]');
   const bidId = await page.evaluate(() =>
     fetch('/.netlify/functions/bids').then(r => r.json()).then(bids => bids[0].bid_id)
   );

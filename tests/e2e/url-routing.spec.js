@@ -40,12 +40,12 @@ test('navigating updates the hash — workflow tabs and left-nav sections', asyn
   await expect.poll(() => hash(page)).toBe('#/walls');
   await expect(page.locator('#page-walls')).toHaveClass(/active/);
 
-  await page.click('.nav-item[data-nav="history"]');
-  await expect.poll(() => hash(page)).toBe('#/history');
-  await expect(page.locator('#page-history')).toHaveClass(/active/);
+  await page.click('.nav-item[data-nav="bids"]');
+  await expect.poll(() => hash(page)).toBe('#/bids');
+  await expect(page.locator('#page-bids')).toHaveClass(/active/);
 
-  await page.click('.nav-item[data-nav="dashboard"]');
-  await expect.poll(() => hash(page)).toBe('#/dashboard');
+  await page.click('.nav-item[data-nav="workflow"]'); // "Current bid" — back to the workflow
+  await expect.poll(() => hash(page)).toBe('#/walls'); // resumes on the last step
 });
 
 test('browser Back / Forward walk the visited steps cleanly — no bounce, no duplicated entries', async ({ page }) => {

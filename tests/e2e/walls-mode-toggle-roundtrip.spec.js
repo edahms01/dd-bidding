@@ -113,7 +113,7 @@ test('an old draft with no saved mode defaults to dimensions, not whatever mode 
   await page.click('#tab-walls');
   await page.click('#page-walls .mode-toggle-btn:has-text("Enter by area")');
 
-  await page.click('.nav-item[title="New Bid"]');
+  await page.click('#new-bid-btn');
   await page.waitForTimeout(300);
   await page.click('#tab-walls');
   await expect(page.locator('#page-walls .mode-toggle-btn.on')).toHaveText('Enter by dimensions');

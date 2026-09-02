@@ -13,10 +13,10 @@ test('markup-like text in a project name renders as literal text on the Dashboar
   await page.fill('#proj-name', projectName);
   await page.waitForTimeout(900); // past the 700ms autosave debounce
 
-  await page.click('.nav-item[title="Dashboard"]');
+  await page.click('.nav-item[title="Bids"]');
   await page.waitForTimeout(300);
 
-  const dashboard = page.locator('#page-dashboard');
+  const dashboard = page.locator('#page-bids');
   await expect(dashboard).toContainText(projectName);
   expect(await dashboard.locator('b').count()).toBe(0);
 });

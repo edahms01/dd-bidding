@@ -21,7 +21,7 @@ test('a second loss to an already-seen competitor crosses the confidence thresho
 
   // seed-5 ("Consigli Construction Co.") is the one pending seed bid —
   // repurpose it as a second loss to the same competitor as seed-2.
-  await page.click('.nav-item[title="Bid History"]');
+  await page.click('.nav-item[title="Bids"]');
   const pendingBid = await page.evaluate(() =>
     fetch('/.netlify/functions/bids').then(r => r.json()).then(bids => bids.find(b => b.outcome === 'pending'))
   );

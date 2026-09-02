@@ -18,7 +18,7 @@ test('deleting a row then switching drafts clears the undo toast — no cross-dr
   await expect(page.locator('.row-undo-toast')).toBeVisible();
 
   // Switch to a brand-new draft before clicking Undo.
-  await page.click('.nav-item[title="New Bid"]');
+  await page.click('#new-bid-btn');
   await page.waitForTimeout(300);
 
   await expect(page.locator('.row-undo-toast')).toHaveCount(0);
@@ -32,7 +32,7 @@ test('deleting a row then switching drafts clears the undo toast — no cross-dr
   // Switching back to the original draft (via Dashboard) should show
   // the post-delete state, not a resurrected row -- confirms the delete
   // itself was never rolled back by anything.
-  await page.click('.nav-item[title="Dashboard"]');
+  await page.click('.nav-item[title="Bids"]');
   await page.locator('tr', { hasText: 'Harborview' }).locator('button:has-text("Open")').click();
   await page.waitForTimeout(300);
   await page.click('#tab-walls');

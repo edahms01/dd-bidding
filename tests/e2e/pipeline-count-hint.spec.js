@@ -17,7 +17,7 @@ test('opening a second draft shows a pipeline count of 1 on the Market Read tab'
   await page.click('#tab-market');
   await expect(page.locator('#pipeline-count-hint')).toHaveText('No other bids currently open');
 
-  await page.click('.nav-item[title="New Bid"]'); // createDraft() — now two drafts, this one active
+  await page.click('#new-bid-btn'); // createDraft() — now two drafts, this one active
   await page.click('#tab-market');
   await expect(page.locator('#pipeline-count-hint')).toHaveText('1 other bid currently open');
 });

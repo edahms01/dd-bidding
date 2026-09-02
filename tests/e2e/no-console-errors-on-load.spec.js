@@ -36,9 +36,9 @@ test('page load and a full pass through every tab produce zero console errors an
     await page.click(`#${tabId}`);
     await page.waitForTimeout(150);
   }
-  await page.click('.nav-item[data-nav="dashboard"]');
-  await page.waitForTimeout(150);
-  await page.click('.nav-item[data-nav="history"]');
+  await page.click('.nav-item[data-nav="bids"]');
+  await page.waitForTimeout(200);
+  await page.click('.nav-item[data-nav="workflow"]');
   await page.waitForTimeout(150);
 
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n')}`).toEqual([]);

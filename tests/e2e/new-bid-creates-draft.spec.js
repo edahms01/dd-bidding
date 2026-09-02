@@ -8,12 +8,12 @@ test('clicking New Bid with a draft already open creates a second, empty draft â
   await page.fill('#proj-name', 'QA Draft One');
   await page.waitForTimeout(900); // past debounce
 
-  await page.click('.nav-item[title="New Bid"]'); // createDraft()
+  await page.click('#new-bid-btn'); // createDraft()
   await expect(page.locator('#proj-name')).toHaveValue('');
 
-  await page.click('.nav-item[title="Dashboard"]');
-  const rows = page.locator('#page-dashboard tbody tr');
+  await page.click('.nav-item[title="Bids"]');
+  const rows = page.locator('#page-bids tbody tr');
   await expect(rows).toHaveCount(2);
-  await expect(page.locator('#page-dashboard tbody')).toContainText('QA Draft One');
-  await expect(page.locator('#page-dashboard tbody')).toContainText('Untitled bid');
+  await expect(page.locator('#page-bids tbody')).toContainText('QA Draft One');
+  await expect(page.locator('#page-bids tbody')).toContainText('Untitled bid');
 });
