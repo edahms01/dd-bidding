@@ -36,6 +36,7 @@
 // overwrote whatever #output-bid held, submit panel included).
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
+import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(n)  { return (+n).toFixed(1) + '%'; }
@@ -164,43 +165,6 @@ function Phase4({ output }) {
         </div>
       </div>
     </>
-  );
-}
-
-function SubmitResultPanel({ result, agentOptions, dispatch }) {
-  if (result.status === 'error') {
-    return (
-      <div className="section-block">
-        <div style={{ background: 'var(--surface)', border: '2px solid #e85c4a', borderRadius: 'var(--rl)', padding: 28, textAlign: 'center' }}>
-          <div style={{ fontSize: 24, color: '#e85c4a', marginBottom: 10 }}>✕</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Bid submission failed</div>
-          <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
-            Nothing was saved — your draft is unchanged. Check your connection and try again.
-          </div>
-          {/* A2 cleanup pass: dispatches OPEN_FINALIZE_MODAL directly —
-              window._showFinalizeModal/window.__getLastAgentResult are
-              gone, no remaining classic-script consumer once Agent/
-              Output converted (see bridges.js); agentOptions is
-              state.ui.agent.cachedResult?.options, the same value
-              _lastAgentResult?.options held. */}
-          <button className="btn btn-primary" onClick={() => dispatch({ type: 'OPEN_FINALIZE_MODAL', options: agentOptions || [] })}>Try again</button>
-        </div>
-      </div>
-    );
-  }
-  const { saved } = result;
-  return (
-    <div className="section-block">
-      <div style={{ background: 'var(--surface)', border: '2px solid var(--green)', borderRadius: 'var(--rl)', padding: 28, textAlign: 'center' }}>
-        <div style={{ fontSize: 24, color: 'var(--green)', marginBottom: 10 }}>✓</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Bid submitted</div>
-        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
-          {saved.project_name || '(unnamed project)'} — {fmtCost(saved.final_bid)}
-        </div>
-        <button className="btn btn-primary" onClick={() => window.goto('history')}>View bid history →</button>
-        <button className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={() => window.runCalculation?.()}>Back to output</button>
-      </div>
-    </div>
   );
 }
 

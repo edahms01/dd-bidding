@@ -50,6 +50,13 @@ export default function FinalizeModal() {
     }
     if (!amount) return;
 
+    // 5.6 (Phase E, Step 1) — carry the recommended option's own figures
+    // through to the bid record so recommended-vs-chosen has a persisted
+    // comparison point (buildBidRecord()'s recommended_bid /
+    // recommended_margin_pct). options is the snapshot OPEN_FINALIZE_MODAL
+    // took of cachedResult.options, so this is reliably available here.
+    const recOpt = (options || []).find((o) => o.type === 'recommended');
+
     dispatch({ type: 'SET_FINALIZE_SUBMITTING', value: true });
     try {
       // A2.5: pass the resolved selection through — submitBid() (js/ui.js)
@@ -57,7 +64,12 @@ export default function FinalizeModal() {
       // plain calculator instead. selected is the reducer's own option
       // vocabulary ('competitive'|'recommended'|'ambitious'|'override'),
       // reused verbatim, no translation layer.
-      await window.submitBid({ amount, selectedOption: selected });
+      await window.submitBid({
+        amount,
+        selectedOption: selected,
+        recommendedBid: recOpt?.bidAmount ?? null,
+        recommendedMargin: recOpt?.margin ?? null
+      });
       dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
       window._showBidToast?.(label, amount);
     } catch (e) {

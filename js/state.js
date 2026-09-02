@@ -271,6 +271,15 @@ function buildBidRecord(state, summary, markupResult, finalizeSelection) {
     custom_override_amount: finalizeSelection?.selectedOption === 'override'
       ? Math.round(finalizeSelection.amount)
       : null,
+    // Phase E 5.6 — the recommended option's own figures at confirm time,
+    // so recommended-vs-chosen (SubmitResultPanel) has a persisted
+    // comparison point rather than depending on state.ui.agent still
+    // holding the same cached result. null on records predating this
+    // field / when the agent never ran.
+    recommended_bid:        finalizeSelection?.recommendedBid != null
+      ? Math.round(finalizeSelection.recommendedBid)
+      : null,
+    recommended_margin_pct: finalizeSelection?.recommendedMargin ?? null,
     confidence:             state.conditions.confidence,
     intelligence:           state.intelligence,
     outcome:                'pending',

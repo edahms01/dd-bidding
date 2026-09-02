@@ -36,6 +36,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
 import { hasUnresolvedReferences } from '../state/validation.js';
+import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 
@@ -231,6 +232,13 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked 
 export default function AgentPage({ active }) {
   const [state, dispatch] = useStore();
   const { cachedResult, loading, historyUnavailable, selectedOption } = state.ui.agent;
+  // 5.6 (Phase E, Step 1) — the post-finalize confirmation/failure panel
+  // now renders here too, not only on OutputPage. Finalize is triggered
+  // from this tab ("Finalize bid →"), so this is where the durable
+  // confirmation has to be visible — the wrong-tab defect §9.9 held open
+  // for this phase. Same state.ui.submitResult, same shared component;
+  // it self-clears on the next RENDER_OUTPUT exactly as before.
+  const { submitResult } = state.ui;
   // 3.1 — see src/state/validation.js. Derived from state.bid directly
   // (not calculator.js's per-row error flag, which also fires for a
   // genuinely blank/never-touched typeId — see that file's header
@@ -266,6 +274,9 @@ export default function AgentPage({ active }) {
 
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-agent">
+      {submitResult && (
+        <SubmitResultPanel result={submitResult} agentOptions={cachedResult?.options} dispatch={dispatch} />
+      )}
       {body}
     </div>
   );
