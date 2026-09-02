@@ -29,28 +29,38 @@ const AGENT_SCHEMA = {
 };
 
 // Takes the business-data payload runBidAgent() (js/agent.js) assembles
-// client-side — { project, costs, conditions, intelligence, history },
-// no `schema` key — and returns the full Anthropic /v1/messages request
-// body. The schema is injected here, server-side, not expected from the
-// client.
+// client-side — { project, costs, conditions, intelligence, history }
+// (+ an internal `demoProbe` flag), no `schema` key — and returns the
+// full Anthropic /v1/messages request body. The schema is injected here,
+// server-side, not expected from the client.
 function buildAnthropicRequest(payload) {
+  // `demoProbe` is an internal routing flag, not business data — pull it
+  // out so it never lands in the prompt the model sees.
+  const { demoProbe, ...businessData } = payload;
+
   return {
-    model:      'claude-sonnet-4-6',
-    // The full recommendation (3 options with rationales + reasoning +
+    // Real product path stays on Sonnet 4.6. The dual-demo "Load Demo —
+    // live agent" button (a connection test) sets demoProbe:true and gets
+    // Haiku instead — a full Sonnet response here measures ~26-33s, which
+    // straddles Netlify's ~26s synchronous HTTP timeout and 504s
+    // intermittently; Haiku returns the same schema in ~8-12s, safely
+    // under. Not a product-quality decision — the probe just needs to
+    // prove the pipe works.
+    model:      demoProbe ? 'claude-haiku-4-5' : 'claude-sonnet-4-6',
+    // The recommendation JSON (3 options with rationales + reasoning +
     // one signal per intelligence field + risk flags + historical notes)
-    // serialises to ~2.5-4k output tokens. The original 1024 truncated it
-    // mid-string, so parseAgentResponse() always failed with
-    // "Unterminated string in JSON" → the function returned 502
-    // parse_error. First caught when "Load Demo — live agent" (dual demo
-    // mode) actually exercised this path in production, 2026-09-02 — it
-    // had never run before because DEMO_MODE was always true. 8192 is
-    // ~2x headroom for this bounded schema; billing is per token
-    // generated, so the higher ceiling has no idle cost.
+    // measured ~1.5k output tokens / 6KB. The original 1024 truncated it
+    // mid-string, so parseAgentResponse() failed with "Unterminated
+    // string in JSON" → the function returned 502 parse_error. First
+    // caught when "Load Demo — live agent" actually exercised this path
+    // in production, 2026-09-02 — it had never run before because
+    // DEMO_MODE was always true. 8192 is generous headroom; billing is
+    // per token generated, so the higher ceiling has no idle cost.
     max_tokens: 8192,
     system:     AGENT_SYSTEM,
     messages: [{
       role:    'user',
-      content: JSON.stringify(Object.assign({}, payload, { schema: AGENT_SCHEMA }), null, 2)
+      content: JSON.stringify(Object.assign({}, businessData, { schema: AGENT_SCHEMA }), null, 2)
     }]
   };
 }

@@ -258,8 +258,17 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
       durationWeeks: state.conditions.durationWeeks
     },
     intelligence: state.intelligence,
-    history: bidHistory
+    history: bidHistory,
     // No `schema` key — the server-side function injects it (Track A).
+    //
+    // `demoProbe` tells the function this call came from the dual-demo
+    // "Load Demo — live agent" button (a connection test), not the real
+    // product path. The function uses a faster model for a probe so the
+    // round trip stays well under Netlify's ~26s synchronous HTTP cliff
+    // (Sonnet 4.6 here runs ~26-33s and 504s intermittently). The real
+    // path — DEMO_MODE=false without liveAgentMode — never sets this and
+    // stays on Sonnet.
+    demoProbe: liveAgentMode
   };
 
   try {
