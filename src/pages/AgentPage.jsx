@@ -41,6 +41,7 @@ import { agentStaleness } from '../state/agentStaleness.js';
 import { expectedValueRange } from '../state/expectedValue.js';
 import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
 import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
+import WhatIfSlider from '../components/WhatIfSlider.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtFactorValue(v) { return v ? v.charAt(0).toUpperCase() + v.slice(1) : 'Not set'; }
@@ -235,6 +236,9 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
           Expected value = win-likelihood band × margin&nbsp;$. Win-likelihood is a hand-tuned score,
           not a calibrated probability — treat EV as directional, not precise.
         </div>
+        {/* 5.3 — sibling of the cards, not a child of any [data-bid-opt]
+            card, so a drag/click on it can't fire SELECT_AGENT_OPTION. */}
+        <WhatIfSlider options={r.options} />
       </div>
 
       <div className="section-block">

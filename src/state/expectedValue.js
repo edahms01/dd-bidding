@@ -42,3 +42,67 @@ export function expectedValueRange(opt, likelihoodLabel) {
   if (!band || m == null) return null;
   return { lo: band[0] * m, hi: band[1] * m };
 }
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// 5.3 — interpolate margin% / P(win) band / EV at an arbitrary bid amount
+// `x`, strictly from the demo response's own three option anchors — NOT an
+// independent recompute. The §5.3 constraint: the slider and the option
+// cards must not visibly disagree at the endpoints during a pitch. So when
+// `x` is exactly an anchor's bidAmount, that anchor's own figures are
+// returned verbatim (no lerp), making the endpoint match dollar-exact
+// regardless of float error; between anchors, margin% and the band
+// endpoints are linearly interpolated between the two bracketing anchors.
+//
+// Returns { bidAmount, marginPct, winBand:[lo,hi], winLabel|null,
+// marginDollars, ev:{lo,hi} } or null with fewer than one usable anchor.
+export function interpolateAtBid(options, x) {
+  const anchors = (options || [])
+    .filter((o) => o.bidAmount != null && o.margin != null)
+    .slice()
+    .sort((a, b) => a.bidAmount - b.bidAmount);
+  if (anchors.length === 0) return null;
+
+  const exact = anchors.find((a) => a.bidAmount === x);
+  if (exact) {
+    return {
+      bidAmount: x,
+      marginPct: exact.margin,
+      winBand: winProbBand(exact.winLikelihood),
+      winLabel: exact.winLikelihood,
+      marginDollars: marginDollars(exact),
+      ev: expectedValueRange(exact, exact.winLikelihood)
+    };
+  }
+
+  const min = anchors[0].bidAmount;
+  const max = anchors[anchors.length - 1].bidAmount;
+  const xc = Math.min(max, Math.max(min, x));
+
+  let lo = anchors[0];
+  let hi = anchors[anchors.length - 1];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (xc >= anchors[i].bidAmount && xc <= anchors[i + 1].bidAmount) {
+      lo = anchors[i];
+      hi = anchors[i + 1];
+      break;
+    }
+  }
+  const span = hi.bidAmount - lo.bidAmount;
+  const t = span > 0 ? (xc - lo.bidAmount) / span : 0;
+
+  const marginPct = lerp(lo.margin, hi.margin, t);
+  const loBand = winProbBand(lo.winLikelihood) || [0, 0];
+  const hiBand = winProbBand(hi.winLikelihood) || [0, 0];
+  const winBand = [lerp(loBand[0], hiBand[0], t), lerp(loBand[1], hiBand[1], t)];
+  const m = xc * (marginPct / 100);
+
+  return {
+    bidAmount: xc,
+    marginPct,
+    winBand,
+    winLabel: null,
+    marginDollars: m,
+    ev: { lo: winBand[0] * m, hi: winBand[1] * m }
+  };
+}
