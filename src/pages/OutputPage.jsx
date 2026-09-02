@@ -98,7 +98,7 @@ function Phase3({ output }) {
       <div className="section-block">
         <div className="section-label">Per-area breakdown</div>
         {hasAreas ? (
-          <div className="tbl-wrap">
+          <div className="tbl-wrap sticky-col">
             <table>
               <thead><tr>
                 <th>Location</th><th>Assembly</th><th>Quantity</th><th>Labor</th><th>Materials</th><th>Subtotal</th>

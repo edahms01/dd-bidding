@@ -153,7 +153,7 @@ export default function AssembliesPage({ active }) {
           <button className="btn btn-primary" onClick={() => window.goto('walls')}>Next: Walls →</button>
         </div>
       </div>
-      <div className="tbl-wrap">
+      <div className="tbl-wrap sticky-col">
         <table>
           <colgroup>
             <col style={{ width: 60 }} /><col style={{ width: 84 }} /><col style={{ width: 82 }} />

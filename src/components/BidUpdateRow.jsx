@@ -47,7 +47,7 @@ export default function BidUpdateRow({ bid, open, onSaved }) {
   }
 
   return (
-    <tr id={'uprow-' + bid.bid_id} style={{ display: open ? 'table-row' : 'none', background: 'var(--surface2)' }}>
+    <tr className="bid-update-row" id={'uprow-' + bid.bid_id} style={{ display: open ? 'table-row' : 'none', background: 'var(--surface2)' }}>
       <td colSpan={8} style={{ padding: '14px 12px' }}>
         <div className="grid g6" style={{ marginBottom: 12 }}>
           <div className="field">
