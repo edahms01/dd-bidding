@@ -149,7 +149,7 @@ export default function AssembliesPage({ active }) {
       <div className="page-hdr">
         <div><div className="page-title">Assembly types</div><div className="page-sub">Define each wall and ceiling system. Each type ID is referenced in walls and ceilings.</div></div>
         <div className="page-actions">
-          <button className="btn btn-ghost" onClick={() => window.goto('rates')}>← Back</button>
+          <button className="btn btn-ghost" onClick={() => window.goto('conditions')}>← Back</button>
           <button className="btn btn-primary" onClick={() => window.goto('walls')}>Next: Walls →</button>
         </div>
       </div>

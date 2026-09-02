@@ -14,9 +14,11 @@
 // every LegacyPage the moment the user navigated away — a real
 // behavior regression, not a refactor.
 // ─────────────────────────────────────────────────────────────────────
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { useStore } from './state/store.jsx';
 import { registerBridges } from './state/bridges.js';
+import { parseHash, canonicalHash } from './state/router.js';
+import { stepStatus } from './state/stepStatus.js';
 import ProjectPage from './pages/ProjectPage.jsx';
 import ConditionsPage from './pages/ConditionsPage.jsx';
 import RatesPage from './pages/RatesPage.jsx';
@@ -24,33 +26,51 @@ import AssembliesPage from './pages/AssembliesPage.jsx';
 import WallsPage from './pages/WallsPage.jsx';
 import CeilingsPage from './pages/CeilingsPage.jsx';
 import OutputPage from './pages/OutputPage.jsx';
+import MarketReadPage from './pages/MarketReadPage.jsx';
 import AgentPage from './pages/AgentPage.jsx';
-import HistoryPage from './pages/HistoryPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
+import BidsPage from './pages/BidsPage.jsx';
+import BidDecisionPage from './pages/BidDecisionPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
 import RowUndoToast from './components/RowUndoToast.jsx';
+import BidsToolbar from './components/BidsToolbar.jsx';
 
 // 4.1: tabs where the rail shows — "visible from Assemblies onward" per
 // the decision record, not project/conditions/rates (which either
 // precede any takeoff data existing at all, or already have their own
 // totals display — RatesPage.jsx's own crude tile).
-const RAIL_TABS = ['assemblies', 'walls', 'ceilings', 'output', 'agent'];
+const RAIL_TABS = ['assemblies', 'walls', 'ceilings', 'output', 'market', 'agent'];
 
+// Phase C 2.1 — 9 steps in cost-then-price order. Internal keys are
+// unchanged from the pre-C set (conditions/output/agent kept on purpose —
+// see CLAUDE.md's key-rename decision); only `label` moved, and `market`
+// is the one new key (the price-driving half split off the old
+// Conditions page). `num` is the display index, renumbered here.
 const WORKFLOW_TABS = [
   { id: 'project',     num: 1, label: 'Project' },
-  { id: 'conditions',  num: 2, label: 'Conditions' },
-  { id: 'rates',       num: 3, label: 'Rates' },
-  { id: 'assemblies',  num: 4, label: 'Assemblies' },
-  { id: 'walls',       num: 5, label: 'Walls' },
-  { id: 'ceilings',    num: 6, label: 'Ceilings' },
-  { id: 'output',      num: 7, label: 'Initial Bid' },
-  { id: 'agent',       num: 8, label: 'Agent Recommendation' }
+  { id: 'conditions',  num: 2, label: 'Site Conditions' },
+  { id: 'assemblies',  num: 3, label: 'Assemblies' },
+  { id: 'walls',       num: 4, label: 'Walls' },
+  { id: 'ceilings',    num: 5, label: 'Ceilings' },
+  { id: 'rates',       num: 6, label: 'Rates' },
+  { id: 'output',      num: 7, label: 'Cost Summary' },
+  { id: 'market',      num: 8, label: 'Market Read' },
+  { id: 'agent',       num: 9, label: 'Bid Strategy' }
 ];
 
 export default function AppShell() {
   const [state, dispatch] = useStore();
   const { activeSection, activeTab, navCollapsed } = state.ui;
+
+  // Phase C 2.2 — URL routing. stateRef gives the once-registered
+  // hashchange listener the *current* section/tab without re-subscribing
+  // on every nav; urlSyncedOnce lets the state->URL effect skip its
+  // first run (first-mount URL handling belongs to the URL->state effect)
+  // so "app booted" isn't its own Back target. See src/state/router.js.
+  const stateRef = useRef({ activeSection, activeTab });
+  stateRef.current = { activeSection, activeTab };
+  const urlSyncedOnce = useRef(false);
+  const steps = stepStatus(state.bid, state.ui);
 
   useEffect(() => {
     registerBridges(dispatch);
@@ -111,6 +131,69 @@ export default function AppShell() {
     window.scheduleRecalc?.();
   }, [state.bid]);
 
+  // Phase C 2.2 — URL -> state. Parse location.hash on mount (deep link)
+  // and on every browser Back/Forward or manual edit, dispatching to
+  // match. Registered once; reads live state through stateRef so it
+  // never needs re-subscribing. An unrecognized hash is ignored (the
+  // state->URL effect below will re-assert a canonical one).
+  useEffect(() => {
+    function applyHash() {
+      const cur = stateRef.current;
+      const parsed = parseHash(window.location.hash);
+      if (!parsed) {
+        // Empty or garbage hash — snap the URL back to the canonical
+        // form for whatever step is showing. replaceState doesn't fire
+        // hashchange, so this can't loop.
+        const c = canonicalHash(cur.activeSection, cur.activeTab);
+        if (window.location.hash !== c) window.history.replaceState(null, '', c);
+        return;
+      }
+      if (parsed.section === 'workflow') {
+        if (cur.activeSection !== 'workflow' || cur.activeTab !== parsed.tab) {
+          // Route through window.goto so a Back/Forward or deep link to
+          // #/cost-summary / #/bid-strategy fires the same per-tab side
+          // effects (runCalculation / renderAgentTab) a normal tab click
+          // does — registerBridges() has run by the time this effect exists.
+          if (window.goto) window.goto(parsed.tab);
+          else dispatch({ type: 'GOTO_TAB', id: parsed.tab });
+        }
+        return;
+      }
+      // #/bids/<draftId> — open that draft, same as the row's Open
+      // button (switchToDraft -> _flushAndSwitch, then it lands on
+      // #/<step>). Unknown id just shows the list.
+      if (parsed.section === 'bids' && parsed.rest[0] && window.switchToDraft) {
+        const id = parsed.rest[0];
+        const drafts = window.getAllDrafts ? window.getAllDrafts() : {};
+        if (drafts[id]) { window.switchToDraft(id); return; }
+      }
+      if (cur.activeSection !== parsed.section) {
+        dispatch({ type: 'GOTO_SECTION', section: parsed.section });
+      }
+    }
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Phase C 2.2 — state -> URL. The first run is skipped entirely: the
+  // URL -> state effect above already owns first-mount URL handling
+  // (replaceState for an empty/garbage hash, a dispatch for a valid deep
+  // link), and a push here would add a spurious "app booted" history
+  // entry. Every later navigation pushState's so it's a real Back
+  // target. The `hash !== desired` guard makes this a no-op for
+  // Back/Forward-driven dispatches (the browser already set the hash) —
+  // that guard is what prevents the bounce-between-two-entries failure.
+  useEffect(() => {
+    if (!urlSyncedOnce.current) {
+      urlSyncedOnce.current = true;
+      return;
+    }
+    const desired = canonicalHash(activeSection, activeTab);
+    if (window.location.hash !== desired) window.history.pushState(null, '', desired);
+  }, [activeSection, activeTab]);
+
   return (
     <Fragment>
     <div className="shell">
@@ -142,6 +225,10 @@ export default function AppShell() {
           <button className="btn btn-ghost btn-sm" onClick={() => window.exportBid?.()}>Export</button>
           <button className="btn btn-ghost btn-sm" onClick={() => document.getElementById('import-file-input').click()}>Import</button>
           <input type="file" id="import-file-input" accept="application/json" style={{ display: 'none' }} onChange={(e) => window.handleImportFile?.(e)} />
+          {/* Phase C 2.5 — "New Bid" is a header action now, not a nav
+              destination. The left-nav "Current bid" item is the route
+              back to work in progress; this always spawns a fresh one. */}
+          <button id="new-bid-btn" className="btn btn-primary btn-sm" onClick={() => window.createDraft?.()}>+ New Bid</button>
         </div>
       </header>
 
@@ -162,32 +249,28 @@ export default function AppShell() {
             fixing. */}
         <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '')} id="app-leftnav">
           <div className="nav-items">
-            <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => window.createDraft?.()} title="New Bid">
+            {/* Phase C 2.5 — the workflow nav item is "the current bid"
+                now (labelled with the active draft's project name), not
+                a "New Bid" button; clicking it returns you to
+                work-in-progress on whatever step you left off. "New Bid"
+                moved to a header action. */}
+            <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'workflow' })} title="Current bid">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6L9 2z" />
                 <path d="M9 2v4h4" />
                 <line x1="6" y1="9" x2="10" y2="9" />
                 <line x1="8" y1="7" x2="8" y2="11" />
               </svg>
-              {!navCollapsed && <span className="nav-label">New Bid</span>}
+              {!navCollapsed && <span className="nav-label">{state.bid.project.name?.trim() || 'Current bid'}</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'history' ? ' active' : '')} data-nav="history" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'history' })} title="Bid History">
+            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'bids' })} title="Bids">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="6" />
-                <polyline points="8 5 8 8.5 10.5 10.5" />
+                <rect x="2" y="3" width="12" height="3" rx="1" />
+                <rect x="2" y="8" width="12" height="3" rx="1" />
+                <line x1="4.5" y1="13" x2="11.5" y2="13" />
               </svg>
-              {!navCollapsed && <span className="nav-label">Bid History</span>}
-            </div>
-
-            <div className={'nav-item' + (activeSection === 'dashboard' ? ' active' : '')} data-nav="dashboard" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'dashboard' })} title="Dashboard">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="5" height="5" rx="1" />
-                <rect x="9" y="2" width="5" height="5" rx="1" />
-                <rect x="2" y="9" width="5" height="5" rx="1" />
-                <rect x="9" y="9" width="5" height="5" rx="1" />
-              </svg>
-              {!navCollapsed && <span className="nav-label">Dashboard</span>}
+              {!navCollapsed && <span className="nav-label">Bids</span>}
             </div>
 
             <div className="nav-item nav-placeholder" title="Coming soon">
@@ -221,7 +304,11 @@ export default function AppShell() {
                 <Fragment key={t.id}>
                   {i > 0 && <div className="tab-sep">›</div>}
                   <div
-                    className={'tab' + (activeTab === t.id ? ' active' : '')}
+                    className={
+                      'tab' +
+                      (activeTab === t.id ? ' active' : '') +
+                      (steps[t.id] === 'complete' ? ' done' : steps[t.id] === 'partial' ? ' partial' : '')
+                    }
                     onClick={() => window.goto(t.id)}
                     id={'tab-' + t.id}
                   >
@@ -236,6 +323,11 @@ export default function AppShell() {
             <BidTotalRail output={state.ui.output} />
           )}
 
+          {/* Phase C 2.4/2.5 — keep the frame stable off the workflow:
+              the step-bar slot carries the Bids filter toolbar instead
+              of going blank. */}
+          {activeSection === 'bids' && <BidsToolbar />}
+
           <div className="body">
             <ProjectPage active={activeSection === 'workflow' && activeTab === 'project'} />
             <ConditionsPage active={activeSection === 'workflow' && activeTab === 'conditions'} />
@@ -244,9 +336,10 @@ export default function AppShell() {
             <WallsPage active={activeSection === 'workflow' && activeTab === 'walls'} />
             <CeilingsPage active={activeSection === 'workflow' && activeTab === 'ceilings'} />
             <OutputPage active={activeSection === 'workflow' && activeTab === 'output'} />
+            <MarketReadPage active={activeSection === 'workflow' && activeTab === 'market'} />
             <AgentPage active={activeSection === 'workflow' && activeTab === 'agent'} />
-            <DashboardPage active={activeSection === 'dashboard'} />
-            <HistoryPage active={activeSection === 'history'} />
+            <BidsPage active={activeSection === 'bids'} />
+            <BidDecisionPage active={activeSection === 'biddecision'} />
           </div>
         </div>
       </div>

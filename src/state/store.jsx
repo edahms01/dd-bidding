@@ -51,6 +51,11 @@ function freshRowKey() { return _nextRowKey++; }
 // is the separate, never-reset React key described above — the two
 // numbers coincide for a freshly-added row but diverge after the first
 // hydration or reset, on purpose.
+// NOTE: src/state/stepStatus.js's ASM_DEFAULTS mirrors the non-id/
+// non-bookkeeping fields below to decide whether an assembly row has
+// been touched (the Assemblies step-completion indicator). If these
+// defaults change, update ASM_DEFAULTS to match or that indicator goes
+// subtly wrong.
 function blankAssemblyRow(num) {
   return {
     id: 'W' + num, category: 'Wall', studSize: '1-5/8"', spacing: '16"',
@@ -79,13 +84,26 @@ function blankCeilRow() {
 
 export const initialState = {
   ui: {
-    // 'workflow' | 'history' | 'dashboard' — mirrors js/tabs.js's
-    // _navSetActive() section concept.
+    // 'workflow' | 'bids' | 'biddecision' (Phase C: 'history'/'dashboard'
+    // collapsed into 'bids' in 2.5; 'biddecision' is 8.4's standalone
+    // gate, reached only from the Bids list, not the 9-step flow).
     activeSection: 'workflow',
     // which of the 8 workflow tabs, only meaningful when
     // activeSection === 'workflow'.
     activeTab: 'project',
     navCollapsed: !!localStorage.getItem('dirigo_nav_collapsed'),
+    // Phase C 2.2 — the Rates L/M/X class-sum totals, published by
+    // RatesPage.jsx's recomputeTotals() (the calc() port) so
+    // stepStatus.js can read the same signal the Rates totals bar shows
+    // without re-deriving "are the rates filled in" a second way.
+    rateTotals: { l: 0, m: 0, x: 0 },
+    // Phase C 2.4 / 2.5 — the Bids list toolbar's filter state. The
+    // toolbar (HistoryToolbar.jsx, shown in the step-bar slot while
+    // activeSection === 'bids' so the shell stays stable) writes here;
+    // BidsPage.jsx reads it to filter both the list and the totals.
+    // `status` is one of '' | 'Draft' | 'Submitted' | 'Won' | 'Lost'
+    // (the unified list's derived status, Step 2.5). Not persisted.
+    bidsFilters: { gc: '', status: '', from: '', to: '' },
     // Bridge target for js/ui.js's renderOutput() (window.__renderOutput,
     // see bridges.js) — the derived calculation result runCalculation()
     // computes (js/ui.js), not form input. null until the first
@@ -510,6 +528,22 @@ export function reducer(state, action) {
       return { ...state, ui: { ...state.ui, activeSection: action.section } };
     case 'SET_NAV_COLLAPSED':
       return { ...state, ui: { ...state.ui, navCollapsed: action.value } };
+    case 'SET_BIDS_FILTER':
+      // Phase C 2.4/2.5 — one field of the Bids list toolbar's filter.
+      return { ...state, ui: { ...state.ui, bidsFilters: { ...state.ui.bidsFilters, [action.key]: action.value } } };
+    case 'CLEAR_BIDS_FILTERS':
+      return { ...state, ui: { ...state.ui, bidsFilters: { gc: '', status: '', from: '', to: '' } } };
+    case 'SET_RATE_TOTALS':
+      // Phase C 2.2 — RatesPage.jsx publishes its L/M/X class-sum here so
+      // stepStatus.js reads one source of truth. No-op if unchanged so a
+      // per-keystroke recompute that lands on the same numbers doesn't
+      // spin an extra render.
+      {
+        const cur = state.ui.rateTotals;
+        const nx = action.totals;
+        if (cur.l === nx.l && cur.m === nx.m && cur.x === nx.x) return state;
+        return { ...state, ui: { ...state.ui, rateTotals: nx } };
+      }
     case 'RENDER_OUTPUT':
       // Bridge target for js/ui.js's runCalculation() (window.
       // __renderOutput, see bridges.js) — replaces renderOutput()'s old

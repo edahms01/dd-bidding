@@ -10,7 +10,7 @@ test('deleting a bid record is gone after reload, not just removed from the curr
   await loadSeed(page);
   await page.waitForTimeout(1500);
 
-  await page.click('.nav-item[title="Bid History"]');
+  await page.click('.nav-item[title="Bids"]');
   const bidId = await page.evaluate(() =>
     fetch('/.netlify/functions/bids').then(r => r.json()).then(bids => bids[0].bid_id)
   );

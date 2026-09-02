@@ -34,7 +34,7 @@ export default function ProjectPage({ active }) {
     <div className={'page' + (active ? ' active' : '')} id="page-project">
       <div className="page-hdr">
         <div><div className="page-title">Project</div><div className="page-sub">Basic info and scope for this bid</div></div>
-        <div className="page-actions"><button className="btn btn-primary" onClick={() => window.goto('conditions')}>Next: Conditions →</button></div>
+        <div className="page-actions"><button className="btn btn-primary" onClick={() => window.goto('conditions')}>Next: Site Conditions →</button></div>
       </div>
       <div className="grid g3">
         <div className="field"><span className="lbl">Project name</span><Field id="proj-name" path={['project', 'name']} get={get} dispatch={dispatch} placeholder="e.g. 400 Main St Office Tower" /></div>

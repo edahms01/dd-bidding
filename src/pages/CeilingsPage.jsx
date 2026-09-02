@@ -169,7 +169,7 @@ export default function CeilingsPage({ active }) {
         <div><div className="page-title">Ceiling + soffit quantities</div><div className="page-sub">One row per area. Net SF calculates automatically.</div></div>
         <div className="page-actions">
           <button className="btn btn-ghost" onClick={() => window.goto('walls')}>← Back</button>
-          <button className="btn btn-primary" onClick={() => window.goto('output')}>Generate bid output →</button>
+          <button className="btn btn-primary" onClick={() => window.goto('rates')}>Next: Rates →</button>
         </div>
       </div>
       <ModeToggle mode={mode} onChange={setMode} />

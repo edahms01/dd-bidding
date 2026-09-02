@@ -7,15 +7,15 @@ test('switching between two drafts via Dashboard shows only each draft\'s own da
 
   await page.fill('#proj-name', 'QA Alpha Project');
   await page.waitForTimeout(900);
-  await page.click('.nav-item[title="New Bid"]');
+  await page.click('#new-bid-btn');
   await page.fill('#proj-name', 'QA Beta Project');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Dashboard"]');
+  await page.click('.nav-item[title="Bids"]');
   await page.locator('tr', { hasText: 'QA Alpha Project' }).locator('button:has-text("Open")').click();
   await expect(page.locator('#proj-name')).toHaveValue('QA Alpha Project');
 
-  await page.click('.nav-item[title="Dashboard"]');
+  await page.click('.nav-item[title="Bids"]');
   await page.locator('tr', { hasText: 'QA Beta Project' }).locator('button:has-text("Open")').click();
   await expect(page.locator('#proj-name')).toHaveValue('QA Beta Project');
 });
@@ -31,7 +31,7 @@ test('Tab 8 agent cache does not leak from one draft into another', async ({ pag
   await page.click('#tab-agent');
   const tabAText = await page.locator('#page-agent').innerText();
 
-  await page.click('.nav-item[title="New Bid"]');
+  await page.click('#new-bid-btn');
   await page.fill('#proj-name', 'QA Agent Draft B');
   await page.waitForTimeout(900);
   // Jump straight to Tab 8 without visiting Tab 7 first — the exact path

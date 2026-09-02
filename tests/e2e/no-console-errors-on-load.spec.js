@@ -29,16 +29,16 @@ test('page load and a full pass through every tab produce zero console errors an
   // break in the Preflight test only surfaced once the Output tab
   // (which calls calculator.js functions) was actually visited.
   const workflowTabs = [
-    'tab-project', 'tab-conditions', 'tab-rates', 'tab-assemblies',
-    'tab-walls', 'tab-ceilings', 'tab-output', 'tab-agent'
+    'tab-project', 'tab-conditions', 'tab-assemblies', 'tab-walls',
+    'tab-ceilings', 'tab-rates', 'tab-output', 'tab-market', 'tab-agent'
   ];
   for (const tabId of workflowTabs) {
     await page.click(`#${tabId}`);
     await page.waitForTimeout(150);
   }
-  await page.click('.nav-item[data-nav="dashboard"]');
-  await page.waitForTimeout(150);
-  await page.click('.nav-item[data-nav="history"]');
+  await page.click('.nav-item[data-nav="bids"]');
+  await page.waitForTimeout(200);
+  await page.click('.nav-item[data-nav="workflow"]');
   await page.waitForTimeout(150);
 
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n')}`).toEqual([]);

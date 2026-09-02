@@ -7,19 +7,19 @@ test('deleting a draft prompts for confirmation, then removes it from the list a
 
   await page.fill('#proj-name', 'QA To Delete');
   await page.waitForTimeout(900);
-  await page.click('.nav-item[title="New Bid"]');
+  await page.click('#new-bid-btn');
   await page.fill('#proj-name', 'QA To Keep');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Dashboard"]');
+  await page.click('.nav-item[title="Bids"]');
 
   let dialogSeen = false;
   page.once('dialog', d => { dialogSeen = true; d.accept(); });
   await page.locator('tr', { hasText: 'QA To Delete' }).locator('button:has-text("×")').click();
 
   expect(dialogSeen).toBe(true);
-  await expect(page.locator('#page-dashboard tbody')).not.toContainText('QA To Delete');
-  await expect(page.locator('#page-dashboard tbody')).toContainText('QA To Keep');
+  await expect(page.locator('#page-bids tbody')).not.toContainText('QA To Delete');
+  await expect(page.locator('#page-bids tbody')).toContainText('QA To Keep');
 
   const stillInStorage = await page.evaluate(() => {
     const drafts = JSON.parse(localStorage.getItem('dirigo_drafts') || '{}');
@@ -35,7 +35,7 @@ test('deleting the only active draft replaces it immediately — never leaves a 
   await page.fill('#proj-name', 'QA Only Draft');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Dashboard"]');
+  await page.click('.nav-item[title="Bids"]');
   page.once('dialog', d => d.accept());
   await page.locator('tr', { hasText: 'QA Only Draft' }).locator('button:has-text("×")').click();
   await page.waitForTimeout(200);

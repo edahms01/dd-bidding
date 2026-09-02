@@ -9,12 +9,19 @@ export async function clearAll(page) {
   // dev-clear-bids before calling location.reload(). A bare click() +
   // waitForLoadState('load') can race ahead of that reload, since
   // waitForLoadState resolves immediately if the page already reads
-  // "load" and no navigation is yet in flight. Wrap the click with
-  // waitForNavigation so this actually waits for the post-fetch reload.
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: 'load' }),
-    page.click('button:has-text("Clear all data")')
-  ]);
+  // "load" and no navigation is yet in flight.
+  //
+  // Phase C: page.waitForNavigation() also resolves on SPA History API
+  // calls (pushState/replaceState), which the new hash router fires on
+  // navigation — so it could return on a stray history call instead of
+  // the real document reload, letting the next test line run against a
+  // page that's about to reload out from under it. Instead, stamp the
+  // current window and wait for that stamp to be gone — only a genuine
+  // full-document reload clears it.
+  await page.evaluate(() => { window.__preClearReload = true; });
+  await page.click('button:has-text("Clear all data")');
+  await page.waitForFunction(() => !window.__preClearReload);
+  await page.waitForLoadState('load');
 }
 
 export async function loadSeed(page) {

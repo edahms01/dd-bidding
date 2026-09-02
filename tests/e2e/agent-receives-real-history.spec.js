@@ -16,7 +16,7 @@ test('getHistorySummary() resolves with real aggregate stats and Tab 8 renders s
   expect(typeof summary.winRate).toBe('number');
 
   await page.click('#tab-agent');
-  await expect(page.locator('.page-title:has-text("Agent Recommendation")')).toBeVisible();
+  await expect(page.locator('.page-title:has-text("Bid Strategy")')).toBeVisible();
   // A healthy fetch must never show the fetch-failure fallback notice.
   await expect(page.locator('text=Historical bid data unavailable')).toHaveCount(0);
 });

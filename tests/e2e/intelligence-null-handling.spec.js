@@ -43,7 +43,7 @@ test('a filled-in Intelligence field is unaffected — real values still export 
   await page.goto('/');
   await clearAll(page);
 
-  await page.click('#tab-conditions');
+  await page.click('#tab-market'); // Phase C: the Intelligence fields moved to the Market Read step
   await page.selectOption('#intel-crew', 'tight');
   await page.selectOption('#intel-gc-rel', 'strong');
   await page.fill('#intel-competitors', 'Summit Drywall, Northeast Interiors');

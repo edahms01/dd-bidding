@@ -67,11 +67,11 @@ function Header({ options, dispatch, blocked }) {
   return (
     <div className="page-hdr">
       <div>
-        <div className="page-title">Agent Recommendation</div>
+        <div className="page-title">Bid Strategy</div>
         <div className="page-sub">Bid strategy analysis by Claude AI</div>
       </div>
       <div className="page-actions">
-        <button className="btn btn-ghost" onClick={() => window.goto('output')}>← Back</button>
+        <button className="btn btn-ghost" onClick={() => window.goto('market')}>← Back</button>
         {/* A2 cleanup pass: dispatches OPEN_FINALIZE_MODAL directly —
             window._showFinalizeModal/window.__getLastAgentResult are
             gone, they had no remaining classic-script consumer once
@@ -254,7 +254,12 @@ export default function AgentPage({ active }) {
     body = (
       <>
         <Header options={[]} dispatch={dispatch} blocked={blocked} />
-        <div className="empty-state">Complete your bid setup and click "Generate bid output →" on Tab 6 to get the agent's recommendation.</div>
+        <div className="empty-state">
+          Fill in your bid through the Cost Summary step to get a recommendation.
+          <div style={{ marginTop: 12 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => window.goto('output')}>Go to Cost Summary →</button>
+          </div>
+        </div>
       </>
     );
   }

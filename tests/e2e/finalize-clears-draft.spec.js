@@ -22,9 +22,12 @@ test('finalizing a bid removes its source draft and the same data appears correc
   }, activeIdBefore);
   expect(stillPresent).toBe(false);
 
-  await page.click('.nav-item[title="Bid History"]');
-  await expect(page.locator('#page-history')).toContainText('Harborview');
-
-  await page.click('.nav-item[title="Dashboard"]');
-  await expect(page.locator('#page-dashboard')).not.toContainText('Harborview');
+  // Phase C 2.5 — in the unified Bids list the finalized bid appears once,
+  // as a Submitted row; the source draft is gone (no second Harborview
+  // row with a Draft status).
+  await page.click('.nav-item[title="Bids"]');
+  const harborviewRows = page.locator('#page-bids tbody tr:not([id])', { hasText: 'Harborview' });
+  await expect(harborviewRows).toHaveCount(1);
+  await expect(harborviewRows).toContainText('Submitted');
+  await expect(harborviewRows).not.toContainText('Draft');
 });
