@@ -31,9 +31,17 @@ import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 
+// 5.5 — fixed vocabulary; free text covers everything else.
+const REASON_CHIPS = ['scope uncertainty', 'relationship play', 'need the work', 'competitor intel', 'gut'];
+
 export default function FinalizeModal() {
   const [state, dispatch] = useStore();
-  const { open, options, selected, customAmount, isSubmitting, error, staleAck } = state.ui.finalizeModal;
+  const { open, options, selected, customAmount, isSubmitting, error, staleAck, reasonChips, reasonText } = state.ui.finalizeModal;
+
+  // Phase E, Step 5 — capture why, whenever the chosen option differs from
+  // the recommended one (a non-recommended standard option OR a custom
+  // override). Both fields optional; they never gate Confirm.
+  const showReason = selected !== 'recommended';
 
   // Phase E, Step 2 — staleness of the agent options the user is picking
   // from vs the live reactive calculation. staleBlocking gates Confirm
@@ -88,7 +96,12 @@ export default function FinalizeModal() {
           stale: staleness.stale,
           bidPriceDelta: staleness.bidPriceDelta,
           directCostDelta: staleness.directCostDelta
-        }
+        },
+        // 5.5 — only when the choice differs from the recommended one;
+        // buildBidRecord() stores [] / '' otherwise. Both parts optional.
+        overrideReason: showReason
+          ? { chips: reasonChips || [], text: (reasonText || '').trim() }
+          : null
       });
       dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
       window._showBidToast?.(label, amount);
@@ -150,6 +163,38 @@ export default function FinalizeModal() {
             </div>
           </div>
         </div>
+
+        {/* 5.5 — override reason capture. Shown whenever the chosen option
+            isn't the recommended one; both parts optional, neither gates
+            Confirm. Stored on the bid record as override_reason_chips /
+            override_reason_text. */}
+        {showReason && (
+          <div className="reason-block" id="finalize-reason-block">
+            <div className="reason-block-label">Why not the recommended bid? (optional)</div>
+            <div className="reason-chips">
+              {REASON_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className={'reason-chip' + ((reasonChips || []).includes(chip) ? ' selected' : '')}
+                  aria-pressed={(reasonChips || []).includes(chip)}
+                  onClick={() => dispatch({ type: 'TOGGLE_FINALIZE_REASON_CHIP', chip })}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+            <textarea
+              id="finalize-reason-text"
+              className="reason-text"
+              rows={2}
+              placeholder="Anything else worth recording?"
+              value={reasonText || ''}
+              onChange={(e) => dispatch({ type: 'SET_FINALIZE_REASON_TEXT', value: e.target.value })}
+            />
+          </div>
+        )}
+
         <div id="finalize-modal-error" style={{ display: error ? 'block' : 'none', margin: '0 20px 12px', padding: '10px 14px', background: 'rgba(232,92,74,.08)', border: '1px solid rgba(232,92,74,.3)', borderRadius: 'var(--r)', color: '#e85c4a', fontSize: 12 }}>
           {error}
         </div>

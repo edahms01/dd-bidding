@@ -142,6 +142,8 @@
   /* Row action buttons (⧉ duplicate / × delete) — real boxes, real gap. */
   .del-btn, .dup-btn { min-width: 44px; min-height: 44px; }
   .row-actions { gap: 6px; }
+  /* Phase E 5.5 — override-reason chips in the finalize modal. */
+  .reason-chip { min-height: 44px; padding: 8px 14px; }
 
   /* ═══ Step 2 — layout stacking, totals wrap, sticky columns ═══════ */
 

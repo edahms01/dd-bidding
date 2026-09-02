@@ -150,7 +150,14 @@ export const initialState = {
       // it was when the agent produced these options. Confirm stays
       // disabled while stale && !staleAck (composed with the existing
       // override-amount gate). Always reset to false on OPEN_FINALIZE_MODAL.
-      staleAck: false
+      staleAck: false,
+      // Phase E, Step 5 (5.5) — override reason capture. Shown whenever
+      // the chosen option is not 'recommended' (a standard non-recommended
+      // option OR a custom override). Both optional — they never gate
+      // Confirm. Reset on OPEN_FINALIZE_MODAL. Persisted to the bid record
+      // as override_reason_chips / override_reason_text.
+      reasonChips: [],
+      reasonText: ''
     },
     // Bridge target for js/ui.js's renderAgentTab()/_renderAgentResult()
     // (window.__renderAgentTab, see bridges.js) — mirrors the exact
@@ -596,7 +603,8 @@ export function reducer(state, action) {
           ...state.ui,
           finalizeModal: {
             open: true, options: action.options || [], selected: 'recommended',
-            customAmount: '', isSubmitting: false, error: null, staleAck: false
+            customAmount: '', isSubmitting: false, error: null, staleAck: false,
+            reasonChips: [], reasonText: ''
           }
         }
       };
@@ -633,6 +641,17 @@ export function reducer(state, action) {
       // with the override-amount gate in FinalizeModal.jsx's
       // confirmDisabled, not OR-collapsed with it.
       return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, staleAck: action.value } } };
+    case 'TOGGLE_FINALIZE_REASON_CHIP': {
+      // Phase E, Step 5 (5.5) — multi-select reason chips. Neither this
+      // nor the free text ever gates Confirm.
+      const chips = state.ui.finalizeModal.reasonChips || [];
+      const next = chips.includes(action.chip)
+        ? chips.filter((c) => c !== action.chip)
+        : [...chips, action.chip];
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, reasonChips: next } } };
+    }
+    case 'SET_FINALIZE_REASON_TEXT':
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, reasonText: action.value } } };
     case 'RENDER_AGENT_TAB':
       // Bridge target for js/ui.js's renderAgentTab()/_renderAgentResult()
       // — see the comment on initialState.ui.agent above for the full

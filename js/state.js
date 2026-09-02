@@ -293,6 +293,14 @@ function buildBidRecord(state, summary, markupResult, finalizeSelection) {
     stale_direct_cost_delta: finalizeSelection?.staleness
       ? Math.round(finalizeSelection.staleness.directCostDelta)
       : null,
+    // Phase E 5.5 — why the estimator chose something other than the
+    // recommended bid. Empty ([] / '') when 'recommended' was chosen or
+    // no reason was given — never null, so consumers can treat them as a
+    // list and a string unconditionally. The gap between what the agent
+    // said, what was bid, and why is the highest-value dataset this
+    // product can own (§5.5).
+    override_reason_chips: finalizeSelection?.overrideReason?.chips ?? [],
+    override_reason_text:  finalizeSelection?.overrideReason?.text ?? '',
     confidence:             state.conditions.confidence,
     intelligence:           state.intelligence,
     outcome:                'pending',
