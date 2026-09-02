@@ -1011,10 +1011,22 @@ function _initApp() {
   _runLegacyMigrationIfNeeded();
   resumeActiveDraft();
 
+  // Delegated on .workflow-area (so rows added later are covered without
+  // rebinding), but Phase C put non-workflow UI inside that container
+  // too — the Bids-list filter toolbar (2.4/2.5) and the bid/no-bid gate
+  // (8.4). Their inputs are not bid form fields; letting their events
+  // reach _handleFormChange() would spuriously re-autosave the active
+  // draft (bumping lastModifiedAt, re-arming beforeunload) on every
+  // filter keystroke or gate selection. Skip anything under a
+  // [data-noautosave] subtree.
   const _workflowArea = document.querySelector('.workflow-area');
   if (_workflowArea) {
-    _workflowArea.addEventListener('input', _handleFormChange);
-    _workflowArea.addEventListener('change', _handleFormChange);
+    const _onWorkflowChange = (e) => {
+      if (e.target.closest && e.target.closest('[data-noautosave]')) return;
+      _handleFormChange();
+    };
+    _workflowArea.addEventListener('input', _onWorkflowChange);
+    _workflowArea.addEventListener('change', _onWorkflowChange);
   }
 }
 

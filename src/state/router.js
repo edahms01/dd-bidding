@@ -42,7 +42,8 @@ export const ROUTES = [
   { slug: 'cost-summary',    section: 'workflow', tab: 'output' },
   { slug: 'market-read',     section: 'workflow', tab: 'market' },
   { slug: 'bid-strategy',    section: 'workflow', tab: 'agent' },
-  { slug: 'bids',            section: 'bids',     tab: null }
+  { slug: 'bids',            section: 'bids',        tab: null },
+  { slug: 'bid-decision',    section: 'biddecision', tab: null }
 ];
 
 // "#/walls" | "#walls" | "#/walls/" | "walls" -> { section, tab, rest }

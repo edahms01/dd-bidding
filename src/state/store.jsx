@@ -84,8 +84,9 @@ function blankCeilRow() {
 
 export const initialState = {
   ui: {
-    // 'workflow' | 'history' | 'dashboard' — mirrors js/tabs.js's
-    // _navSetActive() section concept.
+    // 'workflow' | 'bids' | 'biddecision' (Phase C: 'history'/'dashboard'
+    // collapsed into 'bids' in 2.5; 'biddecision' is 8.4's standalone
+    // gate, reached only from the Bids list, not the 9-step flow).
     activeSection: 'workflow',
     // which of the 8 workflow tabs, only meaningful when
     // activeSection === 'workflow'.

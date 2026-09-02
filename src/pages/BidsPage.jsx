@@ -80,7 +80,7 @@ function applyFilters(rows, f) {
 }
 
 export default function BidsPage({ active }) {
-  const [state] = useStore();
+  const [state, dispatch] = useStore();
   const f = state.ui.bidsFilters;
   const [drafts, setDrafts] = useState([]);
   const [bids, setBids] = useState([]);
@@ -145,11 +145,16 @@ export default function BidsPage({ active }) {
   const draftCount = shown.filter((r) => r.kind === 'draft').length;
 
   return (
-    <div className={'page' + (active ? ' active' : '')} id="page-bids">
+    <div className={'page' + (active ? ' active' : '')} id="page-bids" data-noautosave>
       <div className="page-hdr">
         <div>
           <div className="page-title">Bids</div>
           <div className="page-sub">Every bid — in progress, submitted, and decided</div>
+        </div>
+        <div className="page-actions">
+          {/* 8.4 — the bid/no-bid gate is reached only from here, not the
+              9-step flow. */}
+          <button id="bid-decision-btn" className="btn btn-ghost btn-sm" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'biddecision' })}>Bid / no-bid gate</button>
         </div>
       </div>
 

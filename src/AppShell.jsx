@@ -29,6 +29,7 @@ import OutputPage from './pages/OutputPage.jsx';
 import MarketReadPage from './pages/MarketReadPage.jsx';
 import AgentPage from './pages/AgentPage.jsx';
 import BidsPage from './pages/BidsPage.jsx';
+import BidDecisionPage from './pages/BidDecisionPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
 import RowUndoToast from './components/RowUndoToast.jsx';
@@ -263,7 +264,7 @@ export default function AppShell() {
               {!navCollapsed && <span className="nav-label">{state.bid.project.name?.trim() || 'Current bid'}</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'bids' ? ' active' : '')} data-nav="bids" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'bids' })} title="Bids">
+            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'bids' })} title="Bids">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="12" height="3" rx="1" />
                 <rect x="2" y="8" width="12" height="3" rx="1" />
@@ -338,6 +339,7 @@ export default function AppShell() {
             <MarketReadPage active={activeSection === 'workflow' && activeTab === 'market'} />
             <AgentPage active={activeSection === 'workflow' && activeTab === 'agent'} />
             <BidsPage active={activeSection === 'bids'} />
+            <BidDecisionPage active={activeSection === 'biddecision'} />
           </div>
         </div>
       </div>

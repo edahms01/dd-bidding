@@ -18,7 +18,7 @@ export default function BidsToolbar() {
   const anyActive = !!(f.gc || f.status || f.from || f.to);
 
   return (
-    <div className="bids-toolbar" id="bids-toolbar">
+    <div className="bids-toolbar" id="bids-toolbar" data-noautosave>
       <span className="ht-label">Filter</span>
       <input
         id="hf-gc"
