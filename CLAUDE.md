@@ -343,3 +343,11 @@ IA restructuring on A2's React foundation — six approved items from `docs/diri
 - **Specs updated for the move** (locators/keys only, no behaviour change): `agent-history-fallback` / `agent-receives-real-history` (`"Agent Recommendation"` → `"Bid Strategy"` page-title locator), `pipeline-count-hint` and `intelligence-null-handling` (`#tab-conditions` → `#tab-market`), `no-console-errors-on-load` and `bid-total-rail-visibility-and-flash` (add `tab-market`), `url-routing` / `step-completion-indicators` (`#/conditions` → `#/site-conditions`, `market` step added).
 
 Full 97-test Playwright suite green, 98/98 Vitest, clean `vite build`.
+
+**Step 3 (2.4 — stable shell on Bid History) complete.**
+
+- `src/components/HistoryToolbar.jsx` renders in the `#app-tabs` slot while `activeSection === 'history'`, so the frame (header, left nav, a toolbar band) stays put instead of the step bar vanishing and the app reading as a different application. Controls: GC substring, outcome (`all`/pending/won/lost), submitted-date range, and a Clear button shown only while a filter is active.
+- Filter state is `state.ui.historyFilters` (`SET_HISTORY_FILTER` / `CLEAR_HISTORY_FILTERS`), not persisted. `HistoryPage.jsx` (`applyHistoryFilters()`) narrows **both** the table and the totals bar — a GC/outcome filter doubles as a scoped win-rate read — with a "Showing N of M" line and a distinct "No bids match the current filter." message separate from the empty-history one.
+- New `.history-toolbar` classes in `css/components.css`, matching the `.tabs` band (surface bg, bottom border, 24px side padding).
+- New spec `tests/e2e/history-toolbar.spec.js` (6). Full 103-test Playwright suite green, 98/98 Vitest, clean `vite build`.
+- Dashboard still hides the step bar — that's deliberate, Step 4 rebuilds that whole area as the unified Bids list and the toolbar grows a Draft/Submitted/Won/Lost status filter there.

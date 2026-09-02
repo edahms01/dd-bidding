@@ -53,8 +53,10 @@ Completion (`src/state/stepStatus.js`, pure `stepStatus(bid, ui)`) is built only
 
 Implementation: the live numbered strings were `AgentPage.jsx`'s empty state ("…on Tab 6…" → "Fill in your bid through the Cost Summary step" + a nav button) and `HistoryPage.jsx`'s empty state ("…in Tab 7." → "…finalize a bid from the Bid Strategy step…"). The dead `js/ui.js` twins (`renderHistory`/`renderAgentTab` empty branches, unreachable since A2) were updated to match rather than left showing stale numbers. `js/agent.js` itself has carried no "Tab N" string since the Track A rework — the §2.3 text above predates that.
 
-**2.4 Stable shell on History — APPROVED.**
+**2.4 Stable shell on History — APPROVED. Implemented (Phase C, Step 3, 2026-09-01).**
 Selecting Bid History currently hides the step bar entirely, so the app reads as a different application. Keep the frame; replace the step bar with a History toolbar (filter by GC, outcome, date range).
+
+Implementation: `HistoryToolbar.jsx` renders in the `#app-tabs` slot while `activeSection === 'history'` — GC substring, outcome (`all` / pending / won / lost), and a submitted-date range, plus a Clear button that only appears while a filter is active. Filter state lives in `state.ui.historyFilters` (not persisted); `HistoryPage.jsx` applies it to both the table and the totals bar (so a GC/outcome filter doubles as a scoped win-rate read), with a "Showing N of M" line and a distinct "No bids match the current filter." message. Step 4 folds Dashboard + History into one Bids list and grows this toolbar a Draft/Submitted/Won/Lost status filter.
 
 **2.5 Navigation model — APPROVED (both parts).**
 - *"New Bid" behaves like a button, not a destination.* It sits among nav destinations but calls `createDraft()`, so the obvious route back to work-in-progress instead spawns a blank bid. Move "+ New Bid" to a header button; the nav item becomes the current bid.
@@ -355,7 +357,7 @@ The submitted and failure panels render into `#output-bid` on Tab 7 while finali
 | **A2 — React migration** ✅ | Spike (Rates + History) → full migration (all pages) → parity gate. Absorbs 3.2, 6.4. | **Complete.** Every page is React. No ESM conversion — `window.*` bridges proved sufficient (§9.8). Final: 51/51 Playwright unmodified, 98/98 Vitest, golden-export byte-identical. |
 | **A2.5 — Finalize persistence fix** ✅ | Single defect from §9.9 | **Complete (2026-08-27).** Standalone, before B. Surfaced a new lead (agent-option display staleness, §9.9) — assigned to Phase E, not a blocker for B. |
 | **B — Takeoff integrity** ✅ | 3.1, 3.3, 3.4, 3.5, 4.1, 4.2 | **Complete (2026-08-28).** First feature phase on the new foundation. Also shipped an interim staleness caveat near the Agent tab's cards (§9.9) — Eric's call, since 4.2 is what made that pre-existing defect actively misleading, not just theoretically present. |
-| **C — Navigation** 🔨 | 2.1, 2.2, 2.3, 2.4, 2.5, 8.4 | 8.4 included as a new nav destination. **Steps 1–2 complete 2026-09-01** (2.2 routing + step indicators; 2.1 9-step reorder + Conditions→Site Conditions/Market Read split; 2.3 numbered-copy removal). Remaining, in order: 2.4 stable History shell → 2.5 New Bid fix + unified Bids list → 8.4 gate. |
+| **C — Navigation** 🔨 | 2.1, 2.2, 2.3, 2.4, 2.5, 8.4 | 8.4 included as a new nav destination. **Steps 1–3 complete 2026-09-01** (2.2 routing + step indicators; 2.1 9-step reorder + Conditions→Site Conditions/Market Read split; 2.3 numbered-copy removal; 2.4 stable History shell + filter toolbar). Remaining, in order: 2.5 New Bid fix + unified Bids list → 8.4 gate. |
 | **D — Mobile** | Tier 1, sticky columns, `100dvh`, Tier 2 | Blocked by A and B |
 | **E — Agent** | 5.1, 5.3, 5.2, 5.5, 5.6, 4.3, agent-option display-staleness fix (§9.9) | 5.1 blocks 5.3; depends on A2.5 (complete). Staleness fix rides along with 5.5/5.6 — same modal, same visit. |
 | **F — Intelligence** | 8.1, 8.2, 8.3 | Computation layer already exists and is tested |
