@@ -236,6 +236,68 @@ test.describe('nav drawer @ phone-390', () => {
   });
 });
 
+// ── Step 3 — Tier 2: mobile Bid Summary + Log outcome ────────────────
+
+test.describe('bid summary @ phone-390', () => {
+  test.use({ viewport: PHONE });
+
+  test('reached from the drawer, shows the current bid, returns to the workflow', async ({ page }) => {
+    await seed(page);
+    await page.click('.nav-hamburger');
+    await page.waitForTimeout(260);
+    await page.click('.nav-item[data-nav="summary"]');
+    await page.waitForTimeout(300);
+
+    await expect(page.locator('#page-summary')).toHaveClass(/active/);
+    expect(page.url()).toContain('#/summary');
+    // Live projection of the current bid (seed = Harborview Plaza).
+    await expect(page.locator('#page-summary .page-title')).toContainText('Harborview Plaza');
+    await expect(page.locator('#page-summary')).toContainText('Final bid price');
+    await assertNoHorizontalScroll(page, 'phone-390 / summary');
+
+    await page.click('#page-summary button:has-text("Open full workflow")');
+    await page.waitForTimeout(200);
+    await expect(page.locator('#page-summary')).not.toHaveClass(/active/);
+    await expect(page.locator('#app-tabs')).toBeVisible(); // step bar only renders for the workflow section
+    expect(page.url()).not.toContain('#/summary');
+  });
+
+  test('the "Bid summary" drawer item is mobile-only', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await expect(page.locator('.nav-item[data-nav="summary"]')).toBeHidden();
+  });
+});
+
+test.describe('log outcome @ phone-390', () => {
+  test.use({ viewport: PHONE });
+
+  test('the update-bid form stacks within the viewport, buttons are 44px', async ({ page }) => {
+    await seed(page);
+    await page.click('.nav-hamburger');
+    await page.waitForTimeout(260);
+    await page.click('.nav-item[data-nav="bids"]');
+    await page.waitForTimeout(300);
+
+    await page.locator('#page-bids button:has-text("Update")').first().click();
+    await page.waitForTimeout(200);
+    const uprow = page.locator('#page-bids tr[id^="uprow-"]').first();
+    await expect(uprow).toBeVisible();
+
+    // Every field in the (Step-2 stacked) form is within the viewport —
+    // not running off the right edge of the wider parent table.
+    const fields = uprow.locator('.field');
+    const n = await fields.count();
+    expect(n).toBeGreaterThan(4);
+    for (let i = 0; i < n; i++) {
+      const box = await fields.nth(i).boundingBox();
+      expect(box.x + box.width, `field ${i} overflows`).toBeLessThanOrEqual(391);
+    }
+    const save = uprow.locator('button:has-text("Save")');
+    expect((await save.boundingBox()).height).toBeGreaterThanOrEqual(43.5);
+  });
+});
+
 test.describe('desktop is unaffected', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
