@@ -129,8 +129,58 @@ for (const [name, viewport] of [['phone-390', PHONE], ['tablet-768', TABLET]]) {
       expect(pageErrors, `page errors:\n${pageErrors.join('\n')}`).toEqual([]);
       expect(consoleErrors, `console errors:\n${consoleErrors.join('\n')}`).toEqual([]);
     });
+
+    // ── Step 2 ──────────────────────────────────────────────────────
+
+    test('multi-column grids collapse to one column', async ({ page }) => {
+      await seed(page);
+      await page.click('#tab-project');
+      // ProjectPage uses .grid.g3 for its field rows.
+      const grid = page.locator('#page-project .grid.g3').first();
+      const cols = await grid.evaluate((el) => getComputedStyle(el).gridTemplateColumns);
+      // One track — a single non-zero px value, not "a b c".
+      expect(cols.trim().split(/\s+/), `grid-template-columns was "${cols}"`).toHaveLength(1);
+    });
+
+    test('the sticky first column stays pinned while the table scrolls sideways', async ({ page }) => {
+      await seed(page);
+      await page.click('#tab-assemblies');
+      const wrap = page.locator('.tbl-wrap.sticky-col').first();
+      const firstCell = wrap.locator('tbody tr').first().locator('td').first();
+      const before = await firstCell.boundingBox();
+      await wrap.evaluate((el) => { el.scrollLeft = 300; });
+      await page.waitForTimeout(120);
+      const after = await firstCell.boundingBox();
+      expect(await wrap.evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
+      // The pinned cell has not moved horizontally with the scroll.
+      expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
+      expect(await firstCell.evaluate((el) => getComputedStyle(el).position)).toBe('sticky');
+    });
   });
 }
+
+test.describe('totals bar wraps 2×2 @ 430px', () => {
+  test.use({ viewport: { width: 430, height: 900 } }); // inside the 480 breakpoint
+
+  test('the Cost Summary totals bar is two rows, dividers hidden', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => window.loadSeedData());
+    await page.waitForTimeout(1200);
+    await page.click('#tab-output');
+    const bar = page.locator('#page-output .totals-bar');
+    const items = bar.locator('.total-item');
+    await expect(items).toHaveCount(4);
+    const ys = await items.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+    // 2×2: items 0/1 share a row, items 2/3 share the next, and the
+    // second row sits clearly below the first (center-alignment within
+    // each wrapped line means "same row" is ~equal, not identical).
+    expect(Math.abs(ys[0] - ys[1]), `tops: ${ys.join(',')}`).toBeLessThanOrEqual(12);
+    expect(Math.abs(ys[2] - ys[3]), `tops: ${ys.join(',')}`).toBeLessThanOrEqual(12);
+    expect(ys[2] - ys[0], `tops: ${ys.join(',')}`).toBeGreaterThan(24);
+    const dividerVisible = await bar.locator('.total-div').first().isVisible();
+    expect(dividerVisible).toBe(false);
+  });
+});
 
 test.describe('nav drawer @ phone-390', () => {
   test.use({ viewport: PHONE });
