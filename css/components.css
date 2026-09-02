@@ -39,7 +39,9 @@
 
 /* ── CONTENT ── */
 .body{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.page{display:none;flex:1;overflow-y:auto;padding:28px 32px}
+/* padding-bottom clears the fixed .dev-toolbar footer so the last row of
+   a scrolled page (and the Back/Next buttons) isn't hidden under it. */
+.page{display:none;flex:1;overflow-y:auto;padding:28px 32px 40px}
 .page.active{display:block}
 
 /* ── PAGE HEADER ── */
@@ -192,7 +194,16 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 /* ── DEMO CONTROLS ──
    A deliberate, designed affordance — not leftover debug scaffolding.
    Stays visible; the Hide button (kept, unchanged) is a manual dismiss,
-   not an auto-hide flag. Below-768px auto-hide is Phase D. */
-.dev-toolbar{background:var(--bg);border-top:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+   not an auto-hide flag. Below-768px auto-hide is Phase D.
+
+   #dev-toolbar is a sibling *after* #root in index.html. .shell (inside
+   #root) is 100dvh tall and body is overflow:hidden, so in normal flow
+   the toolbar lands entirely below the fold and can't be scrolled to —
+   it's only visible for the one frame before React mounts .shell (empty
+   #root has zero height), which is the "flash on load then gone". Pin it
+   as a fixed bottom footer so it stays reachable. z-index sits below the
+   row-undo toast (1100) and the nav drawer / modals. */
+.dev-toolbar{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--bg);border-top:1px solid var(--border);padding:4px 16px;display:flex;align-items:center;gap:10px;opacity:.9}
+.dev-toolbar:hover{opacity:1}
 .dev-toolbar-label{color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
-.dev-toolbar .btn{padding:4px 10px;font-size:11px}
+.dev-toolbar .btn{padding:3px 10px;font-size:11px}
