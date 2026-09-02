@@ -30,6 +30,7 @@ import MarketReadPage from './pages/MarketReadPage.jsx';
 import AgentPage from './pages/AgentPage.jsx';
 import BidsPage from './pages/BidsPage.jsx';
 import BidDecisionPage from './pages/BidDecisionPage.jsx';
+import BidSummaryPage from './pages/BidSummaryPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
 import RowUndoToast from './components/RowUndoToast.jsx';
@@ -282,6 +283,18 @@ export default function AppShell() {
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">{state.bid.project.name?.trim() || 'Current bid'}</span>}
             </div>
 
+            {/* Phase D — mobile-only. On a phone the 9-step workflow is
+                impractical; this drops straight to a read-only rollup of
+                the current bid. CSS-hidden at >=768px (.nav-item-mobile). */}
+            <div className={'nav-item nav-item-mobile' + (activeSection === 'summary' ? ' active' : '')} data-nav="summary" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'summary' }); closeDrawer(); }} title="Bid summary">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" />
+                <line x1="5" y1="8" x2="11" y2="8" />
+                <line x1="5" y1="11" x2="9" y2="11" />
+              </svg>
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid summary</span>}
+            </div>
+
             <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bids">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="12" height="3" rx="1" />
@@ -358,6 +371,7 @@ export default function AppShell() {
             <AgentPage active={activeSection === 'workflow' && activeTab === 'agent'} />
             <BidsPage active={activeSection === 'bids'} />
             <BidDecisionPage active={activeSection === 'biddecision'} />
+            <BidSummaryPage active={activeSection === 'summary'} />
           </div>
         </div>
       </div>

@@ -11,8 +11,10 @@
    Step 1 (structural must-fixes) is everything below. Layout stacking,
    totals-bar wrap and sticky table columns land in Step 2. */
 
-/* Desktop: the mobile-only drawer trigger and backdrop are inert. */
+/* Desktop: the mobile-only drawer trigger, backdrop, and the
+   drawer-only "Bid summary" nav item are inert. */
 .nav-hamburger { display: none; }
+.nav-item-mobile { display: none; }
 
 @media (min-width: 769px) {
   .nav-backdrop { display: none; }
@@ -78,6 +80,9 @@
 
   /* The desktop in-nav collapse toggle has no meaning on a phone. */
   .nav-toggle { display: none; }
+
+  /* The read-only bid summary is a phone affordance — show it in the drawer. */
+  .nav-item-mobile { display: flex; }
 
   /* ── Header: fit the 52px bar to a phone ─────────────────────────
      The full .header-actions row (project badge + autosave indicator +
@@ -188,9 +193,15 @@
     pointer-events: none;
     background: linear-gradient(to right, rgba(0, 0, 0, .55), rgba(0, 0, 0, 0));
   }
-  /* BidUpdateRow is a single full-width colSpan cell — never pin it. */
-  .sticky-col tr.bid-update-row td { position: static; border-right: none; }
+  /* BidUpdateRow (Log outcome) is one colSpan cell. It IS the row's
+     first cell, so it would inherit the sticky-first-child rule — but
+     here that's what we want: pin it to the viewport's left edge so the
+     Step-2-stacked form stays usable while the parent Bids table is
+     scrolled sideways, minus the scroll-shadow, and clamp the form
+     content to the viewport so fields don't run off-screen. */
+  .sticky-col tr.bid-update-row td { border-right: none; background: var(--surface2); }
   .sticky-col tr.bid-update-row td::after { display: none; }
+  .sticky-col tr.bid-update-row td > * { max-width: calc(100vw - 24px); }
 
   /* ── BidTotalRail: tighter on a phone (stays 3-across — it fits) ── */
   .bid-total-rail { padding: 10px 12px; }
