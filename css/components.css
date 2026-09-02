@@ -215,3 +215,9 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .dev-toolbar:hover{opacity:1}
 .dev-toolbar-label{color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .dev-toolbar .btn{padding:3px 10px;font-size:11px}
+/* "Load Demo — live agent" — visually distinct because it makes a real,
+   billable Anthropic call (dual demo mode). --status-warn is the codebase's
+   caution colour; never used on a normal interactive control, which is the
+   point here. */
+.dev-toolbar .btn-live{border-color:var(--status-warn-border);color:var(--status-warn)}
+.dev-toolbar .btn-live:hover{background:var(--status-warn-dim);color:var(--status-warn)}

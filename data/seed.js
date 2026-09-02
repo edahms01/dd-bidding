@@ -3,11 +3,44 @@
 // Loads seed.json (Harborview Plaza retail project + 5 bid history
 // records) into the app for demos, testing, and screenshots.
 //
-// loadSeedData()  — called by the dev toolbar "Load seed data" button
-// clearSeedData() — called by the dev toolbar "Clear all data" button
+// loadSeedData()  — "Load Demo" dev-toolbar button (offline agent).
+// loadDemoLive()  — "Load Demo — live agent" button: identical seed data,
+//                   but calls the real Anthropic-backed bid agent so the
+//                   live connection can be exercised. confirm()-gated.
+// clearSeedData() — "Clear all data" dev-toolbar button.
+//
+// Dual demo mode: only the agent connection differs between the two load
+// buttons. The choice is load-time and session-only — never persisted to
+// the bid record or drafts (see js/agent.js's liveAgentMode).
 // ─────────────────────────────────────────────────────────────────────
 
+// Kept as the public name — the offline "Load Demo" button's onclick, the
+// e2e helpers, and several specs call window.loadSeedData() directly.
 async function loadSeedData() {
+  return _loadDemo({ live: false });
+}
+
+async function loadDemoLive() {
+  const ok = confirm(
+    'Load Demo with the LIVE agent?\n\n' +
+    'This calls the real Anthropic API through the server: it makes a ' +
+    'billable request, can take several seconds, and may fail on a bad ' +
+    'API key, network issue, or rate limit.\n\n' +
+    'The plain "Load Demo" button uses the offline canned response and ' +
+    'does none of that.'
+  );
+  if (!ok) return;
+  return _loadDemo({ live: true });
+}
+
+async function _loadDemo({ live }) {
+  // Flip (or clear) the session-only live-agent override before any
+  // calculation kicks off. An offline "Load Demo" always resets it to
+  // false, so a prior live session doesn't leak into the next load.
+  if (typeof window !== 'undefined' && window.__setLiveAgentMode) {
+    window.__setLiveAgentMode(live);
+  }
+
   const seed = await fetch('./data/seed.json').then(r => r.json());
 
   // Write history via the dev-only seed function to preserve seed bid_ids
@@ -45,24 +78,57 @@ async function loadSeedData() {
   drafts[id] = buildDraftRecord(seed.project_state, id, now, now);
   _saveDraftsMap(drafts);
   setActiveDraftId(id);
-  _resetAgentCache(); // clicking "Load seed data" over an existing session shouldn't leak Tab 8's prior cached result
+  _resetAgentCache(); // loading a demo over an existing session shouldn't leak Tab 8's prior cached result
 
-  // Run the full calculation and navigate to the output tab
-  runCalculation();
+  if (live) {
+    // Live path: numbers only, then a SINGLE agent pre-run below.
+    // runCalculation() would itself launch the agent (_launchBidAgent),
+    // and the +500ms runAgentIfNeeded() launches it again — two calls,
+    // harmless for the canned response but two billed calls for live.
+    calculateOnly();
+  } else {
+    runCalculation();
+  }
   goto('output');
 
-  // Pre-run agent for demo — Tab 8 ready without clicking through Tab 7
-  setTimeout(() => { runAgentIfNeeded(); }, 500);
+  if (live) _demoToolbarNote('Calling live agent…', 'pending');
 
-  // Brief confirmation message in the toolbar
+  // Pre-run agent — Tab 8 ready without clicking through Tab 7.
+  setTimeout(() => {
+    Promise.resolve(runAgentIfNeeded()).then(result => {
+      if (!live) { _demoToolbarNote('Demo loaded ✓', 'ok'); return; }
+      if (result && result._liveError) {
+        _demoToolbarNote('Live agent call failed: ' + result._liveError, 'err');
+        alert('The live bid-agent call failed:\n\n' + result._liveError +
+              '\n\nThe Bid Strategy tab shows the "agent unavailable" state — ' +
+              'no recommendation was generated. Use "Load Demo" for the offline response.');
+      } else {
+        _demoToolbarNote('Live agent responded ✓', 'ok');
+      }
+    }).catch(e => {
+      if (live) {
+        _demoToolbarNote('Live agent call failed: ' + (e && e.message || 'unknown error'), 'err');
+      }
+    });
+  }, 500);
+
+  if (!live) _demoToolbarNote('Demo loaded ✓', 'ok');
+}
+
+// One transient status line in the dev toolbar. Replaces any prior note
+// so "Calling live agent…" becomes the result rather than stacking.
+function _demoToolbarNote(text, kind) {
   const toolbar = document.getElementById('dev-toolbar');
-  if (toolbar) {
-    const msg = document.createElement('span');
-    msg.textContent = 'Seed data loaded ✓';
-    msg.style.cssText = 'color:#3abf7a;font-size:11px';
-    toolbar.appendChild(msg);
-    setTimeout(() => msg.remove(), 3000);
-  }
+  if (!toolbar) return;
+  const prev = toolbar.querySelector('.dev-toolbar-note');
+  if (prev) prev.remove();
+  const color = kind === 'err' ? '#d16060' : kind === 'pending' ? 'var(--text3)' : '#3abf7a';
+  const msg = document.createElement('span');
+  msg.className = 'dev-toolbar-note';
+  msg.textContent = text;
+  msg.style.cssText = 'font-size:11px;color:' + color;
+  toolbar.appendChild(msg);
+  if (kind !== 'pending') setTimeout(() => { if (msg.isConnected) msg.remove(); }, 6000);
 }
 
 async function clearSeedData() {
