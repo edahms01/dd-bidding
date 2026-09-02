@@ -13,7 +13,9 @@ describe('buildAnthropicRequest', () => {
   it('sets model, max_tokens, and system correctly', () => {
     const req = buildAnthropicRequest(REPRESENTATIVE_PAYLOAD);
     expect(req.model).toBe('claude-sonnet-4-6');
-    expect(req.max_tokens).toBe(1024);
+    // 8192, not 1024 — the recommendation JSON is ~2.5-4k output tokens
+    // and 1024 truncated it, producing invalid JSON (502 parse_error).
+    expect(req.max_tokens).toBe(8192);
     expect(req.system).toBe(AGENT_SYSTEM);
   });
 
