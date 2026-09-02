@@ -147,6 +147,22 @@ print.css       empty stub — Phase G
 
 `[build.environment]` sets `NPM_FLAGS = "--include=dev"` — **load-bearing, do not remove.** Netlify's build image sets `NODE_ENV=production`, which makes `npm ci` skip devDependencies, but `vite` (the build tool) is one. Without this flag, production and every deploy preview fail to build at all (confirmed: this took down the first real deploy-preview build attempt for this exact reason). Rollback path, verified: reverting the merge commit that introduced this config (`git revert -m 1 <merge-sha>`) restores `publish = "."` with no build command — the pre-Phase-A production config — with a clean, empty diff against the last commit before that merge. Confirmed by diffing, not just asserted.
 
+**`ANTHROPIC_API_KEY` lives only in the `production` deploy context (functions scope) of site `bid-iq`.** Confirmed 2026-09-02 via `netlify env:get`: a real `sk-ant-…` value is set, but scoped to deploy contexts, **not** "Local development" — `netlify dev` (even `--context production`) injects only `NODE_ENV`/`NPM_FLAGS`, so a local live `/.netlify/functions/bid-agent` call returns `503 not_configured` every time. The live bid-agent path can therefore only be exercised on a real deploy preview / production, never through `netlify dev` unless you export the key into that shell yourself. `bid-agent.js`'s `sk-ant-`-prefix guard means the Netlify AI-Gateway JWT (if it ever shadows the var) also yields a clean 503, not a leak. Earlier notes in this file and in `bid-agent-not-configured.spec.js` claiming `netlify dev` "falls back to the production-context value" did **not** reproduce here.
+
+## Dual demo mode (dev toolbar)
+
+The dev toolbar has **two** demo-load buttons (was one "Load seed data"):
+- **"Load Demo"** → `loadSeedData()` → `_loadDemo({ live: false })`. Offline canned agent response (`DEMO_MODE`), behaviour byte-identical to the old single button (still `runCalculation()` + the +500ms `runAgentIfNeeded()` pre-run; golden-export unchanged).
+- **"Load Demo — live agent"** (`.btn-live`, caution-styled) → `loadDemoLive()` → `confirm()` gate → `_loadDemo({ live: true })`. Same seed data, but the agent call goes to the real `/.netlify/functions/bid-agent` → Anthropic. Uses `calculateOnly()` + a *single* `runAgentIfNeeded()` (not `runCalculation()`, which would launch the agent a second time — harmless for the canned path, two billed calls for live).
+
+Mechanism: `js/agent.js` gains `let liveAgentMode = false` + `window.__setLiveAgentMode` / `__getLiveAgentMode`. `runBidAgent()`'s guard is now `if (DEMO_MODE && !liveAgentMode)`. **Session-only, never persisted** (not on the bid record, not in drafts); every offline "Load Demo" resets it to `false`. **Session-sticky by design** — once on, later recalcs / Tab 7–8 visits in that session also call live; the `confirm()` is on the button, not every downstream call.
+
+Live failure is surfaced, never silent: `runBidAgent()`'s live-error returns are `AGENT_FALLBACK`-shaped but tagged `_liveError: <reason>` (no fabricated demo numbers), and `_loadDemo()`'s live branch shows a red dev-toolbar note + an `alert()` with the reason, on top of the existing "agent unavailable" tab state. Loading state = existing agent-tab spinner + a "Calling live agent…" toolbar note.
+
+`runAgentIfNeeded()` (`js/ui.js`) now **returns its promise chain** (resolving to the result) so `_loadDemo()` can react — additive, existing fire-and-forget callers unaffected.
+
+Tests never touch the live path: `dual-demo-mode.spec.js` intercepts every `bid-agent` request and always dismisses the `confirm()`; `helpers.js`'s `loadSeed()` selector is `button:text-is("Load Demo")` (exact — must not also match "Load Demo — live agent"). **Live round-trip verification is pending a deploy preview** (local `netlify dev` can't reach the key — see Netlify config above). `/.netlify/functions/bid-agent` has no rate limit / cost cap / auth — a known, accepted exposure this feature makes easier to trigger (Eric's call, 2026-09-02).
+
 ## Testing conventions
 
 - `tests/e2e/helpers.js` exports `clearAll(page)`/`loadSeed(page)` — always use these, never a bare `page.click('button:has-text("Clear all data")')`, since `clearSeedData()` is an async fetch-then-reload and a bare click races ahead of the reload.
