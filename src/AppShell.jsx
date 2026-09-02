@@ -28,12 +28,11 @@ import CeilingsPage from './pages/CeilingsPage.jsx';
 import OutputPage from './pages/OutputPage.jsx';
 import MarketReadPage from './pages/MarketReadPage.jsx';
 import AgentPage from './pages/AgentPage.jsx';
-import HistoryPage from './pages/HistoryPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
+import BidsPage from './pages/BidsPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
 import RowUndoToast from './components/RowUndoToast.jsx';
-import HistoryToolbar from './components/HistoryToolbar.jsx';
+import BidsToolbar from './components/BidsToolbar.jsx';
 
 // 4.1: tabs where the rail shows — "visible from Assemblies onward" per
 // the decision record, not project/conditions/rates (which either
@@ -151,13 +150,23 @@ export default function AppShell() {
       if (parsed.section === 'workflow') {
         if (cur.activeSection !== 'workflow' || cur.activeTab !== parsed.tab) {
           // Route through window.goto so a Back/Forward or deep link to
-          // #/output / #/agent fires the same per-tab side effects
-          // (runCalculation / renderAgentTab) a normal tab click does —
-          // registerBridges() has run by the time this effect exists.
+          // #/cost-summary / #/bid-strategy fires the same per-tab side
+          // effects (runCalculation / renderAgentTab) a normal tab click
+          // does — registerBridges() has run by the time this effect exists.
           if (window.goto) window.goto(parsed.tab);
           else dispatch({ type: 'GOTO_TAB', id: parsed.tab });
         }
-      } else if (cur.activeSection !== parsed.section) {
+        return;
+      }
+      // #/bids/<draftId> — open that draft, same as the row's Open
+      // button (switchToDraft -> _flushAndSwitch, then it lands on
+      // #/<step>). Unknown id just shows the list.
+      if (parsed.section === 'bids' && parsed.rest[0] && window.switchToDraft) {
+        const id = parsed.rest[0];
+        const drafts = window.getAllDrafts ? window.getAllDrafts() : {};
+        if (drafts[id]) { window.switchToDraft(id); return; }
+      }
+      if (cur.activeSection !== parsed.section) {
         dispatch({ type: 'GOTO_SECTION', section: parsed.section });
       }
     }
@@ -215,6 +224,10 @@ export default function AppShell() {
           <button className="btn btn-ghost btn-sm" onClick={() => window.exportBid?.()}>Export</button>
           <button className="btn btn-ghost btn-sm" onClick={() => document.getElementById('import-file-input').click()}>Import</button>
           <input type="file" id="import-file-input" accept="application/json" style={{ display: 'none' }} onChange={(e) => window.handleImportFile?.(e)} />
+          {/* Phase C 2.5 — "New Bid" is a header action now, not a nav
+              destination. The left-nav "Current bid" item is the route
+              back to work in progress; this always spawns a fresh one. */}
+          <button id="new-bid-btn" className="btn btn-primary btn-sm" onClick={() => window.createDraft?.()}>+ New Bid</button>
         </div>
       </header>
 
@@ -235,32 +248,28 @@ export default function AppShell() {
             fixing. */}
         <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '')} id="app-leftnav">
           <div className="nav-items">
-            <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => window.createDraft?.()} title="New Bid">
+            {/* Phase C 2.5 — the workflow nav item is "the current bid"
+                now (labelled with the active draft's project name), not
+                a "New Bid" button; clicking it returns you to
+                work-in-progress on whatever step you left off. "New Bid"
+                moved to a header action. */}
+            <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'workflow' })} title="Current bid">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6L9 2z" />
                 <path d="M9 2v4h4" />
                 <line x1="6" y1="9" x2="10" y2="9" />
                 <line x1="8" y1="7" x2="8" y2="11" />
               </svg>
-              {!navCollapsed && <span className="nav-label">New Bid</span>}
+              {!navCollapsed && <span className="nav-label">{state.bid.project.name?.trim() || 'Current bid'}</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'history' ? ' active' : '')} data-nav="history" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'history' })} title="Bid History">
+            <div className={'nav-item' + (activeSection === 'bids' ? ' active' : '')} data-nav="bids" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'bids' })} title="Bids">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="6" />
-                <polyline points="8 5 8 8.5 10.5 10.5" />
+                <rect x="2" y="3" width="12" height="3" rx="1" />
+                <rect x="2" y="8" width="12" height="3" rx="1" />
+                <line x1="4.5" y1="13" x2="11.5" y2="13" />
               </svg>
-              {!navCollapsed && <span className="nav-label">Bid History</span>}
-            </div>
-
-            <div className={'nav-item' + (activeSection === 'dashboard' ? ' active' : '')} data-nav="dashboard" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'dashboard' })} title="Dashboard">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="5" height="5" rx="1" />
-                <rect x="9" y="2" width="5" height="5" rx="1" />
-                <rect x="2" y="9" width="5" height="5" rx="1" />
-                <rect x="9" y="9" width="5" height="5" rx="1" />
-              </svg>
-              {!navCollapsed && <span className="nav-label">Dashboard</span>}
+              {!navCollapsed && <span className="nav-label">Bids</span>}
             </div>
 
             <div className="nav-item nav-placeholder" title="Coming soon">
@@ -313,11 +322,10 @@ export default function AppShell() {
             <BidTotalRail output={state.ui.output} />
           )}
 
-          {/* Phase C 2.4 — keep the frame stable on Bid History: the
-              step-bar slot carries a filter toolbar instead of going
-              blank. Step 4 folds Dashboard + History into one Bids list
-              and this toolbar grows a status filter with it. */}
-          {activeSection === 'history' && <HistoryToolbar />}
+          {/* Phase C 2.4/2.5 — keep the frame stable off the workflow:
+              the step-bar slot carries the Bids filter toolbar instead
+              of going blank. */}
+          {activeSection === 'bids' && <BidsToolbar />}
 
           <div className="body">
             <ProjectPage active={activeSection === 'workflow' && activeTab === 'project'} />
@@ -329,8 +337,7 @@ export default function AppShell() {
             <OutputPage active={activeSection === 'workflow' && activeTab === 'output'} />
             <MarketReadPage active={activeSection === 'workflow' && activeTab === 'market'} />
             <AgentPage active={activeSection === 'workflow' && activeTab === 'agent'} />
-            <DashboardPage active={activeSection === 'dashboard'} />
-            <HistoryPage active={activeSection === 'history'} />
+            <BidsPage active={activeSection === 'bids'} />
           </div>
         </div>
       </div>

@@ -31,9 +31,17 @@ async function loadSeedData() {
   // Wrap it into a draft and make it the active one, so resumeActiveDraft()
   // restores it on reload — same as any other draft (Phase 2; dirigo_current_bid
   // is retired).
+  //
+  // Phase C 2.5: the drafts map is replaced, not appended to. "Load seed
+  // data" is a demo reset (it already replaces bid history wholesale via
+  // dev-seed-bids, and clearSeedData() removes dirigo_drafts entirely) —
+  // appending left the blank starter draft that boot always creates
+  // orphaned in the list. Harmless when Dashboard and Bid History were
+  // separate screens; the unified Bids list (BidsPage.jsx) shows every
+  // draft, so that phantom "Untitled bid" was visible on every seed load.
   const id  = _generateDraftId();
   const now = new Date().toISOString();
-  const drafts = getAllDrafts();
+  const drafts = {};
   drafts[id] = buildDraftRecord(seed.project_state, id, now, now);
   _saveDraftsMap(drafts);
   setActiveDraftId(id);

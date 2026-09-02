@@ -42,17 +42,20 @@ export const ROUTES = [
   { slug: 'cost-summary',    section: 'workflow', tab: 'output' },
   { slug: 'market-read',     section: 'workflow', tab: 'market' },
   { slug: 'bid-strategy',    section: 'workflow', tab: 'agent' },
-  { slug: 'history',         section: 'history',  tab: null },
-  { slug: 'dashboard',       section: 'dashboard', tab: null }
+  { slug: 'bids',            section: 'bids',     tab: null }
 ];
 
-// "#/walls" | "#walls" | "#/walls/" | "walls"  ->  { section, tab } | null
+// "#/walls" | "#walls" | "#/walls/" | "walls" -> { section, tab, rest }
+// | null. `rest` is the remaining "/"-separated segments (e.g.
+// "#/bids/draft_123" -> rest ['draft_123'], which AppShell uses to open
+// that draft).
 export function parseHash(hash) {
   if (!hash) return null;
-  const seg = String(hash).replace(/^#/, '').replace(/^\/+/, '').split('/')[0].trim().toLowerCase();
+  const parts = String(hash).replace(/^#/, '').replace(/^\/+/, '').split('/').map((s) => s.trim());
+  const seg = (parts[0] || '').toLowerCase();
   if (!seg) return null;
   const route = ROUTES.find((r) => r.slug === seg);
-  return route ? { section: route.section, tab: route.tab } : null;
+  return route ? { section: route.section, tab: route.tab, rest: parts.slice(1).filter(Boolean) } : null;
 }
 
 // (activeSection, activeTab) -> canonical slug string (no leading "#/").
