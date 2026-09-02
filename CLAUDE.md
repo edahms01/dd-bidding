@@ -161,7 +161,9 @@ Live failure is surfaced, never silent: `runBidAgent()`'s live-error returns are
 
 `runAgentIfNeeded()` (`js/ui.js`) now **returns its promise chain** (resolving to the result) so `_loadDemo()` can react — additive, existing fire-and-forget callers unaffected.
 
-Tests never touch the live path: `dual-demo-mode.spec.js` intercepts every `bid-agent` request and always dismisses the `confirm()`; `helpers.js`'s `loadSeed()` selector is `button:text-is("Load Demo")` (exact — must not also match "Load Demo — live agent"). **Live round-trip verification is pending a deploy preview** (local `netlify dev` can't reach the key — see Netlify config above). `/.netlify/functions/bid-agent` has no rate limit / cost cap / auth — a known, accepted exposure this feature makes easier to trigger (Eric's call, 2026-09-02).
+Tests never touch the live path: `dual-demo-mode.spec.js` intercepts every `bid-agent` request and always dismisses the `confirm()`; `helpers.js`'s `loadSeed()` selector is `button:text-is("Load Demo")` (exact — must not also match "Load Demo — live agent"). `/.netlify/functions/bid-agent` has no rate limit / cost cap / auth — a known, accepted exposure this feature makes easier to trigger (Eric's call, 2026-09-02).
+
+**First real live run (2026-09-02, on `bid-iq.netlify.app`) surfaced a latent Track-A bug, now fixed:** `lib/bid-agent-request.js` set `max_tokens: 1024`, far too low for the recommendation JSON (~2.5–4k output tokens) — Anthropic responded fine (key/auth/model all OK), but the body was truncated mid-string, so `parseAgentResponse()` failed with "Unterminated string in JSON" and the function returned `502 parse_error`. Never caught before because `DEMO_MODE` was always `true`, so this path had literally never executed. Fix: `max_tokens: 8192` + the parse-failure branch in `bid-agent.js` now logs `stop_reason` and the raw-text head. The dual-demo feature itself worked exactly as designed here — it caught and reported the failure loudly instead of falling back to canned numbers.
 
 ## Testing conventions
 
