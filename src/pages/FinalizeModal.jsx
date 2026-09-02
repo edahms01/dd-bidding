@@ -26,12 +26,31 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
 import { hasUnresolvedReferences } from '../state/validation.js';
+import { agentStaleness } from '../state/agentStaleness.js';
+import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 
+// 5.5 — fixed vocabulary; free text covers everything else.
+const REASON_CHIPS = ['scope uncertainty', 'relationship play', 'need the work', 'competitor intel', 'gut'];
+
 export default function FinalizeModal() {
   const [state, dispatch] = useStore();
-  const { open, options, selected, customAmount, isSubmitting, error } = state.ui.finalizeModal;
+  const { open, options, selected, customAmount, isSubmitting, error, staleAck, reasonChips, reasonText } = state.ui.finalizeModal;
+
+  // Phase E, Step 5 — capture why, whenever the chosen option differs from
+  // the recommended one (a non-recommended standard option OR a custom
+  // override). Both fields optional; they never gate Confirm.
+  const showReason = selected !== 'recommended';
+
+  // Phase E, Step 2 — staleness of the agent options the user is picking
+  // from vs the live reactive calculation. staleBlocking gates Confirm
+  // until the acknowledge checkbox is ticked; it composes with the
+  // override-amount gate below (both must clear), it does not replace it.
+  const staleness = agentStaleness(state);
+  const generatedBidPrice = state.ui.agent.generatedAt?.bidPrice ?? null;
+  const currentBidPrice = state.ui.output?.markupResult?.finalBidPrice ?? null;
+  const staleBlocking = staleness.stale && generatedBidPrice != null;
 
   function selectOption(type) {
     dispatch({ type: 'SELECT_FINALIZE_OPTION', option: type });
@@ -50,6 +69,13 @@ export default function FinalizeModal() {
     }
     if (!amount) return;
 
+    // 5.6 (Phase E, Step 1) — carry the recommended option's own figures
+    // through to the bid record so recommended-vs-chosen has a persisted
+    // comparison point (buildBidRecord()'s recommended_bid /
+    // recommended_margin_pct). options is the snapshot OPEN_FINALIZE_MODAL
+    // took of cachedResult.options, so this is reliably available here.
+    const recOpt = (options || []).find((o) => o.type === 'recommended');
+
     dispatch({ type: 'SET_FINALIZE_SUBMITTING', value: true });
     try {
       // A2.5: pass the resolved selection through — submitBid() (js/ui.js)
@@ -57,7 +83,26 @@ export default function FinalizeModal() {
       // plain calculator instead. selected is the reducer's own option
       // vocabulary ('competitive'|'recommended'|'ambitious'|'override'),
       // reused verbatim, no translation layer.
-      await window.submitBid({ amount, selectedOption: selected });
+      await window.submitBid({
+        amount,
+        selectedOption: selected,
+        recommendedBid: recOpt?.bidAmount ?? null,
+        recommendedMargin: recOpt?.margin ?? null,
+        // Phase E, Step 2 (Q1 = B) — record the staleness state and the
+        // actual gap at confirm time, every submit where an agent result
+        // exists, not just when it's non-zero. "acknowledged, gap was
+        // $14k" is a far stronger calibration signal than a lone boolean.
+        staleness: {
+          stale: staleness.stale,
+          bidPriceDelta: staleness.bidPriceDelta,
+          directCostDelta: staleness.directCostDelta
+        },
+        // 5.5 — only when the choice differs from the recommended one;
+        // buildBidRecord() stores [] / '' otherwise. Both parts optional.
+        overrideReason: showReason
+          ? { chips: reasonChips || [], text: (reasonText || '').trim() }
+          : null
+      });
       dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
       window._showBidToast?.(label, amount);
     } catch (e) {
@@ -78,7 +123,11 @@ export default function FinalizeModal() {
   // modal needs its own independent check, not just a trust that the
   // caller already checked.
   const blocked = hasUnresolvedReferences(state.bid);
-  const confirmDisabled = isSubmitting || blocked || (selected === 'override' && !(parseFloat(customAmount) > 0));
+  const confirmDisabled =
+    isSubmitting ||
+    blocked ||
+    (selected === 'override' && !(parseFloat(customAmount) > 0)) ||
+    (staleBlocking && !staleAck);
 
   return (
     <div className={'modal-overlay' + (open ? ' open' : '')} id="finalize-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) dispatch({ type: 'CLOSE_FINALIZE_MODAL' }); }}>
@@ -114,6 +163,38 @@ export default function FinalizeModal() {
             </div>
           </div>
         </div>
+
+        {/* 5.5 — override reason capture. Shown whenever the chosen option
+            isn't the recommended one; both parts optional, neither gates
+            Confirm. Stored on the bid record as override_reason_chips /
+            override_reason_text. */}
+        {showReason && (
+          <div className="reason-block" id="finalize-reason-block">
+            <div className="reason-block-label">Why not the recommended bid? (optional)</div>
+            <div className="reason-chips">
+              {REASON_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className={'reason-chip' + ((reasonChips || []).includes(chip) ? ' selected' : '')}
+                  aria-pressed={(reasonChips || []).includes(chip)}
+                  onClick={() => dispatch({ type: 'TOGGLE_FINALIZE_REASON_CHIP', chip })}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+            <textarea
+              id="finalize-reason-text"
+              className="reason-text"
+              rows={2}
+              placeholder="Anything else worth recording?"
+              value={reasonText || ''}
+              onChange={(e) => dispatch({ type: 'SET_FINALIZE_REASON_TEXT', value: e.target.value })}
+            />
+          </div>
+        )}
+
         <div id="finalize-modal-error" style={{ display: error ? 'block' : 'none', margin: '0 20px 12px', padding: '10px 14px', background: 'rgba(232,92,74,.08)', border: '1px solid rgba(232,92,74,.3)', borderRadius: 'var(--r)', color: '#e85c4a', fontSize: 12 }}>
           {error}
         </div>
@@ -124,6 +205,27 @@ export default function FinalizeModal() {
         {blocked && !error && (
           <div style={{ margin: '0 20px 12px', padding: '10px 14px', background: 'rgba(232,92,74,.08)', border: '1px solid rgba(232,92,74,.3)', borderRadius: 'var(--r)', color: '#e85c4a', fontSize: 12 }}>
             Resolve every unrecognized Type ID reference on Walls/Ceilings before finalizing.
+          </div>
+        )}
+        {/* Phase E, Step 2 (§9.9) — the active staleness warning + the
+            acknowledge checkbox that gates Confirm. No "Re-run agent"
+            action here: mid-finalize you acknowledge or cancel, you don't
+            recalculate. Composes with the override-amount gate above. */}
+        {staleBlocking && (
+          <div style={{ margin: '0 20px 12px' }}>
+            <AgentStalenessWarning
+              bidPriceDelta={staleness.bidPriceDelta}
+              generatedBidPrice={generatedBidPrice}
+              currentBidPrice={currentBidPrice}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text2)' }}>
+              <input
+                type="checkbox" id="finalize-stale-ack"
+                checked={!!staleAck}
+                onChange={(e) => dispatch({ type: 'SET_FINALIZE_STALE_ACK', value: e.target.checked })}
+              />
+              I know these options may reflect earlier inputs
+            </label>
           </div>
         )}
         <div className="modal-footer">

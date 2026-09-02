@@ -271,6 +271,36 @@ function buildBidRecord(state, summary, markupResult, finalizeSelection) {
     custom_override_amount: finalizeSelection?.selectedOption === 'override'
       ? Math.round(finalizeSelection.amount)
       : null,
+    // Phase E 5.6 — the recommended option's own figures at confirm time,
+    // so recommended-vs-chosen (SubmitResultPanel) has a persisted
+    // comparison point rather than depending on state.ui.agent still
+    // holding the same cached result. null on records predating this
+    // field / when the agent never ran.
+    recommended_bid:        finalizeSelection?.recommendedBid != null
+      ? Math.round(finalizeSelection.recommendedBid)
+      : null,
+    recommended_margin_pct: finalizeSelection?.recommendedMargin ?? null,
+    // Phase E 5.6 / §9.9 staleness fix (Q1 = B) — whether the agent
+    // options the user picked from had drifted from the live inputs at
+    // confirm time, and by how much. Captured every submit where an agent
+    // result exists (not only when non-zero), so "acknowledged, and the
+    // gap was $X" is a usable calibration signal later, not just a flag.
+    // null when the agent never ran (no finalizeSelection.staleness).
+    inputs_stale_at_submit:  finalizeSelection?.staleness?.stale ?? false,
+    stale_bid_price_delta:   finalizeSelection?.staleness
+      ? Math.round(finalizeSelection.staleness.bidPriceDelta)
+      : null,
+    stale_direct_cost_delta: finalizeSelection?.staleness
+      ? Math.round(finalizeSelection.staleness.directCostDelta)
+      : null,
+    // Phase E 5.5 — why the estimator chose something other than the
+    // recommended bid. Empty ([] / '') when 'recommended' was chosen or
+    // no reason was given — never null, so consumers can treat them as a
+    // list and a string unconditionally. The gap between what the agent
+    // said, what was bid, and why is the highest-value dataset this
+    // product can own (§5.5).
+    override_reason_chips: finalizeSelection?.overrideReason?.chips ?? [],
+    override_reason_text:  finalizeSelection?.overrideReason?.text ?? '',
     confidence:             state.conditions.confidence,
     intelligence:           state.intelligence,
     outcome:                'pending',

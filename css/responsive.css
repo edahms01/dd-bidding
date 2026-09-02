@@ -142,6 +142,8 @@
   /* Row action buttons (⧉ duplicate / × delete) — real boxes, real gap. */
   .del-btn, .dup-btn { min-width: 44px; min-height: 44px; }
   .row-actions { gap: 6px; }
+  /* Phase E 5.5 — override-reason chips in the finalize modal. */
+  .reason-chip { min-height: 44px; padding: 8px 14px; }
 
   /* ═══ Step 2 — layout stacking, totals wrap, sticky columns ═══════ */
 
@@ -213,6 +215,18 @@
 
   /* ── Bids list: let the row-action buttons wrap, not force width ── */
   #page-bids td:last-child { white-space: normal; }
+
+  /* ── Phase E 5.3 — what-if slider: a real tap target on a phone ──
+     The container is already full-width; give the native range a 44px
+     hit area and a 26px thumb (webkit needs the explicit thumb rule). */
+  .whatif-range { height: 44px; }
+  .whatif-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--border2); }
+  .whatif-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--action); border: none; margin-top: -11px;
+  }
+  .whatif-anchor { padding: 6px 4px; }
 }
 
 @media (max-width: 480px) {

@@ -34,10 +34,17 @@
 // unconditional reset exactly — card selection does not persist across
 // tab switches, only the underlying result does.
 // ─────────────────────────────────────────────────────────────────────
+import { useState } from 'react';
 import { useStore } from '../state/store.jsx';
 import { hasUnresolvedReferences } from '../state/validation.js';
+import { agentStaleness } from '../state/agentStaleness.js';
+import { expectedValueRange } from '../state/expectedValue.js';
+import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
+import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
+import WhatIfSlider from '../components/WhatIfSlider.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtFactorValue(v) { return v ? v.charAt(0).toUpperCase() + v.slice(1) : 'Not set'; }
 
 function StatusPill({ status }) {
   if (status === 'positive') return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: 'rgba(58,191,122,.1)', border: '1px solid rgba(58,191,122,.25)', color: 'var(--green)' }}>Positive</span>;
@@ -61,6 +68,40 @@ const WIN_LIKELIHOOD_STYLES = {
 function WinLikelihoodPill({ val }) {
   const s = WIN_LIKELIHOOD_STYLES[val] || { background: 'rgba(255,255,255,.04)', border: '1px solid var(--border2)', color: 'var(--text3)' };
   return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '—'}</span>;
+}
+
+// 5.2 — the pill is a black box built from four intelligence signals plus
+// the option's base offset. Clicking it expands this: each of the four
+// contributors, its current value, and its direction. Reads the single
+// source of truth in js/agent.js (window.__winLikelihoodBreakdown), not a
+// copy of the scoring table.
+function AttrArrow({ direction }) {
+  if (direction === 'up') return <span style={{ color: 'var(--green)' }}>▲</span>;
+  if (direction === 'down') return <span style={{ color: '#e85c4a' }}>▼</span>;
+  return <span style={{ color: 'var(--text3)' }}>–</span>;
+}
+
+function WinLikelihoodAttribution({ optionType, intelligence }) {
+  const breakdown = typeof window !== 'undefined' && window.__winLikelihoodBreakdown
+    ? window.__winLikelihoodBreakdown(intelligence || {}, optionType)
+    : null;
+  if (!breakdown) return null;
+  return (
+    <div className="win-attr" style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '8px 10px', background: 'rgba(255,255,255,.02)' }}>
+      <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+        Base {breakdown.base > 0 ? '+' : ''}{breakdown.base} · score {breakdown.score} → {breakdown.label}
+      </div>
+      {breakdown.contributions.map((c) => (
+        <div key={c.factor} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 11, color: 'var(--text2)', padding: '3px 0' }}>
+          <span style={{ flexShrink: 0 }}>{c.factor}</span>
+          <span style={{ flex: 1, textAlign: 'right', color: 'var(--text3)' }}>{fmtFactorValue(c.value)}</span>
+          <span style={{ flexShrink: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            <AttrArrow direction={c.direction} /> {c.delta > 0 ? '+' : ''}{c.delta}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Header({ options, dispatch, blocked }) {
@@ -97,8 +138,11 @@ function Header({ options, dispatch, blocked }) {
   );
 }
 
-function OptionCard({ opt, isSelected, dispatch }) {
+function OptionCard({ opt, isSelected, dispatch, intelligence }) {
+  const [attrOpen, setAttrOpen] = useState(false);
   const isRec = opt.type === 'recommended';
+  // 5.1 — P(win) band × margin$, as a range. See src/state/expectedValue.js.
+  const ev = expectedValueRange(opt, opt.winLikelihood);
   return (
     <div
       data-bid-opt={opt.type}
@@ -117,14 +161,32 @@ function OptionCard({ opt, isSelected, dispatch }) {
       <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>{opt.margin}% margin</div>
       <div>
         <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>WIN LIKELIHOOD</div>
-        <WinLikelihoodPill val={opt.winLikelihood} />
+        <button
+          type="button"
+          className="win-likelihood-pill-btn"
+          aria-expanded={attrOpen}
+          title="What's driving this"
+          onClick={(e) => { e.stopPropagation(); setAttrOpen((o) => !o); }}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        >
+          <WinLikelihoodPill val={opt.winLikelihood} />
+          <span style={{ fontSize: 9, color: 'var(--text3)' }}>{attrOpen ? '▲' : '▼'}</span>
+        </button>
+        {attrOpen && <WinLikelihoodAttribution optionType={opt.type} intelligence={intelligence} />}
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>Expected value</div>
+        <div className="option-ev" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--text)' }}>
+          {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '—'}
+        </div>
       </div>
       <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, marginTop: 12 }}>{opt.rationale}</div>
     </div>
   );
 }
 
-function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked }) {
+function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked, staleness, generatedBidPrice, currentBidPrice, intelligence }) {
+  const showStale = staleness.stale && generatedBidPrice != null;
   return (
     <>
       <Header options={r.options} dispatch={dispatch} blocked={blocked} />
@@ -143,21 +205,23 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked 
 
       <div className="section-block">
         <div className="section-label">Bid options</div>
-        {/* Phase B interim caveat (2026-08-28) — the real fix (re-validate/
-            relaunch against fresh inputs) is Phase E's job, per docs/
-            dirigo-ux-decisions.md §9.9. This one line exists because 4.2's
-            reactive calculation is what turned a pre-existing, dormant
-            staleness gap into an actively misleading one within a single
-            session (verified directly: the rail's bid price moving by
-            tens of thousands of dollars while these cards sat frozen) —
-            Phase B's own change made it worse, so a cheap mitigation is
-            fair scope here even though the full fix isn't. */}
-        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-          These options may reflect an earlier version of your inputs.
-        </div>
+        {/* Phase E, Step 2 — the Phase B interim one-liner ("These options
+            may reflect an earlier version of your inputs.") is replaced by
+            this active, specific warning, shown ONLY when agentStaleness()
+            actually detects the live bid price has drifted from what the
+            agent ran against (docs/dirigo-ux-decisions.md §9.9). Q1 = B:
+            warn + acknowledge (in the finalize modal) + record the delta. */}
+        {showStale && (
+          <AgentStalenessWarning
+            bidPriceDelta={staleness.bidPriceDelta}
+            generatedBidPrice={generatedBidPrice}
+            currentBidPrice={currentBidPrice}
+            onRerun={() => window.runCalculation?.()}
+          />
+        )}
         <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
           {(r.options || []).map((opt) => (
-            <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} />
+            <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} intelligence={intelligence} />
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, padding: '0 2px' }}>
@@ -165,6 +229,16 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked 
           <div style={{ flex: 1, height: 1, background: 'var(--border)', margin: '0 16px' }} />
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>Higher margin →</span>
         </div>
+        {/* 5.1 honesty constraint — EV is a range, and this caveat is
+            always visible with it. deriveWinLikelihood() is a hand-tuned
+            score, not calibrated probability (docs §5.1). */}
+        <div className="ev-caveat" style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, marginTop: 10 }}>
+          Expected value = win-likelihood band × margin&nbsp;$. Win-likelihood is a hand-tuned score,
+          not a calibrated probability — treat EV as directional, not precise.
+        </div>
+        {/* 5.3 — sibling of the cards, not a child of any [data-bid-opt]
+            card, so a drag/click on it can't fire SELECT_AGENT_OPTION. */}
+        <WhatIfSlider options={r.options} />
       </div>
 
       <div className="section-block">
@@ -231,15 +305,34 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked 
 export default function AgentPage({ active }) {
   const [state, dispatch] = useStore();
   const { cachedResult, loading, historyUnavailable, selectedOption } = state.ui.agent;
+  // 5.6 (Phase E, Step 1) — the post-finalize confirmation/failure panel
+  // now renders here too, not only on OutputPage. Finalize is triggered
+  // from this tab ("Finalize bid →"), so this is where the durable
+  // confirmation has to be visible — the wrong-tab defect §9.9 held open
+  // for this phase. Same state.ui.submitResult, same shared component;
+  // it self-clears on the next RENDER_OUTPUT exactly as before.
+  const { submitResult } = state.ui;
   // 3.1 — see src/state/validation.js. Derived from state.bid directly
   // (not calculator.js's per-row error flag, which also fires for a
   // genuinely blank/never-touched typeId — see that file's header
   // comment for why that would be wrong here).
   const blocked = hasUnresolvedReferences(state.bid);
+  // Phase E, Step 2 — staleness of the option cards vs the live reactive
+  // calculation. generatedBidPrice is only meaningful with a cachedResult.
+  const staleness = agentStaleness(state);
+  const currentBidPrice = state.ui.output?.markupResult?.finalBidPrice ?? null;
+  const generatedBidPrice = cachedResult ? (state.ui.agent.generatedAt?.bidPrice ?? null) : null;
 
   let body;
   if (cachedResult) {
-    body = <AgentResult r={cachedResult} selectedOption={selectedOption} historyUnavailable={historyUnavailable} dispatch={dispatch} blocked={blocked} />;
+    body = (
+      <AgentResult
+        r={cachedResult} selectedOption={selectedOption} historyUnavailable={historyUnavailable}
+        dispatch={dispatch} blocked={blocked}
+        staleness={staleness} generatedBidPrice={generatedBidPrice} currentBidPrice={currentBidPrice}
+        intelligence={state.bid.intelligence}
+      />
+    );
   } else if (loading) {
     body = (
       <>
@@ -266,6 +359,9 @@ export default function AgentPage({ active }) {
 
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-agent">
+      {submitResult && (
+        <SubmitResultPanel result={submitResult} agentOptions={cachedResult?.options} dispatch={dispatch} />
+      )}
       {body}
     </div>
   );

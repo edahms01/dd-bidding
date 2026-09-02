@@ -144,7 +144,20 @@ export const initialState = {
       selected: 'recommended',
       customAmount: '',
       isSubmitting: false,
-      error: null
+      error: null,
+      // Phase E, Step 2 — the acknowledge checkbox shown when
+      // agentStaleness() detects the live bid price has drifted from what
+      // it was when the agent produced these options. Confirm stays
+      // disabled while stale && !staleAck (composed with the existing
+      // override-amount gate). Always reset to false on OPEN_FINALIZE_MODAL.
+      staleAck: false,
+      // Phase E, Step 5 (5.5) — override reason capture. Shown whenever
+      // the chosen option is not 'recommended' (a standard non-recommended
+      // option OR a custom override). Both optional — they never gate
+      // Confirm. Reset on OPEN_FINALIZE_MODAL. Persisted to the bid record
+      // as override_reason_chips / override_reason_text.
+      reasonChips: [],
+      reasonText: ''
     },
     // Bridge target for js/ui.js's renderAgentTab()/_renderAgentResult()
     // (window.__renderAgentTab, see bridges.js) — mirrors the exact
@@ -163,7 +176,14 @@ export const initialState = {
       cachedResult: null,
       loading: false,
       historyUnavailable: false,
-      selectedOption: 'recommended'
+      selectedOption: 'recommended',
+      // Phase E, Step 2 — the input fingerprint captured when the agent
+      // last ran: { bidPrice, directCost } from the calc state that
+      // triggered the run (js/ui.js _launchBidAgent()/runAgentIfNeeded(),
+      // carried through window.__renderAgentTab). agentStaleness.js
+      // compares it against the live state.ui.output. null whenever
+      // cachedResult is null.
+      generatedAt: null
     },
     // 3.5 — Undo-on-delete's pending state: null | {section, index, row}.
     // Set by DELETE_ROW, consumed/cleared by UNDO_DELETE_ROW, and
@@ -583,7 +603,8 @@ export function reducer(state, action) {
           ...state.ui,
           finalizeModal: {
             open: true, options: action.options || [], selected: 'recommended',
-            customAmount: '', isSubmitting: false, error: null
+            customAmount: '', isSubmitting: false, error: null, staleAck: false,
+            reasonChips: [], reasonText: ''
           }
         }
       };
@@ -615,6 +636,22 @@ export function reducer(state, action) {
       return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, isSubmitting: action.value } } };
     case 'SET_FINALIZE_ERROR':
       return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, error: action.error } } };
+    case 'SET_FINALIZE_STALE_ACK':
+      // Phase E, Step 2 — the staleness acknowledge checkbox. Composed
+      // with the override-amount gate in FinalizeModal.jsx's
+      // confirmDisabled, not OR-collapsed with it.
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, staleAck: action.value } } };
+    case 'TOGGLE_FINALIZE_REASON_CHIP': {
+      // Phase E, Step 5 (5.5) — multi-select reason chips. Neither this
+      // nor the free text ever gates Confirm.
+      const chips = state.ui.finalizeModal.reasonChips || [];
+      const next = chips.includes(action.chip)
+        ? chips.filter((c) => c !== action.chip)
+        : [...chips, action.chip];
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, reasonChips: next } } };
+    }
+    case 'SET_FINALIZE_REASON_TEXT':
+      return { ...state, ui: { ...state.ui, finalizeModal: { ...state.ui.finalizeModal, reasonText: action.value } } };
     case 'RENDER_AGENT_TAB':
       // Bridge target for js/ui.js's renderAgentTab()/_renderAgentResult()
       // — see the comment on initialState.ui.agent above for the full
@@ -630,7 +667,12 @@ export function reducer(state, action) {
             cachedResult: action.cachedResult,
             loading: action.loading,
             historyUnavailable: action.historyUnavailable,
-            selectedOption: action.cachedResult ? 'recommended' : state.ui.agent.selectedOption
+            selectedOption: action.cachedResult ? 'recommended' : state.ui.agent.selectedOption,
+            // Phase E, Step 2 — the calc fingerprint the agent ran
+            // against. Only meaningful alongside a real cachedResult;
+            // cleared whenever there isn't one, so a later empty-state
+            // dispatch can't leave a stale fingerprint behind.
+            generatedAt: action.cachedResult ? (action.generatedAt || null) : null
           }
         }
       };
@@ -655,7 +697,7 @@ export function reducer(state, action) {
       // _agentHistoryUnavailable exactly.
       return {
         ...state,
-        ui: { ...state.ui, agent: { cachedResult: null, loading: false, historyUnavailable: false, selectedOption: 'recommended' } }
+        ui: { ...state.ui, agent: { cachedResult: null, loading: false, historyUnavailable: false, selectedOption: 'recommended', generatedAt: null } }
       };
     default:
       return state;

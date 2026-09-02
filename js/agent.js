@@ -26,28 +26,66 @@ const AGENT_FALLBACK = {
 
 // Derives win likelihood from intelligence signals + option type.
 // Used in demo mode; live API returns winLikelihood directly.
-function deriveWinLikelihood(intelligence, optionType) {
-  const base = { competitive: 2, recommended: 0, ambitious: -2 };
-  let score = base[optionType] || 0;
+//
+// Phase E 5.2 — the scoring is now expressed as a data table so the same
+// single source of truth can also produce a per-factor *breakdown* (which
+// of the four signals pushed this option's likelihood up or down, and by
+// how much) for the win-likelihood attribution UI. deriveWinLikelihood()
+// stays as the thin label-only wrapper every existing caller uses
+// (_demoResponse(), any future live path) — behaviour is identical, this
+// is a refactor, not a change.
+var _WIN_LIKELIHOOD_BASE = { competitive: 2, recommended: 0, ambitious: -2 };
 
-  if (intelligence.gcRelationship === 'strong')    score += 1;
-  if (intelligence.gcRelationship === 'new')       score -= 1;
-  if (intelligence.gcRelationship === 'difficult') score -= 2;
+// One entry per contributing signal, in the order the attribution UI
+// shows them. `deltas` maps each recognised intelligence value to its
+// score adjustment; any other value (incl. unset) contributes 0.
+var _WIN_LIKELIHOOD_FACTORS = [
+  { key: 'gcRelationship',     label: 'GC relationship',      deltas: { strong: 1, new: -1, difficult: -2 } },
+  { key: 'gcPriceSensitivity', label: 'GC price sensitivity', deltas: { lowest: -2, quality: 1 } },
+  { key: 'competitionLevel',   label: 'Competition level',    deltas: { light: 2, heavy: -2 } },
+  { key: 'dirigoEdge',         label: "Dirigo's edge",        deltas: { strong: 1, weak: -2 } }
+];
 
-  if (intelligence.gcPriceSensitivity === 'lowest')  score -= 2;
-  if (intelligence.gcPriceSensitivity === 'quality') score += 1;
-
-  if (intelligence.competitionLevel === 'light') score += 2;
-  if (intelligence.competitionLevel === 'heavy') score -= 2;
-
-  if (intelligence.dirigoEdge === 'strong') score += 1;
-  if (intelligence.dirigoEdge === 'weak')   score -= 2;
-
+function _winLikelihoodLabel(score) {
   if (score >= 4)  return 'Very High';
   if (score >= 2)  return 'High';
   if (score >= 0)  return 'Medium';
   if (score >= -2) return 'Low–Medium';
   return 'Low';
+}
+
+// { label, score, base, optionType, contributions: [{ factor, value,
+// delta, direction }] }. Same arithmetic the original if-chain did — the
+// factor values are mutually exclusive per signal, so a table lookup and
+// the chain produce identical scores.
+function deriveWinLikelihoodBreakdown(intelligence, optionType) {
+  var intel = intelligence || {};
+  var base = _WIN_LIKELIHOOD_BASE[optionType] || 0;
+  var score = base;
+  var contributions = _WIN_LIKELIHOOD_FACTORS.map(function (f) {
+    var value = intel[f.key] != null && intel[f.key] !== '' ? intel[f.key] : null;
+    var delta = value != null && f.deltas[value] != null ? f.deltas[value] : 0;
+    score += delta;
+    return {
+      factor: f.label,
+      value: value,
+      delta: delta,
+      direction: delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral'
+    };
+  });
+  return { label: _winLikelihoodLabel(score), score: score, base: base, optionType: optionType, contributions: contributions };
+}
+
+function deriveWinLikelihood(intelligence, optionType) {
+  return deriveWinLikelihoodBreakdown(intelligence, optionType).label;
+}
+
+// Phase E 5.2 — read-only accessor for AgentPage.jsx's win-likelihood
+// attribution. Guarded per CLAUDE.md checklist item 9 (a top-level
+// window.X assignment must not throw if this file is ever imported in a
+// no-window context).
+if (typeof window !== 'undefined') {
+  window.__winLikelihoodBreakdown = deriveWinLikelihoodBreakdown;
 }
 
 // Fixed demo response for the Harborview Plaza retail project (seed dataset).
