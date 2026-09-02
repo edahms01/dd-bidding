@@ -39,7 +39,7 @@ New sequence: Project → Site Conditions → Assemblies → Walls → Ceilings 
 
 "Initial Bid" renames to Cost Summary (it is a cost sheet, not a bid). "Agent Recommendation" renames to Bid Strategy — name the outcome, not the vendor.
 
-Implementation: only `label`s changed and one new key (`market`) was added — the internal tab keys `conditions`/`output`/`agent` stay (see the key-rename decision in `CLAUDE.md`), so the wrong-tab finalize bug (`#output-bid`, still on the `output` page) reproduces identically and the golden-export fixture is untouched. The Conditions split is UI/routing only: `confidence`/`notes` still live in the `bid.conditions` slice, `intelligence` still its own slice — `MarketReadPage.jsx` just renders them on a later step, and carries the two on-become-active effects (`registerConfidenceReader`, `_renderPipelineHint`) whose targets moved with it. Public route slugs are now `#/site-conditions`, `#/cost-summary`, `#/market-read`, `#/bid-strategy` (`src/state/router.js`).
+Implementation: only `label`s changed and one new key (`market`) was added — the internal tab keys `conditions`/`output`/`agent` stay (see the key-rename decision in `CLAUDE.md`), so the wrong-tab finalize bug (`#output-bid`, still on the `output` page) reproduces identically and the reorder itself leaves the golden-export fixture untouched (one unrelated field, `intelligence.openDraftCount`, changed later in Step 4's seed-loader fix — see 2.5). The Conditions split is UI/routing only: `confidence`/`notes` still live in the `bid.conditions` slice, `intelligence` still its own slice — `MarketReadPage.jsx` just renders them on a later step, and carries the two on-become-active effects (`registerConfidenceReader`, `_renderPipelineHint`) whose targets moved with it. Public route slugs are now `#/site-conditions`, `#/cost-summary`, `#/market-read`, `#/bid-strategy` (`src/state/router.js`).
 
 **2.2 Step completion state + URL routing — APPROVED. Implemented (Phase C, Step 1, 2026-09-01).**
 Empty / partial / complete indication per step, derived from whether required fields hold values. Deep-linkable steps (`#/walls`) so browser back works and a step can be bookmarked. Navigation stays unrestricted — show completion, don't gate. Block only final submit.
@@ -51,12 +51,14 @@ Completion (`src/state/stepStatus.js`, pure `stepStatus(bid, ui)`) is built only
 **2.3 Remove numbered step references from copy — APPROVED. Implemented (Phase C, Step 2, 2026-09-01).**
 `agent.js` still directs users to a setup panel on "Tab 9"; the agent is Tab 8. Reference steps by name, ideally as a button that navigates there. No numbers in prose — they break silently on every reorder, and we are about to reorder.
 
-Implementation: the live numbered strings were `AgentPage.jsx`'s empty state ("…on Tab 6…" → "Fill in your bid through the Cost Summary step" + a nav button) and `HistoryPage.jsx`'s empty state ("…in Tab 7." → "…finalize a bid from the Bid Strategy step…"). The dead `js/ui.js` twins (`renderHistory`/`renderAgentTab` empty branches, unreachable since A2) were updated to match rather than left showing stale numbers. `js/agent.js` itself has carried no "Tab N" string since the Track A rework — the §2.3 text above predates that.
+Implementation: the live numbered strings were `AgentPage.jsx`'s empty state ("…on Tab 6…" → "Fill in your bid through the Cost Summary step" + a nav button) and the Bid History empty state ("…in Tab 7." → "…finalize a bid from the Bid Strategy step…"). The dead `js/ui.js` twins (`renderHistory`/`renderAgentTab` empty branches, unreachable since A2) were updated to match rather than left showing stale numbers. `js/agent.js` itself has carried no "Tab N" string since the Track A rework — the §2.3 text above predates that. (Step 4 later deleted `HistoryPage.jsx` when Bid History merged into the unified Bids list; `BidsPage.jsx` carries its own number-free empty-state copy.)
 
 **2.4 Stable shell on History — APPROVED. Implemented (Phase C, Step 3, 2026-09-01).**
 Selecting Bid History currently hides the step bar entirely, so the app reads as a different application. Keep the frame; replace the step bar with a History toolbar (filter by GC, outcome, date range).
 
-Implementation: `HistoryToolbar.jsx` renders in the `#app-tabs` slot while `activeSection === 'history'` — GC substring, outcome (`all` / pending / won / lost), and a submitted-date range, plus a Clear button that only appears while a filter is active. Filter state lives in `state.ui.historyFilters` (not persisted); `HistoryPage.jsx` applies it to both the table and the totals bar (so a GC/outcome filter doubles as a scoped win-rate read), with a "Showing N of M" line and a distinct "No bids match the current filter." message. Step 4 folds Dashboard + History into one Bids list and grows this toolbar a Draft/Submitted/Won/Lost status filter.
+Implementation (as it shipped in Step 3): a toolbar renders in the `#app-tabs` slot while off the workflow — GC substring, an outcome/status select, and a date range, plus a Clear button that only appears while a filter is active. Filter state lives in the reducer (not persisted); the list page applies it to both the table and the totals bar (so a GC/status filter doubles as a scoped win-rate read), with a "Showing N of M" line and a distinct "No bids match the current filter." message.
+
+**Step 4 renamed the specifics here** when Dashboard + History merged into one Bids list (2.5): `HistoryToolbar.jsx` → `BidsToolbar.jsx`, `activeSection === 'history'` → `'bids'`, `state.ui.historyFilters` → `bidsFilters`, the outcome filter became a Draft/Submitted/Won/Lost **status** filter, and `HistoryPage.jsx` was replaced by `BidsPage.jsx`. The `.bids-toolbar` CSS and `#hf-gc` / `#hf-status` / `#hf-from` / `#hf-to` / `#hf-clear` control ids are the current surface.
 
 **2.5 Navigation model — APPROVED (both parts). Implemented (Phase C, Step 4, 2026-09-01).**
 - *"New Bid" behaves like a button, not a destination.* It sits among nav destinations but calls `createDraft()`, so the obvious route back to work-in-progress instead spawns a blank bid. Move "+ New Bid" to a header button; the nav item becomes the current bid.
@@ -210,8 +212,12 @@ Contingency currently comes from a confidence button (4 / 8 / 15%). With labor a
 **8.3 GC scorecard — APPROVED.**
 Win rate, average margin, and cost variance by GC.
 
-**8.4 Bid/no-bid gate — APPROVED as a standalone screen, not a workflow step.**
+**8.4 Bid/no-bid gate — APPROVED as a standalone screen, not a workflow step. Implemented (Phase C, Step 5, 2026-09-01).**
 A short scoring screen — fit, GC history, competition, crew capacity, schedule risk — recommending whether to bid at all. Deliberately outside the 9-step flow so it doesn't lengthen it further. Reached from the Bids list.
+
+Implementation: `BidDecisionPage.jsx`, a new `activeSection` value `'biddecision'` and route `#/bid-decision`, reached only from a "Bid / no-bid gate" button on the Bids list (no left-nav item of its own — the "Bids" item stays active while it's open). Five factor selects, each good/ok/bad = +2/0/−2; total ≥ +4 → **Bid**, ≤ −4 → **Pass**, else → **Proceed with caution**. **Ephemeral** (Q3): factor answers are local component state reset to neutral on every visit, the recommendation is derived fresh each render, nothing is persisted and no bid record is touched. Tying decisions to actual outcomes is a recorded Phase F candidate (§9.9-adjacent note below), not built here.
+
+Along the way this closed a latent Phase C wart: the `.workflow-area` delegated autosave listener (`js/forms.js`) fired for *any* input inside that container, and Phase C had put non-workflow UI there (the Bids filter toolbar in 2.4/2.5, now the gate) — so filtering the Bids list or answering a gate question spuriously re-autosaved the active draft. Fixed with a `[data-noautosave]` subtree guard on `#bids-toolbar` / `#page-bids` / `#page-biddecision`.
 
 **REJECTED — 8.5 productivity mode.**
 Rationale from the walkthrough: crew-hour productivity is too granular for how the company actually estimates. Broader signal to carry into all future work — **the estimating model is assembly-and-area based, not crew-hours based.** Don't propose features that assume hourly productivity tracking.
@@ -353,6 +359,10 @@ Pinned by `tests/e2e/rates-plaster-extwall-not-costed.spec.js`, which is an *inv
 **Finalize failure panel renders to the wrong tab — scheduled for Phase E (5.6).**
 The submitted and failure panels render into `#output-bid` on Tab 7 while finalize happens on Tab 8, so the durable confirmation is invisible and only the toast is seen. Preserved as-is through Phase A.
 
+**Phase C — deferred candidates (not defects, ideas parked rather than dropped).**
+- *Persist bid/no-bid gate decisions and tie them to actual outcomes.* 8.4's gate is ephemeral by decision (Q3). Recording each decision (with the job it was for and, later, whether the bid won/lost) would make it a calibration signal alongside Phase F's other analytics — a natural Phase F extension, not scoped now.
+- *Add `source_draft_id` to the bid record.* The unified Bids list (2.5) can't currently trace a submitted bid back to the draft it came from (`clearFinalizedDraft()` deletes the draft with no link kept). Additive, no migration — worth doing in whichever phase first needs draft→outcome continuity (likely alongside the item above).
+
 ---
 
 ## 10. Phase plan
@@ -363,7 +373,7 @@ The submitted and failure panels render into `#output-bid` on Tab 7 while finali
 | **A2 — React migration** ✅ | Spike (Rates + History) → full migration (all pages) → parity gate. Absorbs 3.2, 6.4. | **Complete.** Every page is React. No ESM conversion — `window.*` bridges proved sufficient (§9.8). Final: 51/51 Playwright unmodified, 98/98 Vitest, golden-export byte-identical. |
 | **A2.5 — Finalize persistence fix** ✅ | Single defect from §9.9 | **Complete (2026-08-27).** Standalone, before B. Surfaced a new lead (agent-option display staleness, §9.9) — assigned to Phase E, not a blocker for B. |
 | **B — Takeoff integrity** ✅ | 3.1, 3.3, 3.4, 3.5, 4.1, 4.2 | **Complete (2026-08-28).** First feature phase on the new foundation. Also shipped an interim staleness caveat near the Agent tab's cards (§9.9) — Eric's call, since 4.2 is what made that pre-existing defect actively misleading, not just theoretically present. |
-| **C — Navigation** 🔨 | 2.1, 2.2, 2.3, 2.4, 2.5, 8.4 | 8.4 included as a new nav destination. **Steps 1–4 complete 2026-09-01** (2.2 routing + step indicators; 2.1 9-step reorder + Conditions split; 2.3 numbered-copy removal; 2.4 stable shell + filter toolbar; 2.5 New Bid header button + unified Bids list). Remaining: 8.4 gate. |
+| **C — Navigation** ✅ | 2.1, 2.2, 2.3, 2.4, 2.5, 8.4 | **Complete 2026-09-01.** 2.2 hash routing + step indicators; 2.1 9-step reorder + Conditions→Site Conditions/Market Read split + renames; 2.3 numbered-copy removal; 2.4 stable shell + filter toolbar; 2.5 New Bid header button + unified Bids list (`activeSection` → `workflow`/`bids`); 8.4 ephemeral bid/no-bid gate. Internal tab keys unchanged (only labels); golden-export one-field recapture (`openDraftCount`, from the seed-loader fix). Deferred candidates noted in §9.9. |
 | **D — Mobile** | Tier 1, sticky columns, `100dvh`, Tier 2 | Blocked by A and B |
 | **E — Agent** | 5.1, 5.3, 5.2, 5.5, 5.6, 4.3, agent-option display-staleness fix (§9.9) | 5.1 blocks 5.3; depends on A2.5 (complete). Staleness fix rides along with 5.5/5.6 — same modal, same visit. |
 | **F — Intelligence** | 8.1, 8.2, 8.3 | Computation layer already exists and is tested |
