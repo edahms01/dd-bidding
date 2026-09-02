@@ -1173,13 +1173,17 @@ function _renderAgentResult(page, r) {
 // ── DEMO AGENT PRE-RUN ────────────────────────────────────────────────
 
 function runAgentIfNeeded() {
-  if (_lastAgentResult) return;
+  // Returns a promise resolving to the agent result (or the already-cached
+  // one) — data/seed.js's dual-demo live load awaits this to show a
+  // success/failure note in the toolbar. Callers that don't care can
+  // ignore the return, exactly as before.
+  if (_lastAgentResult) return Promise.resolve(_lastAgentResult);
   const state = collectFormData();
   // Phase E, Step 2 — capture the fingerprint inputs now, before the
   // promise chain, so a reactive recalc landing during the demo delay
   // can't move _lastCalcSum/_lastCalcMarkup out from under it.
   const fpSum = _lastCalcSum, fpMarkup = _lastCalcMarkup;
-  getHistorySummary(state.project.gc, state.project.buildingType)
+  return getHistorySummary(state.project.gc, state.project.buildingType)
     .then(bidHistory => runBidAgent(state, _lastCalcSum, _lastCalcMarkup, bidHistory))
     .then(result => {
       _lastAgentResult = result;
@@ -1189,6 +1193,7 @@ function runAgentIfNeeded() {
       };
       const page = document.getElementById('page-agent');
       if (page) _renderAgentResult(page, result);
+      return result;
     })
     .catch(e => {
       // Best-effort background pre-run (demo seed-load path, before the

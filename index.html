@@ -18,7 +18,9 @@
 
 <div id="dev-toolbar" class="dev-toolbar">
   <span class="dev-toolbar-label">Demo controls</span>
-  <button class="btn btn-ghost" onclick="loadSeedData()">Load seed data</button>
+  <button class="btn btn-ghost" onclick="loadSeedData()">Load Demo</button>
+  <button class="btn btn-ghost btn-live" onclick="loadDemoLive()"
+          title="Same demo data, but calls the real Anthropic bid agent — a billable API request that takes a few seconds and can fail on key/network/rate-limit issues.">Load Demo — live agent</button>
   <button class="btn btn-ghost" onclick="clearSeedData()">Clear all data</button>
   <button class="btn btn-ghost" onclick="document.getElementById('dev-toolbar').style.display='none'">Hide</button>
 </div>

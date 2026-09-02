@@ -12,6 +12,23 @@
 // Set to false to enable live Anthropic API calls (via the server-side proxy).
 const DEMO_MODE = true;
 
+// Dual demo mode — a load-time, session-only override of DEMO_MODE for the
+// "Load Demo — live agent" dev-toolbar button. When true, runBidAgent()
+// takes the live /.netlify/functions/bid-agent path even though DEMO_MODE
+// is still true. Deliberately NOT persisted (not on the bid record, not in
+// drafts) and reset to false by every offline "Load Demo" load — it exists
+// only so the real Anthropic connection can be exercised from the running
+// app. Session-sticky by design: once on, later recalcs / Tab 7-8 visits
+// in that session also call live (the confirm() gate is on the button, not
+// on every downstream call). See data/seed.js's _loadDemo().
+let liveAgentMode = false;
+if (typeof window !== 'undefined') {
+  // Guarded per CLAUDE.md checklist item 9 — tests/unit/*.test.js import
+  // sibling classic scripts under Vitest's node env, no window.
+  window.__setLiveAgentMode = function (on) { liveAgentMode = !!on; };
+  window.__getLiveAgentMode = function () { return liveAgentMode; };
+}
+
 const AGENT_FALLBACK = {
   options: [
     { type: 'competitive', label: 'Competitive', bidAmount: null, margin: null, winLikelihood: 'High',        rationale: 'Agent unavailable — calculate a competitive price manually.' },
@@ -211,7 +228,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
 }
 
 async function runBidAgent(state, summary, markupResult, bidHistory) {
-  if (DEMO_MODE) {
+  if (DEMO_MODE && !liveAgentMode) {
     await new Promise(r => setTimeout(r, 900));
     return _demoResponse(state, summary, markupResult, bidHistory);
   }
@@ -258,15 +275,19 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
       if (err.error === 'not_configured') {
         return Object.assign({}, AGENT_FALLBACK, {
           reasoning: 'Bid agent is not configured on the server — contact your administrator.',
-          riskFlags: [{ severity: 'high', message: 'Bid agent not configured. Submit your bid based on your own judgment.' }]
+          riskFlags: [{ severity: 'high', message: 'Bid agent not configured. Submit your bid based on your own judgment.' }],
+          // Distinguishes a failed *live* call from a genuine result so the
+          // dual-demo toolbar can show an explicit error state instead of
+          // letting AGENT_FALLBACK read as a quiet, degraded recommendation.
+          _liveError: 'not configured on the server (missing/invalid ANTHROPIC_API_KEY)'
         });
       }
-      return AGENT_FALLBACK;
+      return Object.assign({}, AGENT_FALLBACK, { _liveError: 'HTTP ' + resp.status + (err && err.error ? ' (' + err.error + ')' : '') });
     }
 
     return await resp.json();
   } catch (e) {
     console.error('Bid agent error:', e);
-    return AGENT_FALLBACK;
+    return Object.assign({}, AGENT_FALLBACK, { _liveError: 'network error — ' + (e && e.message ? e.message : 'request failed') });
   }
 }
