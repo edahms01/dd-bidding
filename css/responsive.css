@@ -1,4 +1,140 @@
-/* ── RESPONSIVE ──────────────────────────────────────────────────────
-   Empty stub. Mobile/responsive work is Phase D — see
-   docs/dirigo-ux-decisions.md §7. This file exists now so Phase D adds
-   to a known place rather than restructuring the CSS layer order. */
+/* ── RESPONSIVE — Phase D mobile pass ────────────────────────────────
+   Loaded last in the @import chain (css/styles.css), so it wins the
+   cascade without any reordering. Two breakpoints, per
+   docs/dirigo-ux-decisions.md §7: 768px = the phone/tablet line,
+   480px = extra squeeze. Additive only — the desktop rules in
+   base.css / components.css / pages.css are left untouched.
+
+   The `100vh -> 100dvh` shell fix is a global improvement, not
+   breakpoint-scoped, and lives in components.css (.shell).
+
+   Step 1 (structural must-fixes) is everything below. Layout stacking,
+   totals-bar wrap and sticky table columns land in Step 2. */
+
+/* Desktop: the mobile-only drawer trigger and backdrop are inert. */
+.nav-hamburger { display: none; }
+
+@media (min-width: 769px) {
+  .nav-backdrop { display: none; }
+}
+
+@media (max-width: 768px) {
+
+  /* ── Off-canvas left-nav drawer ──────────────────────────────────
+     Below 768px the left nav leaves the flex flow entirely
+     (position:fixed) so .workflow-area gets the full width; a header
+     hamburger slides it in over the content, with a tap-anywhere
+     backdrop. navCollapsed (the desktop 200<->48px width toggle,
+     persisted) is neutralised here — the drawer is always full,
+     labelled width when open. state.ui.navDrawerOpen (ephemeral)
+     drives .drawer-open. */
+  .nav-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-left: -8px;                 /* sit flush to the edge, keep the 44px hit box */
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .leftnav#app-leftnav {
+    position: fixed;
+    top: 52px;                         /* clears the fixed 52px header */
+    left: 0;
+    bottom: 0;
+    width: min(78vw, 260px);
+    z-index: 1300;                     /* above toasts (1100) and the finalize modal (1000) */
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+    border-right: 1px solid var(--border2);
+  }
+  .leftnav#app-leftnav.drawer-open { transform: translateX(0); }
+
+  /* Undo .collapsed's desktop effects inside the drawer */
+  .leftnav#app-leftnav.collapsed { width: min(78vw, 260px); }
+  .leftnav#app-leftnav.collapsed .nav-label { display: inline; }
+  .leftnav#app-leftnav.collapsed .nav-item {
+    padding: 10px 14px;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .nav-backdrop {
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Heavier than a light-theme scrim would need — against already-dark
+       content a 40-50% wash reads as a faint tint, not a mode shift. */
+    background: rgba(0, 0, 0, .72);
+    z-index: 1290;
+  }
+
+  /* The desktop in-nav collapse toggle has no meaning on a phone. */
+  .nav-toggle { display: none; }
+
+  /* ── Header: fit the 52px bar to a phone ─────────────────────────
+     The full .header-actions row (project badge + autosave indicator +
+     Export + Import + New Bid) overflows ~390px badly, pushing the
+     primary "+ New Bid" action off-screen. On mobile the project name
+     already lives in the drawer's "Current bid" item, and Export/Import
+     are a desktop JSON round-trip, not a phone task — drop all four,
+     keep the hamburger, the logo, and New Bid. */
+  .header { padding: 0 12px; gap: 8px; }
+  .header .proj-badge,
+  .header #autosave-indicator,
+  .header-actions > .btn-ghost { display: none; }
+  .header-actions { gap: 6px; min-width: 0; }
+  .logo-mark { min-width: 0; overflow: hidden; }
+  .logo-name, .logo-sub { white-space: nowrap; }
+
+  /* ── Step bar → horizontally scrollable chips ────────────────────
+     .workflow-area / .body are overflow:hidden, so the scroll has to
+     live on .tabs itself. id+class beats the parent's rules. */
+  #app-tabs.tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;             /* the chips are their own affordance under a ~44px strip */
+    padding: 0 12px;
+  }
+  #app-tabs.tabs::-webkit-scrollbar { display: none; }
+  #app-tabs .tab { flex-shrink: 0; }
+
+  /* ── Inputs to 16px — stops iOS auto-zoom on focus ───────────────── */
+  input[type=text], input[type=number], input[type=date], select, textarea,
+  td input, td select,
+  .ri, .fi, .si, .esc-input, .ai,
+  .bids-toolbar .ht-input {
+    font-size: 16px;
+  }
+  /* #modal-custom-amount carries an inline fontSize:13 (FinalizeModal.jsx,
+     Phase B-era JSX deliberately left untouched — see the Phase D plan).
+     A media-query !important is the intended override for that one node. */
+  #modal-custom-amount { font-size: 16px !important; }
+
+  /* ── Demo controls hidden on phones (earmarked in components.css) ── */
+  .dev-toolbar { display: none; }
+
+  /* ── Tap targets to >=44px ───────────────────────────────────────── */
+  .btn, .btn-sm { min-height: 44px; }
+  .tab { min-height: 44px; }
+  .nav-item { min-height: 44px; }
+  .add-row-btn { min-height: 44px; }
+  .row-undo-toast-btn { min-height: 44px; }
+  .conf-btn { min-height: 44px; }
+  .modal-close { min-width: 44px; min-height: 44px; }
+  select, td select { min-height: 44px; }
+  /* Inside a 3px-padded pill: 40 + 3 + 3 clears 44. */
+  .mode-toggle-btn { min-height: 40px; padding: 8px 16px; }
+  /* Row action buttons (⧉ duplicate / × delete) — real boxes, real gap. */
+  .del-btn, .dup-btn { min-width: 44px; min-height: 44px; }
+  .row-actions { gap: 6px; }
+}

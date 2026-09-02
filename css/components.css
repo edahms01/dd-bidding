@@ -1,7 +1,11 @@
 /* ── COMPONENTS — reusable UI used across pages ──────────────────── */
 
 /* ── SHELL ── */
-.shell{display:flex;flex-direction:column;height:100vh}
+/* 100dvh (with a 100vh fallback for older engines) so the layout tracks
+   the *dynamic* viewport on mobile — the browser chrome collapsing on
+   scroll must not leave the fixed header/nav clipped or a dead band at
+   the bottom. Flagged in Phase A's technical review, fixed in Phase D. */
+.shell{display:flex;flex-direction:column;height:100vh;height:100dvh}
 
 /* ── HEADER ── */
 .header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}

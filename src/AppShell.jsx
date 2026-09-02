@@ -60,7 +60,8 @@ const WORKFLOW_TABS = [
 
 export default function AppShell() {
   const [state, dispatch] = useStore();
-  const { activeSection, activeTab, navCollapsed } = state.ui;
+  const { activeSection, activeTab, navCollapsed, navDrawerOpen } = state.ui;
+  const closeDrawer = () => dispatch({ type: 'SET_NAV_DRAWER', value: false });
 
   // Phase C 2.2 — URL routing. stateRef gives the once-registered
   // hashchange listener the *current* section/tab without re-subscribing
@@ -198,6 +199,20 @@ export default function AppShell() {
     <Fragment>
     <div className="shell">
       <header className="header">
+        {/* Phase D — mobile drawer trigger. CSS-hidden at >=768px; the
+            desktop in-nav collapse toggle is hidden below 768px instead. */}
+        <button
+          className="nav-hamburger"
+          aria-label="Menu"
+          aria-expanded={navDrawerOpen}
+          onClick={() => dispatch({ type: 'SET_NAV_DRAWER', value: !navDrawerOpen })}
+        >
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <line x1="2" y1="4" x2="14" y2="4" />
+            <line x1="2" y1="8" x2="14" y2="8" />
+            <line x1="2" y1="12" x2="14" y2="12" />
+          </svg>
+        </button>
         <div className="logo-mark">
           <div className="logo-icon">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -233,6 +248,9 @@ export default function AppShell() {
       </header>
 
       <div className="app-layout">
+        {/* Phase D — mobile drawer backdrop. Rendered only when open;
+            CSS keeps it invisible/inert at >=768px regardless. */}
+        {navDrawerOpen && <div className="nav-backdrop" onClick={closeDrawer} />}
         {/* A2 cleanup pass: dispatches directly instead of going through
             window.showHistory()/showDashboard()/toggleNav() (bridges.js)
             — those bridges had no remaining classic-script consumer once
@@ -247,30 +265,30 @@ export default function AppShell() {
             put the class on this element. Reproduced directly (toggled,
             read getComputedStyle(nav).width, it never changed) before
             fixing. */}
-        <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '')} id="app-leftnav">
+        <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '') + (navDrawerOpen ? ' drawer-open' : '')} id="app-leftnav">
           <div className="nav-items">
             {/* Phase C 2.5 — the workflow nav item is "the current bid"
                 now (labelled with the active draft's project name), not
                 a "New Bid" button; clicking it returns you to
                 work-in-progress on whatever step you left off. "New Bid"
                 moved to a header action. */}
-            <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'workflow' })} title="Current bid">
+            <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'workflow' }); closeDrawer(); }} title="Current bid">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6L9 2z" />
                 <path d="M9 2v4h4" />
                 <line x1="6" y1="9" x2="10" y2="9" />
                 <line x1="8" y1="7" x2="8" y2="11" />
               </svg>
-              {!navCollapsed && <span className="nav-label">{state.bid.project.name?.trim() || 'Current bid'}</span>}
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">{state.bid.project.name?.trim() || 'Current bid'}</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'bids' })} title="Bids">
+            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bids">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="12" height="3" rx="1" />
                 <rect x="2" y="8" width="12" height="3" rx="1" />
                 <line x1="4.5" y1="13" x2="11.5" y2="13" />
               </svg>
-              {!navCollapsed && <span className="nav-label">Bids</span>}
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bids</span>}
             </div>
 
             <div className="nav-item nav-placeholder" title="Coming soon">
@@ -278,7 +296,7 @@ export default function AppShell() {
                 <circle cx="8" cy="8" r="2" />
                 <path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.3 3.3l1.1 1.1M11.6 11.6l1.1 1.1M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1" />
               </svg>
-              {!navCollapsed && <span className="nav-label">Settings</span>}
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Settings</span>}
             </div>
           </div>
 
