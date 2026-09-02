@@ -33,6 +33,7 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
 import RowUndoToast from './components/RowUndoToast.jsx';
+import HistoryToolbar from './components/HistoryToolbar.jsx';
 
 // 4.1: tabs where the rail shows — "visible from Assemblies onward" per
 // the decision record, not project/conditions/rates (which either
@@ -311,6 +312,12 @@ export default function AppShell() {
           {activeSection === 'workflow' && RAIL_TABS.includes(activeTab) && (
             <BidTotalRail output={state.ui.output} />
           )}
+
+          {/* Phase C 2.4 — keep the frame stable on Bid History: the
+              step-bar slot carries a filter toolbar instead of going
+              blank. Step 4 folds Dashboard + History into one Bids list
+              and this toolbar grows a status filter with it. */}
+          {activeSection === 'history' && <HistoryToolbar />}
 
           <div className="body">
             <ProjectPage active={activeSection === 'workflow' && activeTab === 'project'} />

@@ -24,6 +24,15 @@
 .tab.active .tnum{background:var(--action-dim);border-color:var(--action-border);color:var(--action)}
 .tab-sep{display:flex;align-items:center;align-self:center;padding-bottom:2px;color:var(--border);font-size:16px;line-height:1;pointer-events:none;user-select:none}
 
+/* ── HISTORY TOOLBAR (2.4) ── occupies the #app-tabs slot on Bid History
+   so the shell frame stays stable instead of the step bar vanishing. */
+.history-toolbar{display:flex;align-items:center;gap:8px;padding:8px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.history-toolbar .ht-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)}
+.history-toolbar .ht-sep{font-size:11px;color:var(--text3);margin-left:6px}
+.history-toolbar .ht-dash{color:var(--text3)}
+.history-toolbar .ht-input{width:auto;font-size:12px;padding:5px 9px}
+.history-toolbar .ht-date{color:var(--text2)}
+
 /* ── CONTENT ── */
 .body{flex:1;overflow:hidden;display:flex;flex-direction:column}
 .page{display:none;flex:1;overflow-y:auto;padding:28px 32px}

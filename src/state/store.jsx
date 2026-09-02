@@ -96,6 +96,12 @@ export const initialState = {
     // stepStatus.js can read the same signal the Rates totals bar shows
     // without re-deriving "are the rates filled in" a second way.
     rateTotals: { l: 0, m: 0, x: 0 },
+    // Phase C 2.4 — the Bid History toolbar's filter state. The toolbar
+    // (HistoryToolbar.jsx, shown in the step-bar slot while
+    // activeSection === 'history' so the shell stays stable) writes here;
+    // HistoryPage.jsx reads it to filter both its table and its totals.
+    // Not persisted — a fresh session starts unfiltered.
+    historyFilters: { gc: '', outcome: '', from: '', to: '' },
     // Bridge target for js/ui.js's renderOutput() (window.__renderOutput,
     // see bridges.js) — the derived calculation result runCalculation()
     // computes (js/ui.js), not form input. null until the first
@@ -520,6 +526,11 @@ export function reducer(state, action) {
       return { ...state, ui: { ...state.ui, activeSection: action.section } };
     case 'SET_NAV_COLLAPSED':
       return { ...state, ui: { ...state.ui, navCollapsed: action.value } };
+    case 'SET_HISTORY_FILTER':
+      // Phase C 2.4 — one field of the Bid History toolbar's filter.
+      return { ...state, ui: { ...state.ui, historyFilters: { ...state.ui.historyFilters, [action.key]: action.value } } };
+    case 'CLEAR_HISTORY_FILTERS':
+      return { ...state, ui: { ...state.ui, historyFilters: { gc: '', outcome: '', from: '', to: '' } } };
     case 'SET_RATE_TOTALS':
       // Phase C 2.2 — RatesPage.jsx publishes its L/M/X class-sum here so
       // stepStatus.js reads one source of truth. No-op if unchanged so a

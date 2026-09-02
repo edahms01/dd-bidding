@@ -14,9 +14,25 @@
 // just once.
 // ─────────────────────────────────────────────────────────────────────
 import { Fragment, useEffect, useState } from 'react';
+import { useStore } from '../state/store.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(n) { return (+n).toFixed(1) + '%'; }
+
+// Phase C 2.4 — apply the HistoryToolbar's filters. GC is a
+// case-insensitive substring; outcome an exact match (a record with no
+// outcome counts as 'pending'); from/to bracket date_submitted, which is
+// a YYYY-MM-DD string so lexical comparison is correct.
+function applyHistoryFilters(bids, f) {
+  const gc = f.gc.trim().toLowerCase();
+  return bids.filter((b) => {
+    if (gc && !(b.gc || '').toLowerCase().includes(gc)) return false;
+    if (f.outcome && (b.outcome || 'pending') !== f.outcome) return false;
+    if (f.from && (b.date_submitted || '') < f.from) return false;
+    if (f.to && (b.date_submitted || '') > f.to) return false;
+    return true;
+  });
+}
 
 function OutcomePill({ outcome }) {
   if (outcome === 'won') return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: 'rgba(58,191,122,.1)', border: '1px solid rgba(58,191,122,.25)', color: 'var(--green)' }}>Won</span>;
@@ -91,6 +107,8 @@ function UpdateRow({ bid, open, onSaved }) {
 }
 
 export default function HistoryPage({ active }) {
+  const [state] = useStore();
+  const filters = state.ui.historyFilters;
   const [status, setStatus] = useState('loading'); // 'loading' | 'error' | 'ready'
   const [bids, setBids] = useState([]);
   const [openUpdateId, setOpenUpdateId] = useState(null);
@@ -137,10 +155,15 @@ export default function HistoryPage({ active }) {
     }
   }
 
-  const total = bids.length;
-  const won = bids.filter((b) => b.outcome === 'won').length;
+  // 2.4 — the toolbar's filters narrow both the table and the totals, so
+  // a GC/outcome/date filter doubles as a quick scoped win-rate read.
+  const shown = applyHistoryFilters(bids, filters);
+  const anyFilter = !!(filters.gc || filters.outcome || filters.from || filters.to);
+
+  const total = shown.length;
+  const won = shown.filter((b) => b.outcome === 'won').length;
   const winRate = total > 0 ? Math.round((won / total) * 100) : 0;
-  const wonBids = bids.filter((b) => b.outcome === 'won' && b.final_bid > 0 && b.direct_cost > 0);
+  const wonBids = shown.filter((b) => b.outcome === 'won' && b.final_bid > 0 && b.direct_cost > 0);
   const avgMargin = wonBids.length > 0
     ? wonBids.reduce((s, b) => s + ((b.final_bid - b.direct_cost) / b.final_bid * 100), 0) / wonBids.length
     : null;
@@ -186,7 +209,14 @@ export default function HistoryPage({ active }) {
           </div>
 
           <div className="section-block">
-            <div className="section-label">Submitted bids</div>
+            <div className="section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span>Submitted bids</span>
+              {anyFilter && bids.length > 0 && (
+                <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                  Showing {shown.length} of {bids.length}
+                </span>
+              )}
+            </div>
             <div className="tbl-wrap">
               <table>
                 <thead>
@@ -198,7 +228,9 @@ export default function HistoryPage({ active }) {
                 <tbody>
                   {bids.length === 0 ? (
                     <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids submitted yet — finalize a bid from the Bid Strategy step to see it here.</td></tr>
-                  ) : bids.map((b) => (
+                  ) : shown.length === 0 ? (
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids match the current filter.</td></tr>
+                  ) : shown.map((b) => (
                     <Fragment key={b.bid_id}>
                       <tr>
                         <td style={{ whiteSpace: 'nowrap', color: 'var(--text2)' }}>{b.date_submitted || '—'}</td>
