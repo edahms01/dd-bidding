@@ -93,7 +93,13 @@ exports.handler = async (event) => {
     const parsed = parseAgentResponse(data);
 
     if (!parsed.ok) {
-      console.error('Bid agent response parse error:', parsed.error);
+      // Log enough to diagnose without a second live call: the model's
+      // stop_reason ("max_tokens" = raise max_tokens in
+      // bid-agent-request.js) and the head of the raw text.
+      const rawText = (data && data.content && data.content[0] && data.content[0].text) || '';
+      console.error('Bid agent response parse error:', parsed.error,
+        '| stop_reason:', data && data.stop_reason,
+        '| raw head:', rawText.slice(0, 300));
       return {
         statusCode: 502,
         body: JSON.stringify({ error: 'parse_error', message: parsed.error })

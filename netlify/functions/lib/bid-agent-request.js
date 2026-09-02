@@ -36,7 +36,17 @@ const AGENT_SCHEMA = {
 function buildAnthropicRequest(payload) {
   return {
     model:      'claude-sonnet-4-6',
-    max_tokens: 1024,
+    // The full recommendation (3 options with rationales + reasoning +
+    // one signal per intelligence field + risk flags + historical notes)
+    // serialises to ~2.5-4k output tokens. The original 1024 truncated it
+    // mid-string, so parseAgentResponse() always failed with
+    // "Unterminated string in JSON" → the function returned 502
+    // parse_error. First caught when "Load Demo — live agent" (dual demo
+    // mode) actually exercised this path in production, 2026-09-02 — it
+    // had never run before because DEMO_MODE was always true. 8192 is
+    // ~2x headroom for this bounded schema; billing is per token
+    // generated, so the higher ceiling has no idle cost.
+    max_tokens: 8192,
     system:     AGENT_SYSTEM,
     messages: [{
       role:    'user',
