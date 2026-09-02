@@ -44,4 +44,19 @@ describe('buildAnthropicRequest', () => {
     buildAnthropicRequest(REPRESENTATIVE_PAYLOAD);
     expect(REPRESENTATIVE_PAYLOAD).toEqual(original);
   });
+
+  it('routes a demoProbe call to the faster model and strips the flag from the prompt', () => {
+    const req = buildAnthropicRequest({ ...REPRESENTATIVE_PAYLOAD, demoProbe: true });
+    expect(req.model).toBe('claude-haiku-4-5');
+    const body = JSON.parse(req.messages[0].content);
+    expect(body.demoProbe).toBeUndefined();
+    // business data still embedded
+    expect(body.project).toEqual(REPRESENTATIVE_PAYLOAD.project);
+    expect(body.schema).toEqual(AGENT_SCHEMA);
+  });
+
+  it('stays on Sonnet when demoProbe is absent or false (the real product path)', () => {
+    expect(buildAnthropicRequest(REPRESENTATIVE_PAYLOAD).model).toBe('claude-sonnet-4-6');
+    expect(buildAnthropicRequest({ ...REPRESENTATIVE_PAYLOAD, demoProbe: false }).model).toBe('claude-sonnet-4-6');
+  });
 });
