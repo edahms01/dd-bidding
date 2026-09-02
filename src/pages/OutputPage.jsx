@@ -78,6 +78,54 @@ function GroupHead({ label }) {
   );
 }
 
+// 4.3 — the five line items contributing the most dollars, plus labor as
+// a % of direct cost. Pure display over state.ui.output — no calculator
+// change, no new calculation path. "% of direct cost" is against
+// summary.directCostTotal (labor + material + logistics), so the five
+// rows deliberately don't sum to 100% — logistics and markup aren't line
+// items. Standalone, Cost Summary only (unrelated to the agent work).
+function TopCostDrivers({ output }) {
+  const { wallCosts, ceilCosts, summary } = output;
+  const direct = summary.directCostTotal || 0;
+  const rows = [
+    ...wallCosts.map((r) => ({ ...r, kind: 'Wall' })),
+    ...ceilCosts.map((r) => ({ ...r, kind: 'Ceiling' }))
+  ]
+    .filter((r) => !r.error && r.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  if (rows.length === 0) return null;
+
+  const laborPct = direct > 0 ? (summary.laborTotal / direct) * 100 : 0;
+
+  return (
+    <div className="section-block top-cost-drivers">
+      <div className="section-label">Top cost drivers</div>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
+        {rows.map((r, i) => (
+          <div key={i} className="driver-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ color: 'var(--text2)', minWidth: 0 }}>
+              {r.location || '(unnamed)'}
+              <span style={{ color: 'var(--text3)', marginLeft: 8, fontSize: 12 }}>{r.kind} · {r.typeId}</span>
+            </span>
+            <span className="driver-amount" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, whiteSpace: 'nowrap' }}>
+              <span className="driver-dollars">{fmtCost(r.total)}</span>
+              <span className="driver-pct" style={{ color: 'var(--text3)', marginLeft: 10, fontSize: 12 }}>
+                {direct > 0 ? ((r.total / direct) * 100).toFixed(1) + '%' : '—'}
+              </span>
+            </span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0 4px', marginTop: 4 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Labor as % of direct cost</span>
+          <span className="labor-pct" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16, fontWeight: 600, color: 'var(--text2)' }}>{fmtPct(laborPct)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Phase3({ output }) {
   const { wallCosts, ceilCosts, summary } = output;
   const hasWalls = wallCosts.length > 0;
@@ -132,6 +180,8 @@ function Phase3({ output }) {
           </div>
         </div>
       </div>
+
+      <TopCostDrivers output={output} />
     </>
   );
 }
