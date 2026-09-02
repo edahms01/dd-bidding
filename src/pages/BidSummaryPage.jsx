@@ -20,6 +20,8 @@
 // same activeSection + router pattern Phase C's 'biddecision' used.
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
+import { agentStaleness } from '../state/agentStaleness.js';
+import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n || 0).toLocaleString(); }
 function fmtPct(n) { return (+n || 0).toFixed(1) + '%'; }
@@ -40,6 +42,13 @@ export default function BidSummaryPage({ active }) {
   const { project } = state.bid;
   const output = state.ui.output;
   const agent = state.ui.agent.cachedResult;
+  // Phase E, Step 2 — the same active staleness warning AgentPage shows,
+  // above the same stacked options. §9.9 notes this surface is if
+  // anything *more* warranted on a phone: the live final-bid figure and
+  // the frozen option amounts sit within one short scroll.
+  const staleness = agentStaleness(state);
+  const generatedBidPrice = agent ? (state.ui.agent.generatedAt?.bidPrice ?? null) : null;
+  const currentBidPrice = output?.markupResult?.finalBidPrice ?? null;
 
   // Quantity totals reuse state.ui.output's per-area rows (same source
   // the Cost Summary breakdown and the Walls/Ceilings <tfoot> derive
@@ -97,13 +106,13 @@ export default function BidSummaryPage({ active }) {
 
         {/* Agent options, stacked */}
         <div className="section-label" style={{ marginBottom: 8 }}>Agent options</div>
-        {agent && agent.options && agent.options.length > 0 && (
-          // Same interim caveat AgentPage carries (docs §9.9) — the
-          // options are a snapshot from the agent's last run, not
-          // re-derived against the current inputs.
-          <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 12 }}>
-            These options may reflect an earlier version of your inputs.
-          </div>
+        {agent && agent.options && agent.options.length > 0 && staleness.stale && generatedBidPrice != null && (
+          <AgentStalenessWarning
+            bidPriceDelta={staleness.bidPriceDelta}
+            generatedBidPrice={generatedBidPrice}
+            currentBidPrice={currentBidPrice}
+            onRerun={() => window.runCalculation?.()}
+          />
         )}
         {agent && agent.options && agent.options.length > 0 ? (
           agent.options.map((opt) => (

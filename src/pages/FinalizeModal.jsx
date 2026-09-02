@@ -26,12 +26,23 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
 import { hasUnresolvedReferences } from '../state/validation.js';
+import { agentStaleness } from '../state/agentStaleness.js';
+import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 
 export default function FinalizeModal() {
   const [state, dispatch] = useStore();
-  const { open, options, selected, customAmount, isSubmitting, error } = state.ui.finalizeModal;
+  const { open, options, selected, customAmount, isSubmitting, error, staleAck } = state.ui.finalizeModal;
+
+  // Phase E, Step 2 — staleness of the agent options the user is picking
+  // from vs the live reactive calculation. staleBlocking gates Confirm
+  // until the acknowledge checkbox is ticked; it composes with the
+  // override-amount gate below (both must clear), it does not replace it.
+  const staleness = agentStaleness(state);
+  const generatedBidPrice = state.ui.agent.generatedAt?.bidPrice ?? null;
+  const currentBidPrice = state.ui.output?.markupResult?.finalBidPrice ?? null;
+  const staleBlocking = staleness.stale && generatedBidPrice != null;
 
   function selectOption(type) {
     dispatch({ type: 'SELECT_FINALIZE_OPTION', option: type });
@@ -68,7 +79,16 @@ export default function FinalizeModal() {
         amount,
         selectedOption: selected,
         recommendedBid: recOpt?.bidAmount ?? null,
-        recommendedMargin: recOpt?.margin ?? null
+        recommendedMargin: recOpt?.margin ?? null,
+        // Phase E, Step 2 (Q1 = B) — record the staleness state and the
+        // actual gap at confirm time, every submit where an agent result
+        // exists, not just when it's non-zero. "acknowledged, gap was
+        // $14k" is a far stronger calibration signal than a lone boolean.
+        staleness: {
+          stale: staleness.stale,
+          bidPriceDelta: staleness.bidPriceDelta,
+          directCostDelta: staleness.directCostDelta
+        }
       });
       dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
       window._showBidToast?.(label, amount);
@@ -90,7 +110,11 @@ export default function FinalizeModal() {
   // modal needs its own independent check, not just a trust that the
   // caller already checked.
   const blocked = hasUnresolvedReferences(state.bid);
-  const confirmDisabled = isSubmitting || blocked || (selected === 'override' && !(parseFloat(customAmount) > 0));
+  const confirmDisabled =
+    isSubmitting ||
+    blocked ||
+    (selected === 'override' && !(parseFloat(customAmount) > 0)) ||
+    (staleBlocking && !staleAck);
 
   return (
     <div className={'modal-overlay' + (open ? ' open' : '')} id="finalize-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) dispatch({ type: 'CLOSE_FINALIZE_MODAL' }); }}>
@@ -136,6 +160,27 @@ export default function FinalizeModal() {
         {blocked && !error && (
           <div style={{ margin: '0 20px 12px', padding: '10px 14px', background: 'rgba(232,92,74,.08)', border: '1px solid rgba(232,92,74,.3)', borderRadius: 'var(--r)', color: '#e85c4a', fontSize: 12 }}>
             Resolve every unrecognized Type ID reference on Walls/Ceilings before finalizing.
+          </div>
+        )}
+        {/* Phase E, Step 2 (§9.9) — the active staleness warning + the
+            acknowledge checkbox that gates Confirm. No "Re-run agent"
+            action here: mid-finalize you acknowledge or cancel, you don't
+            recalculate. Composes with the override-amount gate above. */}
+        {staleBlocking && (
+          <div style={{ margin: '0 20px 12px' }}>
+            <AgentStalenessWarning
+              bidPriceDelta={staleness.bidPriceDelta}
+              generatedBidPrice={generatedBidPrice}
+              currentBidPrice={currentBidPrice}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text2)' }}>
+              <input
+                type="checkbox" id="finalize-stale-ack"
+                checked={!!staleAck}
+                onChange={(e) => dispatch({ type: 'SET_FINALIZE_STALE_ACK', value: e.target.checked })}
+              />
+              I know these options may reflect earlier inputs
+            </label>
           </div>
         )}
         <div className="modal-footer">

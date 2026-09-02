@@ -280,6 +280,19 @@ function buildBidRecord(state, summary, markupResult, finalizeSelection) {
       ? Math.round(finalizeSelection.recommendedBid)
       : null,
     recommended_margin_pct: finalizeSelection?.recommendedMargin ?? null,
+    // Phase E 5.6 / §9.9 staleness fix (Q1 = B) — whether the agent
+    // options the user picked from had drifted from the live inputs at
+    // confirm time, and by how much. Captured every submit where an agent
+    // result exists (not only when non-zero), so "acknowledged, and the
+    // gap was $X" is a usable calibration signal later, not just a flag.
+    // null when the agent never ran (no finalizeSelection.staleness).
+    inputs_stale_at_submit:  finalizeSelection?.staleness?.stale ?? false,
+    stale_bid_price_delta:   finalizeSelection?.staleness
+      ? Math.round(finalizeSelection.staleness.bidPriceDelta)
+      : null,
+    stale_direct_cost_delta: finalizeSelection?.staleness
+      ? Math.round(finalizeSelection.staleness.directCostDelta)
+      : null,
     confidence:             state.conditions.confidence,
     intelligence:           state.intelligence,
     outcome:                'pending',

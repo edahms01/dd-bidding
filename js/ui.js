@@ -14,6 +14,13 @@ let _agentLoading      = false;
 let _lastCalcState     = null;
 let _lastCalcSum       = null;
 let _lastCalcMarkup    = null;
+// Phase E, Step 2 — the calc fingerprint the agent last ran against:
+// { bidPrice, directCost } from the summary/markupResult that triggered
+// the run. Carried into state.ui.agent.generatedAt via
+// window.__renderAgentTab so src/state/agentStaleness.js can compare it
+// against the live reactive calculation. Reset with the rest of the
+// agent cache on every draft switch (_resetAgentCache()).
+let _agentCalcFingerprint = null;
 let _selectedBidOption = 'recommended';
 let _lastAgentResult   = null;
 // A2 cleanup pass: window.__getLastAgentResult (the accessor
@@ -49,6 +56,7 @@ function _resetAgentCache() {
   _lastAgentResult         = null;
   _agentLoading            = false;
   _agentHistoryUnavailable = false;
+  _agentCalcFingerprint    = null;
   // A2: AgentPage is now React-owned — its own cache (state.ui.agent)
   // needs the same reset, or Tab 8 would keep showing the previous
   // draft's cached result even after these classic-script globals were
@@ -415,6 +423,13 @@ if (typeof window !== 'undefined') {
 // ── AGENT LAUNCH ──────────────────────────────────────────────────────
 
 async function _launchBidAgent(state, summary, markupResult) {
+  // Phase E, Step 2 — fingerprint the calc state that triggered this run,
+  // so agentStaleness.js can later tell whether the live numbers have
+  // drifted from what produced the option cards.
+  _agentCalcFingerprint = {
+    bidPrice:   markupResult && typeof markupResult.finalBidPrice === 'number' ? markupResult.finalBidPrice : null,
+    directCost: summary && typeof summary.directCostTotal === 'number' ? summary.directCostTotal : null
+  };
   let bidHistory;
   try {
     bidHistory = await getHistorySummary(state.project.gc, state.project.buildingType);
@@ -940,7 +955,7 @@ function renderAgentTab() {
   if (window.__renderAgentTab) {
     const resultToShow = _lastAgentResult || (!_agentLoading ? _agentResult : null);
     if (resultToShow) _lastAgentResult = resultToShow;
-    window.__renderAgentTab({ cachedResult: resultToShow, loading: _agentLoading, historyUnavailable: _agentHistoryUnavailable });
+    window.__renderAgentTab({ cachedResult: resultToShow, loading: _agentLoading, historyUnavailable: _agentHistoryUnavailable, generatedAt: _agentCalcFingerprint });
     return;
   }
   _renderAgentTabLegacy();
@@ -1000,7 +1015,7 @@ function _renderAgentResult(page, r) {
   // runAgentIfNeeded() calls this function directly (not through
   // renderAgentTab()), so it needs its own bridge check too.
   if (window.__renderAgentTab) {
-    window.__renderAgentTab({ cachedResult: r, loading: false, historyUnavailable: _agentHistoryUnavailable });
+    window.__renderAgentTab({ cachedResult: r, loading: false, historyUnavailable: _agentHistoryUnavailable, generatedAt: _agentCalcFingerprint });
     return;
   }
 
@@ -1160,10 +1175,18 @@ function _renderAgentResult(page, r) {
 function runAgentIfNeeded() {
   if (_lastAgentResult) return;
   const state = collectFormData();
+  // Phase E, Step 2 — capture the fingerprint inputs now, before the
+  // promise chain, so a reactive recalc landing during the demo delay
+  // can't move _lastCalcSum/_lastCalcMarkup out from under it.
+  const fpSum = _lastCalcSum, fpMarkup = _lastCalcMarkup;
   getHistorySummary(state.project.gc, state.project.buildingType)
     .then(bidHistory => runBidAgent(state, _lastCalcSum, _lastCalcMarkup, bidHistory))
     .then(result => {
       _lastAgentResult = result;
+      _agentCalcFingerprint = {
+        bidPrice:   fpMarkup && typeof fpMarkup.finalBidPrice === 'number' ? fpMarkup.finalBidPrice : null,
+        directCost: fpSum && typeof fpSum.directCostTotal === 'number' ? fpSum.directCostTotal : null
+      };
       const page = document.getElementById('page-agent');
       if (page) _renderAgentResult(page, result);
     })

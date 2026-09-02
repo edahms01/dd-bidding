@@ -36,7 +36,9 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
 import { hasUnresolvedReferences } from '../state/validation.js';
+import { agentStaleness } from '../state/agentStaleness.js';
 import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
+import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 
@@ -125,7 +127,8 @@ function OptionCard({ opt, isSelected, dispatch }) {
   );
 }
 
-function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked }) {
+function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked, staleness, generatedBidPrice, currentBidPrice }) {
+  const showStale = staleness.stale && generatedBidPrice != null;
   return (
     <>
       <Header options={r.options} dispatch={dispatch} blocked={blocked} />
@@ -144,18 +147,20 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked 
 
       <div className="section-block">
         <div className="section-label">Bid options</div>
-        {/* Phase B interim caveat (2026-08-28) — the real fix (re-validate/
-            relaunch against fresh inputs) is Phase E's job, per docs/
-            dirigo-ux-decisions.md §9.9. This one line exists because 4.2's
-            reactive calculation is what turned a pre-existing, dormant
-            staleness gap into an actively misleading one within a single
-            session (verified directly: the rail's bid price moving by
-            tens of thousands of dollars while these cards sat frozen) —
-            Phase B's own change made it worse, so a cheap mitigation is
-            fair scope here even though the full fix isn't. */}
-        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-          These options may reflect an earlier version of your inputs.
-        </div>
+        {/* Phase E, Step 2 — the Phase B interim one-liner ("These options
+            may reflect an earlier version of your inputs.") is replaced by
+            this active, specific warning, shown ONLY when agentStaleness()
+            actually detects the live bid price has drifted from what the
+            agent ran against (docs/dirigo-ux-decisions.md §9.9). Q1 = B:
+            warn + acknowledge (in the finalize modal) + record the delta. */}
+        {showStale && (
+          <AgentStalenessWarning
+            bidPriceDelta={staleness.bidPriceDelta}
+            generatedBidPrice={generatedBidPrice}
+            currentBidPrice={currentBidPrice}
+            onRerun={() => window.runCalculation?.()}
+          />
+        )}
         <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
           {(r.options || []).map((opt) => (
             <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} />
@@ -244,10 +249,21 @@ export default function AgentPage({ active }) {
   // genuinely blank/never-touched typeId — see that file's header
   // comment for why that would be wrong here).
   const blocked = hasUnresolvedReferences(state.bid);
+  // Phase E, Step 2 — staleness of the option cards vs the live reactive
+  // calculation. generatedBidPrice is only meaningful with a cachedResult.
+  const staleness = agentStaleness(state);
+  const currentBidPrice = state.ui.output?.markupResult?.finalBidPrice ?? null;
+  const generatedBidPrice = cachedResult ? (state.ui.agent.generatedAt?.bidPrice ?? null) : null;
 
   let body;
   if (cachedResult) {
-    body = <AgentResult r={cachedResult} selectedOption={selectedOption} historyUnavailable={historyUnavailable} dispatch={dispatch} blocked={blocked} />;
+    body = (
+      <AgentResult
+        r={cachedResult} selectedOption={selectedOption} historyUnavailable={historyUnavailable}
+        dispatch={dispatch} blocked={blocked}
+        staleness={staleness} generatedBidPrice={generatedBidPrice} currentBidPrice={currentBidPrice}
+      />
+    );
   } else if (loading) {
     body = (
       <>
