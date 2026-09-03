@@ -267,6 +267,27 @@ export default function AppShell() {
             read getComputedStyle(nav).width, it never changed) before
             fixing. */}
         <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '') + (navDrawerOpen ? ' drawer-open' : '')} id="app-leftnav">
+          {/* Collapse toggle at the top of the sidebar (standard sidebar
+              pattern — VS Code / Linear / Notion), right-aligned when
+              expanded, centred when collapsed. */}
+          <button
+            className="nav-toggle"
+            aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            onClick={() => {
+              const collapsed = !navCollapsed;
+              localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
+              dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
+            }}
+          >
+            <span id="nav-toggle-icon">
+              {navCollapsed ? (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
+              )}
+            </span>
+          </button>
           <div className="nav-items">
             {/* Phase C 2.5 — the workflow nav item is "the current bid"
                 now (labelled with the active draft's project name), not
@@ -312,20 +333,6 @@ export default function AppShell() {
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Settings</span>}
             </div>
           </div>
-
-          <button className="nav-toggle" onClick={() => {
-            const collapsed = !navCollapsed;
-            localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
-            dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
-          }}>
-            <span id="nav-toggle-icon">
-              {navCollapsed ? (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
-              )}
-            </span>
-          </button>
         </nav>
 
         <div className="workflow-area">
