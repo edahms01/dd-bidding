@@ -148,7 +148,7 @@ export default function BidsPage({ active }) {
     <div className={'page' + (active ? ' active' : '')} id="page-bids" data-noautosave>
       <div className="page-hdr">
         <div>
-          <div className="page-title">Bids</div>
+          <div className="page-title">Bid History</div>
           <div className="page-sub">Every bid — in progress, submitted, and decided</div>
         </div>
         <div className="page-actions">

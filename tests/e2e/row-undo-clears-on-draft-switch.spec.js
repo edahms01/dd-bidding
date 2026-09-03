@@ -32,7 +32,7 @@ test('deleting a row then switching drafts clears the undo toast — no cross-dr
   // Switching back to the original draft (via Dashboard) should show
   // the post-delete state, not a resurrected row -- confirms the delete
   // itself was never rolled back by anything.
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   await page.locator('tr', { hasText: 'Harborview' }).locator('button:has-text("Open")').click();
   await page.waitForTimeout(300);
   await page.click('#tab-walls');

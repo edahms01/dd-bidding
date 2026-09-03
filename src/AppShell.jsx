@@ -406,15 +406,22 @@ export default function AppShell() {
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid summary</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bids">
+            {/* Separates the current-bid group above from Bid History below. */}
+            <div className="nav-divider" role="separator" />
+
+            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bid History">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="12" height="3" rx="1" />
                 <rect x="2" y="8" width="12" height="3" rx="1" />
                 <line x1="4.5" y1="13" x2="11.5" y2="13" />
               </svg>
-              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bids</span>}
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid History</span>}
             </div>
+          </div>
 
+          {/* Settings pinned to the bottom of the nav (just above the demo
+              controls bar). .nav-items above has flex:1, so this sinks. */}
+          <div className="nav-footer">
             <div className="nav-item nav-placeholder" title="Coming soon">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="8" cy="8" r="2" />

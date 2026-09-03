@@ -83,7 +83,7 @@ test('the Bids list shows a visible error note when the submitted-bids fetch fai
     }
   });
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   // Phase C 2.5 — drafts (sync) are unaffected; only the async bids fetch
   // failed, so the note is scoped and the draft list still renders.
   await expect(page.locator("text=Couldn't load submitted bids")).toBeVisible();

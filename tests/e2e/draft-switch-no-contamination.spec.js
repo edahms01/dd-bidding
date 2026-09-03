@@ -11,11 +11,11 @@ test('switching between two drafts via Dashboard shows only each draft\'s own da
   await page.fill('#proj-name', 'QA Beta Project');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   await page.locator('tr', { hasText: 'QA Alpha Project' }).locator('button:has-text("Open")').click();
   await expect(page.locator('#proj-name')).toHaveValue('QA Alpha Project');
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   await page.locator('tr', { hasText: 'QA Beta Project' }).locator('button:has-text("Open")').click();
   await expect(page.locator('#proj-name')).toHaveValue('QA Beta Project');
 });

@@ -11,7 +11,7 @@ test('the Bids list renders seed history data, not an empty state', async ({ pag
   await loadSeed(page);
   await page.waitForTimeout(1500);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   const page_ = page.locator('#page-bids');
   await expect(page_).toContainText(/win rate/i);
   await expect(page_).toContainText(/won/i);

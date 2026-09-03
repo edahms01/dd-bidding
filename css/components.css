@@ -212,6 +212,10 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .nav-label{font-size:13px}
 .leftnav.collapsed .nav-label{display:none}
 .leftnav.collapsed .nav-item{padding:10px;justify-content:center;gap:0}
+/* Divider between the current-bid group and Bid History (nav-items). */
+.nav-divider{height:1px;background:var(--border);margin:8px 6px;flex-shrink:0}
+/* Settings, pinned to the bottom of the nav (.nav-items above is flex:1). */
+.nav-footer{padding:8px;flex-shrink:0}
 /* Sidebar collapse toggle — sits at the TOP of .leftnav, right-aligned
    when expanded, centred when collapsed (standard sidebar pattern). */
 .nav-toggle{display:flex;align-items:center;justify-content:center;align-self:flex-end;margin:8px;padding:10px;border:1px solid var(--border);border-radius:var(--r);background:transparent;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}

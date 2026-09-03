@@ -85,6 +85,6 @@ test('finalizing with a custom override amount clears the draft and creates a Bi
   expect(newBid.selected_option).toBe('override');
   expect(newBid.custom_override_amount).toBe(317500);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   await expect(page.locator('#page-bids')).toContainText('Harborview');
 });
