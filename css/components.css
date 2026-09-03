@@ -13,9 +13,13 @@
 .logo-icon{width:26px;height:26px;background:var(--action);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .logo-name{font-size:14px;font-weight:600;color:var(--text)}
 .logo-sub{font-size:11px;color:var(--text3);letter-spacing:.05em;text-transform:uppercase}
-/* #new-bid-btn + .open-bid-menu sit just right of the logo; .header-actions
-   (project badge + autosave indicator) is pushed to the far right. */
-#new-bid-btn{margin-left:6px;flex-shrink:0}
+/* #new-bid-btn + .open-bid-menu are visually grouped with the main content,
+   not the logo: a static left margin puts New Bid's left edge just past
+   the expanded left-nav's right border (nav is 200px; 162 logo-right + 12
+   header gap + 36 = ~210). Deliberately a fixed value, not tied to the
+   nav width. .header-actions (project badge + autosave) is pushed far
+   right by margin-left:auto. Mobile resets this — see responsive.css. */
+#new-bid-btn{margin-left:36px;flex-shrink:0}
 .header-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
 .proj-badge{font-size:11px;color:var(--text3);padding:4px 10px;border:1px solid var(--border);border-radius:20px}
 .proj-badge span{color:var(--text2)}

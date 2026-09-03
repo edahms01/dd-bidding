@@ -108,6 +108,9 @@
   .open-bid-menu,
   .header-actions > .btn-ghost { display: none; }
   .header-actions { gap: 6px; min-width: 0; }
+  /* No left-nav to clear on a phone (it's an off-canvas drawer) — drop the
+     desktop nudge so New Bid doesn't crowd the logo. */
+  #new-bid-btn { margin-left: 6px; }
   .logo-mark { min-width: 0; overflow: hidden; }
   .logo-name, .logo-sub { white-space: nowrap; }
 
