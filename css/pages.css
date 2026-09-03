@@ -11,12 +11,14 @@
 
 /* ── RATES (Rates page) ── */
 /* Template toolbar: the base `select{width:100%}` (base.css) otherwise
-   stretches the template dropdown to 400-700px, which on a nowrap
-   .page-actions row squeezes the Load / Save / Back / Next buttons until
-   their labels wrap and the buttons blow up tall. Cap the select, let the
-   row wrap, and keep each button at its natural narrow width. */
-#page-rates .page-actions{flex-wrap:wrap;align-items:center;row-gap:8px}
-#page-rates #rate-template-select{width:auto;flex:0 1 220px;min-width:140px}
+   stretches the template dropdown to 400-700px, blowing the button labels
+   onto wrapped lines. Cap the select; pack the whole toolbar left on one
+   nowrap row right after the title (drop the .page-hdr space-between so it
+   isn't shoved to the far edge where it runs out of room); let the title
+   text wrap instead of the toolbar. */
+#page-rates .page-hdr{justify-content:flex-start;gap:28px;flex-wrap:wrap}
+#page-rates .page-actions{flex-wrap:nowrap;align-items:center}
+#page-rates #rate-template-select{width:auto;flex:0 1 200px;min-width:130px}
 #page-rates .page-actions .btn{flex-shrink:0;white-space:nowrap}
 
 .rgroup{margin-bottom:32px}
