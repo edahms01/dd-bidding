@@ -305,8 +305,8 @@ export default function AppShell() {
             </svg>
           </div>
           <div>
-            <div className="logo-name">Dirigo Drywall</div>
-            <div className="logo-sub">Bid System</div>
+            <div className="logo-name">Bid IQ</div>
+            <div className="logo-sub">Dirigo Drywall</div>
           </div>
         </div>
         {/* Bid controls sit on the left, next to the logo/title.
