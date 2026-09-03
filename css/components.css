@@ -82,6 +82,15 @@
    Historical context) — see src/pages/AgentPage.jsx <Accordion>. */
 .agent-section-toggle:hover>span:first-child{color:var(--text2)}
 .agent-section-toggle:hover>span:last-child{color:var(--text2)}
+/* Bid Strategy option-card "Expected value" hover tooltip — carries the
+   EV honesty caveat that used to be a standing paragraph. */
+.ev-tip{position:relative;outline:none}
+.ev-tip-pop{display:none;position:absolute;left:0;bottom:calc(100% + 8px);z-index:1200;width:250px;
+  padding:10px 12px;border-radius:var(--r);background:var(--surface2);border:1px solid var(--border2);
+  box-shadow:0 6px 20px rgba(0,0,0,.45);font-size:11px;line-height:1.5;color:var(--text2);
+  font-weight:400;letter-spacing:normal;text-transform:none;white-space:normal}
+.ev-tip:hover .ev-tip-pop,.ev-tip:focus .ev-tip-pop,.ev-tip:focus-visible .ev-tip-pop{display:block}
+.ev-tip-pop strong{color:var(--text);font-weight:600}
 
 /* ── PILLS ── */
 .pills{display:flex;gap:8px;flex-wrap:wrap}

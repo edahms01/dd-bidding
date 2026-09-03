@@ -198,7 +198,7 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
       {isRec && (
         <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)', letterSpacing: '.03em' }}>Agent pick</span>
       )}
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
       <div style={{ fontFamily: 'monospace', fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1, marginBottom: 3 }}>{fmtCost(opt.bidAmount)}</div>
       <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>{opt.margin}% margin</div>
       <div>
@@ -216,13 +216,35 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
         </button>
         {attrOpen && <WinLikelihoodAttribution optionType={opt.type} intelligence={intelligence} />}
       </div>
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>Expected value</div>
-        <div className="option-ev" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--text)' }}>
-          {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '—'}
+      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginTop: 12 }}>{opt.rationale}</div>
+      {/* Expected value moved to the card bottom under an "Experimental"
+          label; its definition is now a hover tooltip on the words
+          "Expected value" (.ev-tip / .ev-tip-pop in components.css) rather
+          than a standing paragraph below the cards. */}
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>Experimental</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+          <span
+            className="ev-tip"
+            tabIndex={0}
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontSize: 11, color: 'var(--text3)', borderBottom: '1px dotted var(--text3)', cursor: 'help' }}
+          >
+            Expected value
+            <span className="ev-caveat ev-tip-pop" role="tooltip">
+              <strong>Expected value</strong> blends each option's profit with how often you'd expect to win at
+              that price — a way to compare options that aren't equally winnable. A fatter margin you rarely land
+              can be worth less than a leaner one you usually win. Use it to weigh the three options against each
+              other and spot when a small price move buys a big jump in win odds — not as a dollar forecast.
+              Win-likelihood is a hand-tuned score, not a calibrated probability, so read the range as
+              directional, not precise.
+            </span>
+          </span>
+          <span className="option-ev" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--text2)' }}>
+            {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '—'}
+          </span>
         </div>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginTop: 12 }}>{opt.rationale}</div>
     </div>
   );
 }
@@ -271,17 +293,8 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
           <div style={{ flex: 1, height: 1, background: 'var(--border)', margin: '0 16px' }} />
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>Higher margin →</span>
         </div>
-        {/* 5.1 honesty constraint — EV is a range, and this caveat is
-            always visible with it. deriveWinLikelihood() is a hand-tuned
-            score, not calibrated probability (docs §5.1). */}
-        <div className="ev-caveat" style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.55, marginTop: 10 }}>
-          <strong style={{ color: 'var(--text2)', fontWeight: 600 }}>Expected value</strong> blends each option's
-          profit with how often you'd expect to win at that price — a way to compare options that aren't
-          equally winnable. A fatter margin you rarely land can be worth less than a leaner one you usually
-          win. Use it to weigh the three options against each other and spot when a small price move buys a
-          big jump in win odds — not as a dollar forecast. Win-likelihood is a hand-tuned score, not a
-          calibrated probability, so read the range as directional, not precise.
-        </div>
+        {/* 5.1 honesty caveat now lives in the per-card "Expected value"
+            hover tooltip (OptionCard's .ev-tip), not a standing paragraph. */}
         {/* 5.3 what-if price slider — commented out (Eric: not helpful right
             now, keeping the work). Sibling of the cards, not a child of any
             [data-bid-opt] card, so a drag/click on it can't fire
@@ -290,20 +303,21 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
       </div>
 
       {/* Signal summary / Risk flags / Historical context — unified into
-          one visual language (a .tbl-wrap table with an uppercase th row,
-          bordered td rows, muted body text, and a compact right-aligned
-          pill where the section has a status/severity), each inside a
-          closed-by-default accordion (Eric: they read as clutter open). */}
+          one visual language: a .tbl-wrap table, a leading number column,
+          bordered rows, muted body text, and a compact right-aligned pill
+          where the section carries a status/severity. Header labels are
+          stripped to just the one that adds meaning (Impact / Severity);
+          each section sits in a closed-by-default accordion. */}
       <Accordion title="Signal summary" count={r.signals ? r.signals.length : 0}>
         {r.signals && r.signals.length > 0 ? (
           <div className="tbl-wrap">
             <table>
-              <thead><tr><th>Signal</th><th>Value</th><th>Status</th></tr></thead>
+              <thead><tr><th style={{ width: 28 }} /><th /><th>Impact</th></tr></thead>
               <tbody>
                 {r.signals.map((s, i) => (
                   <tr key={i}>
-                    <td style={{ fontWeight: 500 }}>{s.label}</td>
-                    <td style={{ color: 'var(--text2)' }}>{s.value}{s.note && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{s.note}</div>}</td>
+                    <td style={{ color: 'var(--text3)', verticalAlign: 'top' }}>{i + 1}</td>
+                    <td><span style={{ fontWeight: 500 }}>{s.label}</span><div style={{ color: 'var(--text2)', marginTop: 2 }}>{s.value}{s.note && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{s.note}</div>}</div></td>
                     <td><StatusPill status={s.status} /></td>
                   </tr>
                 ))}
@@ -321,10 +335,11 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         ) : (
           <div className="tbl-wrap">
             <table>
-              <thead><tr><th>Risk</th><th>Severity</th></tr></thead>
+              <thead><tr><th style={{ width: 28 }}>#</th><th /><th>Severity</th></tr></thead>
               <tbody>
                 {r.riskFlags.map((f, i) => (
                   <tr key={i}>
+                    <td style={{ color: 'var(--text3)', verticalAlign: 'top' }}>{i + 1}</td>
                     <td style={{ color: 'var(--text2)', lineHeight: 1.5 }}>{f.message}</td>
                     <td><SeverityPill severity={f.severity} /></td>
                   </tr>
@@ -343,7 +358,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         ) : (
           <div className="tbl-wrap">
             <table>
-              <thead><tr><th style={{ width: 28 }}>#</th><th>Note</th></tr></thead>
+              <thead><tr><th style={{ width: 28 }} /><th /></tr></thead>
               <tbody>
                 {r.historicalNotes.map((note, i) => (
                   <tr key={i}>
