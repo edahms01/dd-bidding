@@ -205,22 +205,26 @@ export default function RatesPage({ active }) {
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-rates" ref={rootRef} onInput={recomputeTotals}>
       <div className="page-hdr">
-        <div><div className="page-title">Rates</div><div className="page-sub">Current pricing for this project: labor, materials, and logistics</div></div>
+        <div className="rates-hdr-lead">
+          <div><div className="page-title">Rates</div><div className="page-sub">Current pricing for this project: labor, materials, and logistics</div></div>
+          <div className="rate-template-controls">
+            <select
+              id="rate-template-select"
+              style={{ minWidth: 150 }}
+              disabled={templates.length === 0}
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+            >
+              {templates.length === 0
+                ? <option value="">No templates saved</option>
+                : templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <button className="btn btn-ghost btn-sm" onClick={handleDeleteTemplate} title="Delete selected template">🗑</button>
+            <button className="btn btn-ghost btn-sm" onClick={handleLoadTemplate}>Load</button>
+            <button className="btn btn-ghost btn-sm" onClick={handleSaveTemplate}>Save as template</button>
+          </div>
+        </div>
         <div className="page-actions">
-          <select
-            id="rate-template-select"
-            style={{ minWidth: 150 }}
-            disabled={templates.length === 0}
-            value={selectedTemplateId}
-            onChange={(e) => setSelectedTemplateId(e.target.value)}
-          >
-            {templates.length === 0
-              ? <option value="">No templates saved</option>
-              : templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <button className="btn btn-ghost btn-sm" onClick={handleDeleteTemplate} title="Delete selected template">🗑</button>
-          <button className="btn btn-ghost btn-sm" onClick={handleLoadTemplate}>Load</button>
-          <button className="btn btn-ghost btn-sm" onClick={handleSaveTemplate}>Save as template</button>
           <button className="btn btn-ghost" onClick={() => window.goto('ceilings')}>← Back</button>
           <button className="btn btn-primary" onClick={() => window.goto('output')}>Next: Cost Summary →</button>
         </div>
