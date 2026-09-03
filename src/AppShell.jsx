@@ -422,6 +422,7 @@ export default function AppShell() {
           {/* Settings pinned to the bottom of the nav (just above the demo
               controls bar). .nav-items above has flex:1, so this sinks. */}
           <div className="nav-footer">
+            <div className="nav-divider" role="separator" />
             <div className="nav-item nav-placeholder" title="Coming soon">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="8" cy="8" r="2" />
