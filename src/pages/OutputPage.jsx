@@ -165,23 +165,25 @@ function Phase3({ output }) {
         )}
       </div>
 
-      <div className="section-block">
-        <div className="section-label">Category subtotals</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
-          <SubtotalRow label="Labor (raw)" value={fmtCost(summary.laborTotal)} accent="var(--teal)" />
-          <SubtotalRow label={'Materials (incl. ' + fmtPct(summary.weightedWastePct) + ' waste)'} value={fmtCost(summary.materialTotal)} />
-          <SubtotalRow
-            label={'Logistics (' + output.state.conditions.trips + ' trips' + (summary.logisticsTotal > 0 ? ', lift ' + fmtCost(output.state.rates.lift) + '/wk' : '') + ')'}
-            value={fmtCost(summary.logisticsTotal)}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0 6px', marginTop: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Direct cost total</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 22, fontWeight: 700, color: 'var(--green)' }}>{fmtCost(summary.directCostTotal)}</span>
+      <div className="summary-cols">
+        <div className="section-block">
+          <div className="section-label">Category subtotals</div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
+            <SubtotalRow label="Labor (raw)" value={fmtCost(summary.laborTotal)} accent="var(--teal)" />
+            <SubtotalRow label={'Materials (incl. ' + fmtPct(summary.weightedWastePct) + ' waste)'} value={fmtCost(summary.materialTotal)} />
+            <SubtotalRow
+              label={'Logistics (' + output.state.conditions.trips + ' trips' + (summary.logisticsTotal > 0 ? ', lift ' + fmtCost(output.state.rates.lift) + '/wk' : '') + ')'}
+              value={fmtCost(summary.logisticsTotal)}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0 6px', marginTop: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Direct cost total</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 22, fontWeight: 700, color: 'var(--green)' }}>{fmtCost(summary.directCostTotal)}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <TopCostDrivers output={output} />
+        <TopCostDrivers output={output} />
+      </div>
     </>
   );
 }
@@ -191,7 +193,7 @@ function Phase4({ output }) {
   const mu = output.state.markupInputs;
   return (
     <>
-      <div className="section-block">
+      <div className="section-block pricing-breakdown">
         <div className="section-label">Pricing breakdown</div>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
           <SubtotalRow label="Direct cost total" value={fmtCost(markupResult.directCostTotal)} accent="var(--teal)" />

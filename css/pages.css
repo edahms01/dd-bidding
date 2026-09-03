@@ -88,3 +88,37 @@
 .ai{background:transparent;border:none;outline:none;padding:7px 9px;font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;width:62px;text-align:right}
 .ai::placeholder{color:var(--text3);font-weight:400;font-size:12px}
 .apct{padding:0 9px;font-size:13px;color:var(--status-warn);font-weight:700}
+
+/* Taping+finishing table sits beside the height adders (adders stacked
+   12ft-over-20ft on the right), so the finish-level rows no longer run
+   the full page width. */
+#page-rates .taping-adders-row{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start;margin-bottom:12px}
+#page-rates .taping-adders-row .ftable{margin-bottom:0}
+#page-rates .taping-adders-row .fth,
+#page-rates .taping-adders-row .frow{grid-template-columns:78px minmax(0,1fr) 104px}
+#page-rates .adders-col{display:flex;flex-direction:column;gap:10px}
+#page-rates .adders-col .acard{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px;padding:12px 14px}
+#page-rates .adders-col .acard > div:first-child{min-width:0}
+#page-rates .adders-col .aiw{align-self:flex-start}
+#page-rates .adders-col .ai{width:72px;text-align:center}
+
+/* One card footprint across every Material-rates sub-section: stud+track,
+   drywall board, and tape/insulation/fasteners all render at the same
+   3-up card width (5 stud sizes wrap 3+2, 4 boards wrap 3+1). */
+#page-rates .mat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#page-rates .mat-grid .stud-card{padding:14px;text-align:left;border-radius:var(--rl)}
+#page-rates .mat-grid .stud-sub{margin-bottom:9px}
+#page-rates .mat-grid .stud-card .siw{width:100%}
+#page-rates .mat-grid .stud-card .esc-row{justify-content:flex-start}
+
+/* Cost Summary: Category subtotals + Top cost drivers side by side; the
+   Pricing breakdown box narrowed to match and centred on the page. */
+#page-output .summary-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+#page-output .summary-cols .section-block{margin-bottom:0}
+#page-output .pricing-breakdown > div:last-child{max-width:560px;margin-left:auto;margin-right:auto}
+#page-output .pricing-breakdown .section-label{text-align:center}
+
+/* Market Read: the pipeline-count line is now inline with its hint, so
+   all five Market-signals cards match height — keep the grid from
+   stretching the short ones if any wrapping still differs. */
+#page-market .flag-grid{align-items:start}

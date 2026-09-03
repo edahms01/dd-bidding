@@ -254,22 +254,25 @@ export default function RatesPage({ active }) {
           <div className="rcard"><div className="rcard-lbl">Labor burden <span className="badge b-pct">%</span></div><div className="iw"><RateField id="rate-burden" className="ri L" path={['rates', 'burdenPct']} get={get} dispatch={dispatch} placeholder="32" /><span className="isfx">%</span></div><div className="rhint">Payroll tax, workers comp, benefits. 28–40%.</div></div>
           <div className="rcard"><div className="rcard-lbl">Supervision <span className="badge b-pct">%</span></div><div className="iw"><RateField id="rate-super" className="ri L" path={['rates', 'superPct']} get={get} dispatch={dispatch} placeholder="8" /><span className="isfx">%</span></div><div className="rhint">Foreman as % of total labor. 6–12%.</div></div>
         </div>
-        <div className="sub-lbl">Taping + finishing, by finish level ($/SF)</div>
-        <div className="ftable">
-          <div className="fth"><div>Level</div><div>Description</div><div>Rate ($/SF)</div></div>
-          {[1, 2, 3, 4, 5].map((lvl) => (
-            <div className="frow" key={lvl}>
-              <div className="flvl"><span className="ldot" style={{ background: finishDots[lvl] }} />Level {lvl}</div>
-              <div className="fdesc">{finishDesc[lvl]}</div>
-              <div><div className="fiw"><span className="fpfx">$</span><RateField id={'rate-fin' + lvl} className="fi L" path={['rates', 'finish', lvl]} get={get} dispatch={dispatch} placeholder="0.00" /></div></div>
+        <div className="taping-adders-row">
+          <div className="taping-col">
+            <div className="sub-lbl">Taping + finishing, by finish level ($/SF)</div>
+            <div className="ftable">
+              <div className="fth"><div>Level</div><div>Description</div><div>Rate ($/SF)</div></div>
+              {[1, 2, 3, 4, 5].map((lvl) => (
+                <div className="frow" key={lvl}>
+                  <div className="flvl"><span className="ldot" style={{ background: finishDots[lvl] }} />Level {lvl}</div>
+                  <div className="fdesc">{finishDesc[lvl]}</div>
+                  <div><div className="fiw"><span className="fpfx">$</span><RateField id={'rate-fin' + lvl} className="fi L" path={['rates', 'finish', lvl]} get={get} dispatch={dispatch} placeholder="0.00" /></div></div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="divider" />
-        <div className="sub-lbl" style={{ marginBottom: 10 }}>Height adders, labor uplift %</div>
-        <div className="adder-row">
-          <div className="acard"><div><div className="albl">Above 12 ft</div><div className="asub">Requires lift. Applied to SF above 12 ft.</div></div><div className="aiw"><RateField id="rate-add12" className="ai L" path={['rates', 'adder12Pct']} get={get} dispatch={dispatch} placeholder="15" /><span className="apct">%</span></div></div>
-          <div className="acard"><div><div className="albl">Above 20 ft</div><div className="asub">High-lift zone. Stacked on 12 ft adder.</div></div><div className="aiw"><RateField id="rate-add20" className="ai L" path={['rates', 'adder20Pct']} get={get} dispatch={dispatch} placeholder="30" /><span className="apct">%</span></div></div>
+          </div>
+          <div className="adders-col">
+            <div className="sub-lbl" style={{ marginBottom: 10 }}>Height adders, labor uplift %</div>
+            <div className="acard"><div><div className="albl">Above 12 ft</div><div className="asub">Requires lift. Applied to SF above 12 ft.</div></div><div className="aiw"><RateField id="rate-add12" className="ai L" path={['rates', 'adder12Pct']} get={get} dispatch={dispatch} placeholder="15" /><span className="apct">%</span></div></div>
+            <div className="acard"><div><div className="albl">Above 20 ft</div><div className="asub">High-lift zone. Stacked on 12 ft adder.</div></div><div className="aiw"><RateField id="rate-add20" className="ai L" path={['rates', 'adder20Pct']} get={get} dispatch={dispatch} placeholder="30" /><span className="apct">%</span></div></div>
+          </div>
         </div>
       </div>
 
@@ -279,7 +282,7 @@ export default function RatesPage({ active }) {
           <div><div className="rgroup-title">Material rates</div><div className="rgroup-desc">Current supplier pricing; waste factor from conditions applied automatically</div></div>
         </div>
         <div className="sub-lbl">Stud + track by size ($/LF)</div>
-        <div className="rgrid g5" style={{ marginBottom: 14 }}>
+        <div className="rgrid mat-grid" style={{ marginBottom: 14 }}>
           {['1-5/8"', '2-1/2"', '3-5/8"', '4"', '6"'].map((sz) => (
             <div className="stud-card" key={sz}>
               <div className="stud-sz">{sz}</div>
@@ -290,7 +293,7 @@ export default function RatesPage({ active }) {
           ))}
         </div>
         <div className="sub-lbl">Drywall board by type ($/SF)</div>
-        <div className="rgrid g4" style={{ marginBottom: 14 }}>
+        <div className="rgrid mat-grid" style={{ marginBottom: 14 }}>
           {[
             ['Standard', 'std'], ['Type-X', 'typex'], ['Moisture', 'moist'], ['Impact', 'imp']
           ].map(([boardType, slug]) => (
@@ -301,7 +304,7 @@ export default function RatesPage({ active }) {
             </div>
           ))}
         </div>
-        <div className="rgrid g3">
+        <div className="rgrid mat-grid">
           <div className="rcard"><div className="rcard-lbl">Tape + compound <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-tape" className="ri M" path={['rates', 'tape']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Flat allowance across all finished SF.</div><div className="esc-row"><span>Esc</span><EscField id="esc-tape" path={['rateEscalation', 'tape']} get={get} dispatch={dispatch} /><span>%</span></div></div>
           <div className="rcard"><div className="rcard-lbl">Insulation <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-insul" className="ri M" path={['rates', 'insul']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Applied to assemblies with insulation flagged.</div><div className="esc-row"><span>Esc</span><EscField id="esc-insul" path={['rateEscalation', 'insul']} get={get} dispatch={dispatch} /><span>%</span></div></div>
           <div className="rcard"><div className="rcard-lbl">Fasteners + adhesives <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-fasten" className="ri M" path={['rates', 'fasten']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Flat allowance. Typically $0.08–$0.15/SF.</div><div className="esc-row"><span>Esc</span><EscField id="esc-fasten" path={['rateEscalation', 'fasten']} get={get} dispatch={dispatch} /><span>%</span></div></div>
