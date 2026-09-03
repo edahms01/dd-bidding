@@ -125,8 +125,11 @@
      A media-query !important is the intended override for that one node. */
   #modal-custom-amount { font-size: 16px !important; }
 
-  /* ── Demo controls hidden on phones (earmarked in components.css) ── */
+  /* ── Demo controls hidden on phones (earmarked in components.css) ──
+     #dev-toolbar-show needs !important to beat body.devbar-hidden's
+     display:block. */
   .dev-toolbar { display: none; }
+  #dev-toolbar-show { display: none !important; }
 
   /* ── Tap targets to >=44px ───────────────────────────────────────── */
   .btn, .btn-sm { min-height: 44px; }

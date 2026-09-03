@@ -22,8 +22,22 @@
   <button class="btn btn-ghost btn-live" onclick="loadDemoLive()"
           title="Same demo data, but calls the real Anthropic bid agent — a billable API request that takes a few seconds and can fail on key/network/rate-limit issues.">Load Demo — live agent</button>
   <button class="btn btn-ghost" onclick="clearSeedData()">Clear all data</button>
-  <button class="btn btn-ghost" onclick="document.getElementById('dev-toolbar').style.display='none'">Hide</button>
+  <button class="btn btn-ghost" onclick="toggleDevBar()" title="Hide the demo controls (a small ‘Demo’ tab stays in the corner to bring them back)">Hide ▾</button>
 </div>
+<button id="dev-toolbar-show" onclick="toggleDevBar()" title="Show demo controls">Demo ▴</button>
+<script>
+  // Small persistent show/hide toggle for the demo controls bar. State is
+  // remembered in localStorage so a hidden bar stays hidden across reloads;
+  // the floating "Demo ▴" tab (CSS-shown only while hidden) brings it back.
+  (function () {
+    var KEY = 'dirigo_devbar_hidden';
+    window.toggleDevBar = function () {
+      var hidden = document.body.classList.toggle('devbar-hidden');
+      try { localStorage.setItem(KEY, hidden ? '1' : '0'); } catch (e) {}
+    };
+    try { if (localStorage.getItem(KEY) === '1') document.body.classList.add('devbar-hidden'); } catch (e) {}
+  })();
+</script>
 
 <script src="js/autosave.js"></script>
 <script src="js/drafts.js"></script>
