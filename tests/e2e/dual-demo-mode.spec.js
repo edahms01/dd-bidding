@@ -27,7 +27,7 @@ test.describe('dual demo mode', () => {
 
   test('the live button is confirm()-gated — dismissing it makes no API call and leaves demo mode offline', async ({ page }) => {
     let agentHits = 0;
-    await page.route('**/.netlify/functions/bid-agent', route => {
+    await page.route('**/.netlify/functions/bid-agent*', route => {
       agentHits++;
       route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"blocked-by-test"}' });
     });
@@ -44,7 +44,7 @@ test.describe('dual demo mode', () => {
 
   test('offline "Load Demo" loads the seed and never touches the live agent endpoint', async ({ page }) => {
     let agentHits = 0;
-    await page.route('**/.netlify/functions/bid-agent', route => {
+    await page.route('**/.netlify/functions/bid-agent*', route => {
       agentHits++;
       route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"blocked-by-test"}' });
     });

@@ -3,10 +3,14 @@
 // All Anthropic API interaction lives here — single swap point for
 // future model changes or proxy migration.
 //
-// Live path (DEMO_MODE = false): POSTs the business-data payload to
-// /.netlify/functions/bid-agent, which holds ANTHROPIC_API_KEY, the
-// system prompt, and the response schema server-side (Track A). The
-// client never sees the key, the prompt, or the schema.
+// Live path (DEMO_MODE = false, or the dual-demo "Load Demo — live
+// agent" button): POSTs the business-data payload to the background
+// function /.netlify/functions/bid-agent-background and then polls
+// /.netlify/functions/bid-agent-result for the outcome. The server holds
+// ANTHROPIC_API_KEY, the system prompt, and the forced-tool schema
+// (Track A) — the client never sees any of them. It's a background
+// function because a full structured-output Sonnet response (~40-45s)
+// exceeds Netlify's synchronous HTTP timeout.
 // ─────────────────────────────────────────────────────────────────────
 
 // Set to false to enable live Anthropic API calls (via the server-side proxy).
@@ -258,45 +262,67 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
       durationWeeks: state.conditions.durationWeeks
     },
     intelligence: state.intelligence,
-    history: bidHistory,
-    // No `schema` key — the server-side function injects it (Track A).
-    //
-    // `demoProbe` tells the function this call came from the dual-demo
-    // "Load Demo — live agent" button (a connection test), not the real
-    // product path. The function uses a faster model for a probe so the
-    // round trip stays well under Netlify's ~26s synchronous HTTP cliff
-    // (Sonnet 4.6 here runs ~26-33s and 504s intermittently). The real
-    // path — DEMO_MODE=false without liveAgentMode — never sets this and
-    // stays on Sonnet.
-    demoProbe: liveAgentMode
+    history: bidHistory
+    // No `schema` key — the server-side function attaches the forced
+    // recommendation tool (Track A). Same request for the dual-demo live
+    // button and the real product path — same model, same everything.
   };
 
+  // Async flow: a full structured-output Sonnet 4.6 response takes
+  // ~40-45s, and Netlify's *synchronous* function HTTP path cuts off
+  // around ~26-30s → 504. So we kick a background function (15-min
+  // limit, returns 202 immediately) that writes its result to a Blobs
+  // store, and poll bid-agent-result for it. See
+  // netlify/functions/bid-agent-background.js.
+  const jobId = _agentJobId();
   try {
-    const resp = await fetch('/.netlify/functions/bid-agent', {
+    const kick = await fetch('/.netlify/functions/bid-agent-background', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
+      body:    JSON.stringify(Object.assign({ jobId: jobId }, payload))
     });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      console.error('Bid agent API error:', resp.status, err);
-      if (err.error === 'not_configured') {
-        return Object.assign({}, AGENT_FALLBACK, {
-          reasoning: 'Bid agent is not configured on the server — contact your administrator.',
-          riskFlags: [{ severity: 'high', message: 'Bid agent not configured. Submit your bid based on your own judgment.' }],
-          // Distinguishes a failed *live* call from a genuine result so the
-          // dual-demo toolbar can show an explicit error state instead of
-          // letting AGENT_FALLBACK read as a quiet, degraded recommendation.
-          _liveError: 'not configured on the server (missing/invalid ANTHROPIC_API_KEY)'
-        });
-      }
-      return Object.assign({}, AGENT_FALLBACK, { _liveError: 'HTTP ' + resp.status + (err && err.error ? ' (' + err.error + ')' : '') });
+    // Background functions answer 202 with an empty body. Anything that
+    // isn't 2xx means the invocation itself failed.
+    if (!kick.ok && kick.status !== 202) {
+      return _liveFallback('could not start the bid agent (HTTP ' + kick.status + ')');
     }
 
-    return await resp.json();
+    const POLL_MS     = 2000;
+    const MAX_WAIT_MS = 120000; // Anthropic ~45s + Blobs lag + margin
+    const deadline    = Date.now() + MAX_WAIT_MS;
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, POLL_MS));
+      let rec;
+      try {
+        const pr = await fetch('/.netlify/functions/bid-agent-result?id=' + encodeURIComponent(jobId), { cache: 'no-store' });
+        if (!pr.ok) continue;           // transient — keep polling
+        rec = await pr.json();
+      } catch (e) {
+        continue;                        // transient network — keep polling
+      }
+      if (rec && rec.status === 'done' && rec.recommendation) return rec.recommendation;
+      if (rec && rec.status === 'error') return _liveFallback(rec.error || 'the bid agent reported an error');
+      // 'pending' (or an absent record) → keep polling
+    }
+    return _liveFallback('timed out after ' + (MAX_WAIT_MS / 1000) + 's waiting for the bid agent');
   } catch (e) {
-    console.error('Bid agent error:', e);
-    return Object.assign({}, AGENT_FALLBACK, { _liveError: 'network error — ' + (e && e.message ? e.message : 'request failed') });
+    console.error('Bid agent (async) error:', e);
+    return _liveFallback('network error — ' + (e && e.message ? e.message : 'request failed'));
   }
+}
+
+// Opaque per-call id for the async bid-agent job (client-generated, used
+// as the Blobs key the background function writes to and the poll reads).
+function _agentJobId() {
+  try {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return 'job-' + crypto.randomUUID();
+  } catch (e) { /* fall through */ }
+  return 'job-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+// A recommendation-shaped fallback tagged with `_liveError` so the
+// dual-demo toolbar (data/seed.js) shows an explicit failure instead of
+// letting AGENT_FALLBACK read as a quiet, degraded recommendation.
+function _liveFallback(reason) {
+  return Object.assign({}, AGENT_FALLBACK, { _liveError: reason });
 }
