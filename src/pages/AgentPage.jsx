@@ -268,7 +268,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
 
       <div className="section-block">
         <div className="section-label">Agent analysis</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '16px 18px', fontSize: 15, color: 'var(--text)', lineHeight: 1.7 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '16px 18px', fontSize: 15, color: 'var(--text2)', lineHeight: 1.7 }}>
           {r.reasoning || 'No analysis provided.'}
         </div>
       </div>

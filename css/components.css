@@ -78,7 +78,7 @@
 .btn{padding:7px 16px;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
 .btn-ghost{background:transparent;border-color:var(--border2);color:var(--text2)}
 .btn-ghost:hover{background:var(--surface2);color:var(--text)}
-.btn-primary{background:var(--action);color:#fff}
+.btn-primary{background:var(--action-solid);color:#fff}
 .btn-primary:hover{opacity:.88}
 .btn-sm{padding:5px 12px;font-size:11px}
 

@@ -5,7 +5,7 @@
 :root{
   --bg:#0f1117;--surface:#181c25;--surface2:#1e2330;
   --border:#2a2f3d;--border2:#353b4d;
-  --text:#e8eaf0;--text2:#8b90a0;--text3:#555a6b;
+  --text:#d5d8e2;--text2:#8b90a0;--text3:#868b9a;
 
   /* Raw colour primitives */
   --accent:#e87c2a;--accent-dim:rgba(232,124,42,0.12);--accent-border:rgba(232,124,42,0.35);
@@ -24,6 +24,11 @@
      One deliberate exception this phase leaves alone: the agent-card
      OPT_COLORS map in js/ui.js, deferred to A2 (see CLAUDE.md). */
   --action:var(--blue);--action-dim:var(--blue-dim);--action-border:rgba(74,143,232,0.35);
+  /* --action-solid: for SOLID button fills under white text only (.btn-primary).
+     --action itself stays #4a8fe8 for accent text/borders/icons (reads fine on
+     dark); white-on-#4a8fe8 is only 3.29:1 (fails AA), white-on-#3d77c1 is 4.57:1.
+     Do not use --action-solid as a text/border colour. See §6.8 / §9.6. */
+  --action-solid:#3d77c1;
   --status-warn:var(--accent);--status-warn-dim:var(--accent-dim);--status-warn-border:var(--accent-border);
 
   --r:8px;--rl:12px;
