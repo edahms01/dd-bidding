@@ -36,14 +36,14 @@ test('every option card shows EV as a range, with the honesty caveat in a hover 
   await expect(page.locator('#page-agent [data-bid-opt="competitive"] .option-ev'))
     .toHaveText('$42,493–$54,634');
 
-  // The EV caveat is now a per-card hover tooltip on the "Expected value"
+  // The caveat is now a per-card hover tooltip on the "Risk-adjusted profit"
   // label under each card's Experimental section, not a standing paragraph.
   const tip = page.locator('#page-agent [data-bid-opt="competitive"] .ev-caveat');
   await expect(tip).toBeHidden();
   await page.locator('#page-agent [data-bid-opt="competitive"] .ev-tip').hover();
   await expect(tip).toBeVisible();
-  await expect(tip).toContainText('hand-tuned score');
-  await expect(tip).toContainText('not a calibrated probability');
+  await expect(tip).toContainText('not yet calibrated against');
+  await expect(tip).toContainText('rough guide, not a dollar forecast');
 });
 
 test('clicking a win-likelihood pill expands the four contributing signals with directions', async ({ page }) => {

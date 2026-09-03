@@ -227,11 +227,11 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
       {/* Reasoning sentence — same kind of content as the Agent analysis box
           above, so matched to its treatment (--text2). */}
       <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.55, marginTop: 12, marginBottom: 14 }}>{opt.rationale}</div>
-      {/* Expected value pinned to the card's bottom edge (marginTop:auto in
+      {/* Risk-adjusted profit pinned to the card's bottom edge (marginTop:auto in
           a flex-column card, and the card row is align-items:stretch, so
           every card's divider line sits at the same height regardless of
           rationale length). Definition is a hover tooltip on the words
-          "Expected value" (.ev-tip / .ev-tip-pop in components.css). */}
+          "Risk-adjusted profit" (.ev-tip / .ev-tip-pop in components.css). */}
       <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
         <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>Experimental</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
@@ -241,14 +241,14 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
             onClick={(e) => e.stopPropagation()}
             style={{ fontSize: 11, color: 'var(--text3)', borderBottom: '1px dotted var(--text3)', cursor: 'help' }}
           >
-            Expected value
+            Risk-adjusted profit
             <span className="ev-caveat ev-tip-pop" role="tooltip">
-              <strong>Expected value</strong> blends each option's profit with how often you'd expect to win at
-              that price, a way to compare options that aren't equally winnable. A fatter margin you rarely land
-              can be worth less than a leaner one you usually win. Use it to weigh the three options against each
-              other and spot when a small price move buys a big jump in win odds, not as a dollar forecast.
-              Win-likelihood is a hand-tuned score, not a calibrated probability, so read the range as
-              directional, not precise.
+              <strong>Risk-adjusted profit</strong> is the estimated profit at that bid price, scaled down by your
+              likelihood of winning the job and shown as a range. It's what makes a wide margin that you'd rarely
+              land and a slimmer margin you'd usually win more comparable: over many bids, the safer option often nets
+              more. Use it to weigh the three options against each other, and to spot when a small bid price cut
+              buys a real jump in win odds. Win likelihood is an internal estimate, not yet calibrated against
+              real outcomes, so treat the range as a rough guide, not a dollar forecast.
             </span>
           </span>
           <span className="option-ev" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--text2)' }}>
@@ -280,6 +280,13 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
 
       <div className="section-block">
         <div className="section-label">Bid options</div>
+        {/* Win-rate ↔ margin scale sits directly under the section header,
+            above the cards, so the axis is read before the options it frames. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 2px' }}>
+          <span style={{ fontSize: 11, color: 'var(--text3)' }}>← Higher win rate</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)', margin: '0 16px' }} />
+          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Higher margin →</span>
+        </div>
         {/* Phase E, Step 2 — the Phase B interim one-liner ("These options
             may reflect an earlier version of your inputs.") is replaced by
             this active, specific warning, shown ONLY when agentStaleness()
@@ -304,12 +311,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
             ))}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, padding: '0 2px' }}>
-          <span style={{ fontSize: 11, color: 'var(--text3)' }}>← Higher win rate</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)', margin: '0 16px' }} />
-          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Higher margin →</span>
-        </div>
-        {/* 5.1 honesty caveat now lives in the per-card "Expected value"
+        {/* 5.1 honesty caveat now lives in the per-card "Risk-adjusted profit"
             hover tooltip (OptionCard's .ev-tip), not a standing paragraph. */}
         {/* 5.3 what-if price slider — commented out (Eric: not helpful right
             now, keeping the work). Sibling of the cards, not a child of any
