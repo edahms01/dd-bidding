@@ -102,9 +102,11 @@
 .apct{padding:0 9px;font-size:13px;color:var(--status-warn);font-weight:700}
 
 /* Taping+finishing table sits beside the height adders (adders stacked
-   12ft-over-20ft on the right), so the finish-level rows no longer run
-   the full page width. */
-#page-rates .taping-adders-row{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start;margin-bottom:12px}
+   12ft-over-20ft on the right). Column-aligned to the 3-up .rgrid.g3
+   above it: the finish-level table spans 2 of the 3 columns, the height
+   adders take the 3rd (same 10px gutter as .rgrid). */
+#page-rates .taping-adders-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:start;margin-bottom:12px}
+#page-rates .taping-col{grid-column:span 2;min-width:0}
 #page-rates .taping-adders-row .ftable{margin-bottom:0}
 #page-rates .taping-adders-row .fth,
 #page-rates .taping-adders-row .frow{grid-template-columns:78px minmax(0,1fr) 104px}

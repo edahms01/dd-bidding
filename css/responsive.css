@@ -169,6 +169,10 @@
   .rgrid.g3, .rgrid.g4, .rgrid.g5,
   .adder-row { grid-template-columns: 1fr; }
   .flag-grid { grid-template-columns: 1fr; }
+  /* Rates: the finish-level table + height adders stack (the 3-up
+     desktop alignment would crush the table to ~1/3 of a phone). */
+  #page-rates .taping-adders-row { grid-template-columns: 1fr; }
+  #page-rates .taping-col { grid-column: auto; }
   .conf-row { flex-wrap: wrap; }
   .conf-row .conf-btn { flex: 1 1 100%; }
 
