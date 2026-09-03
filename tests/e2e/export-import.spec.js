@@ -19,7 +19,7 @@ test('export then import round-trips a bid spanning project, assembly, and wall 
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-qa-export.json');
   await download.saveAs(filePath);

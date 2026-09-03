@@ -30,9 +30,10 @@ test('a failed history fetch during an agent run degrades gracefully with a visi
   await expect(page.locator('text=Historical bid data unavailable')).toBeVisible();
 
   await page.unroute('**/.netlify/functions/bids');
-  await page.click('#tab-output');
-  await page.waitForTimeout(500);
+  // Re-send to the agent explicitly (nothing re-runs it on tab
+  // navigation any more) — this time the history fetch succeeds.
   await page.click('#tab-agent');
+  await page.click('#agent-send-btn'); // "↻ Re-run agent" once a result exists
   await page.waitForTimeout(1500);
 
   await expect(page.locator('text=Historical bid data unavailable')).toHaveCount(0);

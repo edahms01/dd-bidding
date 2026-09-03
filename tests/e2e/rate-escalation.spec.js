@@ -97,7 +97,7 @@ test('escalation on one board type changes only that material, survives a rate t
   // Export/import round trip (acceptance criterion 6) -- verify, don't assume.
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-qa-escalation-export.json');
   await download.saveAs(filePath);

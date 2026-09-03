@@ -85,7 +85,7 @@ export default function SubmitResultPanel({ result, agentOptions, dispatch }) {
         <RecommendedVsChosen saved={saved} agentOptions={agentOptions} />
         <div style={{ marginTop: 20 }}>
           <button className="btn btn-primary" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'bids' })}>View bid history →</button>
-          <button className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={() => window.runCalculation?.()}>Back to output</button>
+          <button className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={() => window.calculateOnly?.()}>Back to output</button>
         </div>
       </div>
     </div>

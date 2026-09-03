@@ -141,7 +141,13 @@ function WinLikelihoodAttribution({ optionType, intelligence }) {
   );
 }
 
-function Header({ options, dispatch, blocked }) {
+// Explicit hand-off to the AI agent. runCalculation() (js/ui.js) does the
+// calculation AND launches the bid agent — navigating to this tab no
+// longer does that on its own, so nothing reaches the agent without one
+// of these deliberate presses.
+function sendToAgent() { window.runCalculation?.(); }
+
+function Header({ options, dispatch, blocked, onSend, sendLabel }) {
   return (
     <div className="page-hdr">
       <div>
@@ -150,6 +156,9 @@ function Header({ options, dispatch, blocked }) {
       </div>
       <div className="page-actions">
         <button className="btn btn-ghost" onClick={() => window.goto('market')}>← Back</button>
+        {onSend && (
+          <button id="agent-send-btn" className="btn btn-ghost" onClick={onSend}>{sendLabel || 'Send to Agent'}</button>
+        )}
         {/* A2 cleanup pass: dispatches OPEN_FINALIZE_MODAL directly —
             window._showFinalizeModal/window.__getLastAgentResult are
             gone, they had no remaining classic-script consumer once
@@ -250,7 +259,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
   const showStale = staleness.stale && generatedBidPrice != null;
   return (
     <>
-      <Header options={r.options} dispatch={dispatch} blocked={blocked} />
+      <Header options={r.options} dispatch={dispatch} blocked={blocked} onSend={sendToAgent} sendLabel="↻ Re-run agent" />
       {historyUnavailable && (
         <div style={{ background: 'rgba(232,124,42,.08)', border: '1px solid rgba(232,124,42,.3)', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 20, fontSize: 12, color: 'var(--accent)' }}>
           Historical bid data unavailable — recommendation based on this bid only.
@@ -422,9 +431,13 @@ export default function AgentPage({ active }) {
     body = (
       <>
         <Header options={[]} dispatch={dispatch} blocked={blocked} />
+        {/* Nothing is sent to the agent by opening this tab — the estimator
+            presses the button when the bid is ready. */}
         <div className="empty-state">
-          Fill in your bid through the Cost Summary step to get a recommendation.
-          <div style={{ marginTop: 12 }}>
+          This bid hasn't been sent to the AI agent yet. Review the Cost Summary and Market Read,
+          then send it when you're ready for a strategy recommendation.
+          <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center' }}>
+            <button id="agent-send-btn" className="btn btn-primary btn-sm" onClick={sendToAgent}>Send to Agent</button>
             <button className="btn btn-ghost btn-sm" onClick={() => window.goto('output')}>Go to Cost Summary →</button>
           </div>
         </div>

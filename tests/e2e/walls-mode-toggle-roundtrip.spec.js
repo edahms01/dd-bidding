@@ -82,7 +82,7 @@ test('the mode round-trips through export and import', async ({ page }) => {
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-qa-mode-toggle.json');
   await download.saveAs(filePath);

@@ -119,12 +119,19 @@ test('the bid agent does not relaunch on a plain reactive edit — only on the s
   await page.waitForTimeout(2000);
   const baseline = bidsCalls;
 
-  // Visiting Output once is an existing, unchanged agent-launch trigger
-  // (window.goto('output') → runCalculation()).
+  // Visiting Output no longer launches the agent — goto('output') runs
+  // calculateOnly() (numbers only). Nothing reaches the agent without an
+  // explicit "Send to Agent" press.
   await page.click('#tab-output');
   await page.waitForTimeout(1500);
-  const afterVisit = bidsCalls;
-  expect(afterVisit).toBeGreaterThan(baseline);
+  expect(bidsCalls).toBe(baseline);
+
+  // The explicit "Send to Agent" button IS an agent-launch trigger.
+  await page.click('#tab-market');
+  await page.click('button:has-text("Send to Agent")');
+  await page.waitForTimeout(1500);
+  const afterSend = bidsCalls;
+  expect(afterSend).toBeGreaterThan(baseline);
 
   // Several plain reactive edits on a different tab — none should add
   // another agent-launch call, since window.scheduleRecalc calls
@@ -137,5 +144,5 @@ test('the bid agent does not relaunch on a plain reactive edit — only on the s
     await page.waitForTimeout(700);
   }
 
-  expect(bidsCalls).toBe(afterVisit);
+  expect(bidsCalls).toBe(afterSend);
 });

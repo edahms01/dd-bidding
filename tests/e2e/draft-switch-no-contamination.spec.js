@@ -26,16 +26,18 @@ test('Tab 8 agent cache does not leak from one draft into another', async ({ pag
 
   await page.fill('#proj-name', 'QA Agent Draft A');
   await page.waitForTimeout(900);
-  await page.click('#tab-output');
-  await page.waitForTimeout(2500); // let the agent call resolve
+  // The agent is only invoked by an explicit "Send to Agent" press now,
+  // not by visiting a tab.
   await page.click('#tab-agent');
+  await page.click('#agent-send-btn');
+  await page.waitForTimeout(2500); // let the agent call resolve
   const tabAText = await page.locator('#page-agent').innerText();
 
   await page.click('#new-bid-btn');
   await page.fill('#proj-name', 'QA Agent Draft B');
   await page.waitForTimeout(900);
-  // Jump straight to Tab 8 without visiting Tab 7 first — the exact path
-  // that exposed the _lastAgentResult short-circuit bug.
+  // Jump straight to Bid Strategy without sending — draft B must show its
+  // own (un-sent) empty state, never draft A's cached result.
   await page.click('#tab-agent');
   const tabBText = await page.locator('#page-agent').innerText();
 

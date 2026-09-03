@@ -68,7 +68,12 @@ export default function MarketReadPage({ active }) {
         <div><div className="page-title">Market Read</div><div className="page-sub">Price-driving judgement — read the market now that the job's scope and cost are known</div></div>
         <div className="page-actions">
           <button className="btn btn-ghost" onClick={() => window.goto('output')}>← Back</button>
-          <button className="btn btn-primary" onClick={() => window.goto('agent')}>Next: Bid Strategy →</button>
+          {/* Deliberate send: this is the one conscious hand-off of the bid
+              to the AI agent. It runs the calculation + launches the agent
+              (window.runCalculation), then opens Bid Strategy to show the
+              result. Navigating to Bid Strategy any other way no longer
+              pushes anything to the agent. */}
+          <button className="btn btn-primary" onClick={() => { window.runCalculation?.(); window.goto('agent'); }}>Send to Agent →</button>
         </div>
       </div>
 

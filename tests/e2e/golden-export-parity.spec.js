@@ -40,7 +40,7 @@ test('exported seed-data payload matches the captured vanilla-era baseline byte-
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-qa-golden-export.json');
   await download.saveAs(filePath);
