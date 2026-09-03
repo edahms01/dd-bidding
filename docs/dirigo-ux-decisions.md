@@ -192,6 +192,15 @@ All approved.
 
 **6.7 Dev toolbar → Demo controls.** Restyle as a deliberate affordance rather than hiding it. Hidden below 768px.
 
+**6.8 Text-contrast re-tune (WCAG AA), 2026-09-03.** A live contrast audit of the deployed app found the A1 text tokens were never contrast-verified against the actual dark backgrounds. Post-hoc tuning, no new tokens on the text ramp:
+
+- **`--text3: #555a6b → #868b9a`.** The old value measured 2.3–2.8:1 — fails AA — yet was applied to ~47 rules that are not tertiary at all (`.lbl`, `.section-label`, `th`, `.total-lbl`, `.bid-option-note`, nav labels, the Bid Strategy reasoning paragraphs) plus ~50 inline `var(--text3)` uses in `src/`. The new value is 4.6 / 5.0 / 5.5:1 across `--surface2` / `--surface` / `--bg` — AA everywhere — while staying a subtle step quieter than `--text2` (4.93 / 5.35 / 5.93), so a distinct tertiary tier is retained. Aliasing `--text3: var(--text2)` was the considered fallback; not needed.
+- **`--text: #e8eaf0 → #d5d8e2`.** The old value was 13–15.7:1 — nearly double the AAA ceiling — so fields swung from near-invisible label to maximum-brightness value. New value is ~9–10:1 (comfortably AAA), narrowing the label↔value swing on dense screens (Cost Summary, Bid Strategy).
+- **`--action-solid: #3d77c1` (new).** `--action` (`#4a8fe8`) was doing two jobs: accent text/border/icon (fine at ~5.7:1 on dark — `.tab.active`, `.pill.on`, `.row-undo-toast-btn`) *and* a solid button fill under white text in `.btn-primary`, where white-on-`--action` is only 3.29:1 (fails AA). Rather than darken `--action` globally (which would needlessly dim every accent-text use), `.btn-primary` now points at `--action-solid` — white-on-`#3d77c1` is 4.57:1 (AA). `--action-solid` is for solid fills only, never text/border.
+- **`AgentPage.jsx` "Agent analysis" box** reverted from a one-off inline `color: 'var(--text)'` (added in the 2026-09-03 Bid Strategy polish, commit `ee398da`) back to `var(--text2)`, so it doesn't drift from the token system as a one-off. Font-size bump (15px) kept — size is not the contrast issue. Sibling elements the same polish round whitened (option-card rationale, the `COMPETITIVE`/`RECOMMENDED`/`AMBITIOUS` labels) are left on `var(--text3)`, which is AA-compliant after this re-tune.
+
+Pure colour change — no logic, no schema, no spec edits; full Playwright/Vitest suites pass unmodified. Cross-refs: §6.2 (the original blue-as-action colour split), §9.6.
+
 ---
 
 ## 7. Decisions — Mobile
@@ -285,7 +294,7 @@ The Playwright suite is behavioural — it drives the UI and asserts on outcomes
 
 - **3.2 and 6.4 are absorbed** — the pixel-width and inline-style cleanups happen by deletion, not by refactor. Both are retained as Phase A acceptance criteria.
 - **URL routing (2.2) arrives nearly free.** `index.html`'s nine hardcoded page divs become routes. Routing is still deliberately *excluded* from Phase A to preserve strict behaviour parity, but the page structure should be built so Phase C is a small addition rather than a restructure.
-- **CSS layering** (tokens / base / components / pages / responsive / print) lands in Phase A before component work, so components are built against final tokens rather than restyled twice.
+- **CSS layering** (tokens / base / components / pages / responsive / print) lands in Phase A before component work, so components are built against final tokens rather than restyled twice. *(The A1 text tokens were not contrast-verified at the time — re-tuned post-hoc against the real backgrounds in §6.8, 2026-09-03: `--text3` and `--text` values changed, `--action-solid` added for `.btn-primary`.)*
 - **`escapeHtml()` becomes largely unnecessary.** React escapes interpolated values by default, which removes the manual XSS discipline currently required wherever project and GC names flow into generated markup. Keep the function for any remaining non-React string paths.
 - **Event delegation and real buttons** come naturally out of the component conversion, which is most of what 6.5's `<div onclick>` problem required.
 - **The no-build-step advantage is genuinely lost.** Vite plus `node_modules` enters the project. Netlify handles this without a deployment change, but it is a real trade being made knowingly.
