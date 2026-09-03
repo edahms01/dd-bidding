@@ -100,19 +100,15 @@
   .logo-mark { min-width: 0; overflow: hidden; }
   .logo-name, .logo-sub { white-space: nowrap; }
 
-  /* ── Step bar → horizontally scrollable chips ────────────────────
-     .workflow-area / .body are overflow:hidden, so the scroll has to
-     live on .tabs itself. id+class beats the parent's rules. */
+  /* ── Step bar → hide the scrollbar on phones (the base .tabs rule in
+     components.css already makes it scroll; here the chips are their own
+     affordance under a ~44px strip). ─────────────────────────────────── */
   #app-tabs.tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;             /* the chips are their own affordance under a ~44px strip */
+    scrollbar-width: none;
     padding: 0 12px;
   }
   #app-tabs.tabs::-webkit-scrollbar { display: none; }
-  #app-tabs .tab { flex-shrink: 0; }
 
   /* ── Inputs to 16px — stops iOS auto-zoom on focus ───────────────── */
   input[type=text], input[type=number], input[type=date], select, textarea,

@@ -34,15 +34,19 @@
 .open-bid-when{flex-shrink:0;font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
 
 /* ── TABS ── */
-.tabs{display:flex;align-items:flex-end;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;gap:2px}
-.tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:7px;user-select:none;margin-bottom:-1px}
+/* flex-wrap:nowrap + overflow-x:auto so the 9-step bar scrolls sideways
+   (with a scrollbar) at ANY width when it can't fit — .workflow-area /
+   .body are overflow:hidden, so the scroll has to live on .tabs itself.
+   The mobile @media block hides the scrollbar; on desktop it shows. */
+.tabs{display:flex;align-items:flex-end;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;gap:2px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;min-width:0}
+.tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:7px;user-select:none;margin-bottom:-1px;flex-shrink:0}
 .tab:hover{color:var(--text2)}
 .tab.active{color:var(--text);border-bottom-color:var(--action)}
 .tab .tnum{font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1px 6px;color:var(--text3);font-weight:600}
 .tab.done .tnum{background:rgba(58,191,122,0.1);border-color:rgba(58,191,122,0.25);color:var(--green)}
 .tab.partial .tnum{background:var(--status-warn-dim);border-color:var(--status-warn-border);color:var(--status-warn)}
 .tab.active .tnum{background:var(--action-dim);border-color:var(--action-border);color:var(--action)}
-.tab-sep{display:flex;align-items:center;align-self:center;padding-bottom:2px;color:var(--border);font-size:16px;line-height:1;pointer-events:none;user-select:none}
+.tab-sep{display:flex;align-items:center;align-self:center;padding-bottom:2px;color:var(--border);font-size:16px;line-height:1;pointer-events:none;user-select:none;flex-shrink:0}
 
 /* ── BIDS TOOLBAR (2.4/2.5) ── occupies the #app-tabs slot on the Bids list
    so the shell frame stays stable instead of the step bar vanishing. */
