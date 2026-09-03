@@ -65,7 +65,7 @@ test('double-clicking Finalize during the network round trip creates exactly one
 
   await page.waitForTimeout(1200);
   const bids = await page.evaluate(() => fetch('/.netlify/functions/bids').then(r => r.json()));
-  const submittedCount = bids.filter(b => b.project_name === 'Harborview Plaza — Retail Fit-Out').length;
+  const submittedCount = bids.filter(b => b.project_name === 'Harborview Plaza - Retail Fit-Out').length;
   expect(submittedCount).toBe(1);
 });
 

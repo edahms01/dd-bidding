@@ -104,7 +104,7 @@ const WIN_LIKELIHOOD_STYLES = {
 
 function WinLikelihoodPill({ val }) {
   const s = WIN_LIKELIHOOD_STYLES[val] || { background: 'rgba(255,255,255,.04)', border: '1px solid var(--border2)', color: 'var(--text3)' };
-  return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '—'}</span>;
+  return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '-'}</span>;
 }
 
 // 5.2 — the pill is a black box built from four intelligence signals plus
@@ -239,15 +239,15 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
             Expected value
             <span className="ev-caveat ev-tip-pop" role="tooltip">
               <strong>Expected value</strong> blends each option's profit with how often you'd expect to win at
-              that price — a way to compare options that aren't equally winnable. A fatter margin you rarely land
+              that price, a way to compare options that aren't equally winnable. A fatter margin you rarely land
               can be worth less than a leaner one you usually win. Use it to weigh the three options against each
-              other and spot when a small price move buys a big jump in win odds — not as a dollar forecast.
+              other and spot when a small price move buys a big jump in win odds, not as a dollar forecast.
               Win-likelihood is a hand-tuned score, not a calibrated probability, so read the range as
               directional, not precise.
             </span>
           </span>
           <span className="option-ev" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--text2)' }}>
-            {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '—'}
+            {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '-'}
           </span>
         </div>
       </div>
@@ -262,7 +262,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
       <Header options={r.options} dispatch={dispatch} blocked={blocked} onSend={sendToAgent} sendLabel="↻ Re-run agent" />
       {historyUnavailable && (
         <div style={{ background: 'rgba(232,124,42,.08)', border: '1px solid rgba(232,124,42,.3)', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 20, fontSize: 12, color: 'var(--accent)' }}>
-          Historical bid data unavailable — recommendation based on this bid only.
+          Historical bid data unavailable. Recommendation based on this bid only.
         </div>
       )}
 

@@ -21,7 +21,7 @@ export default function TypeIdSelect({ assemblies, value, onChange, className })
   const resolved = value === '' || rows.some((a) => a.id === value);
   return (
     <select className={className} value={value || ''} onChange={(e) => onChange(e.target.value)}>
-      <option value="">—</option>
+      <option value="">-</option>
       {/* Synthetic option so a controlled <select> can actually display
           an orphaned value instead of silently snapping to the first
           real option — a real hazard otherwise: a <select>'s value with
@@ -29,7 +29,7 @@ export default function TypeIdSelect({ assemblies, value, onChange, className })
           hiding the very problem this dropdown exists to surface. */}
       {!resolved && <option value={value}>{value} (not found)</option>}
       {rows.map((a) => (
-        <option key={a.id} value={a.id}>{a.id} — {a.studSize} / {a.boardType} / L{a.finishLevel}</option>
+        <option key={a.id} value={a.id}>{a.id}: {a.studSize} / {a.boardType} / L{a.finishLevel}</option>
       ))}
     </select>
   );

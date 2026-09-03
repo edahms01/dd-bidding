@@ -26,7 +26,7 @@ import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
 function fmtCost(n) { return '$' + Math.round(n || 0).toLocaleString(); }
 function fmtPct(n) { return (+n || 0).toFixed(1) + '%'; }
 function fmtDate(d) {
-  if (!d) return '—';
+  if (!d) return '-';
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString();
 }
@@ -73,7 +73,7 @@ export default function BidSummaryPage({ active }) {
       <div style={{ maxWidth: 640 }}>
         {/* Project / GC / due date */}
         <div style={{ ...card, padding: '14px 18px', marginBottom: 16 }}>
-          <Line label="General contractor" value={project.gc?.trim() || '—'} />
+          <Line label="General contractor" value={project.gc?.trim() || '-'} />
           <Line label="Bid due" value={fmtDate(project.bidDate)} last />
         </div>
 
@@ -99,8 +99,8 @@ export default function BidSummaryPage({ active }) {
           <div style={{ ...card, padding: '4px 20px 12px', marginBottom: 16 }}>
             <Line label="Direct cost" value={fmtCost(output.summary.directCostTotal)} />
             <Line label="Total markup" value={fmtCost(output.markupResult.totalMarkup)} />
-            <Line label="Wall framing" value={wallLF ? wallLF.toLocaleString() + ' LF' : '—'} />
-            <Line label="Ceiling area" value={ceilSF ? ceilSF.toLocaleString() + ' SF' : '—'} last />
+            <Line label="Wall framing" value={wallLF ? wallLF.toLocaleString() + ' LF' : '-'} />
+            <Line label="Ceiling area" value={ceilSF ? ceilSF.toLocaleString() + ' SF' : '-'} last />
           </div>
         )}
 

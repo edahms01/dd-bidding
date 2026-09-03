@@ -54,13 +54,13 @@ function AreaRow({ r, qty }) {
   if (r.error) {
     return (
       <tr><td colSpan="6" style={{ padding: 8, color: '#e85c4a', fontStyle: 'italic' }}>
-        {r.location || '(unnamed)'} — {r.error}
+        {r.location || '(unnamed)'}: {r.error}
       </td></tr>
     );
   }
   return (
     <tr>
-      <td>{r.location || '—'}</td>
+      <td>{r.location || '-'}</td>
       <td style={{ color: 'var(--text2)' }}>{r.typeId}{r.layers > 1 ? ' ×' + r.layers : ''}</td>
       <td style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text2)' }}>{qty}</td>
       <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtCost(r.laborTotal)}</td>
@@ -112,7 +112,7 @@ function TopCostDrivers({ output }) {
             <span className="driver-amount" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, whiteSpace: 'nowrap' }}>
               <span className="driver-dollars">{fmtCost(r.total)}</span>
               <span className="driver-pct" style={{ color: 'var(--text3)', marginLeft: 10, fontSize: 12 }}>
-                {direct > 0 ? ((r.total / direct) * 100).toFixed(1) + '%' : '—'}
+                {direct > 0 ? ((r.total / direct) * 100).toFixed(1) + '%' : '-'}
               </span>
             </span>
           </div>
@@ -154,7 +154,7 @@ function Phase3({ output }) {
               </tr></thead>
               <tbody>
                 {hasWalls && <GroupHead label="Walls" />}
-                {wallCosts.map((r, i) => <AreaRow key={'w' + i} r={r} qty={r.lf ? r.lf.toLocaleString() + ' LF' : '— LF'} />)}
+                {wallCosts.map((r, i) => <AreaRow key={'w' + i} r={r} qty={r.lf ? r.lf.toLocaleString() + ' LF' : '-'} />)}
                 {hasCeilings && <GroupHead label="Ceilings" />}
                 {ceilCosts.map((r, i) => <AreaRow key={'c' + i} r={r} qty={r.netSF.toLocaleString() + ' SF'} />)}
               </tbody>
@@ -243,7 +243,7 @@ export default function OutputPage({ active }) {
       <div id="output-phase3">
         {output
           ? <Phase3 output={output} />
-          : <div className="empty-state">Enter rates and takeoff quantities — the cost summary calculates automatically.</div>}
+          : <div className="empty-state">Enter rates and takeoff quantities. The cost summary calculates automatically.</div>}
       </div>
 
       <div className="section-block">
@@ -253,12 +253,12 @@ export default function OutputPage({ active }) {
             <div className="rcard">
               <div className="rcard-lbl">Company overhead <span className="badge b-pct">%</span></div>
               <div className="iw"><input id="markup-overhead" className="ri" type="number" min="0" step="0.1" placeholder="10.0" value={mu.overheadPct} onChange={(e) => setMarkup('overheadPct', e.target.value)} /><span className="isfx">%</span></div>
-              <div className="rhint">Office, insurance, fleet — % of direct costs</div>
+              <div className="rhint">Office, insurance, fleet, as % of direct costs</div>
             </div>
             <div className="rcard">
               <div className="rcard-lbl">Risk / contingency <span className="badge b-pct">%</span></div>
-              <div className="iw"><input id="markup-contingency" className="ri" type="number" min="0" step="0.1" placeholder="—" value={mu.contingencyPct} onChange={(e) => setMarkup('contingencyPct', e.target.value)} /><span className="isfx">%</span></div>
-              <div className="rhint">Pre-filled from confidence level — editable</div>
+              <div className="iw"><input id="markup-contingency" className="ri" type="number" min="0" step="0.1" placeholder="-" value={mu.contingencyPct} onChange={(e) => setMarkup('contingencyPct', e.target.value)} /><span className="isfx">%</span></div>
+              <div className="rhint">Pre-filled from confidence level; editable</div>
             </div>
             <div className="rcard">
               <div className="rcard-lbl">Profit margin <span className="badge b-pct">%</span></div>

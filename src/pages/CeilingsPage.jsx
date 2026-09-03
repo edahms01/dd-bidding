@@ -21,7 +21,7 @@ import { registerCeilingsModeReader } from '../state/bridges.js';
 function fmtNet(g, d) {
   const gross = parseFloat(g) || 0;
   const ded   = parseFloat(d) || 0;
-  return gross > 0 ? Math.max(0, gross - ded).toLocaleString() : '—';
+  return gross > 0 ? Math.max(0, gross - ded).toLocaleString() : '-';
 }
 
 function ModeToggle({ mode, onChange }) {
@@ -47,7 +47,7 @@ function CeilRow({ row, index, dispatch, assemblies, derived, mode }) {
   function recalc() {
     const g = parseFloat(gsfRef.current?.value) || 0;
     const d = parseFloat(dedRef.current?.value) || 0;
-    if (netRef.current) netRef.current.textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '—';
+    if (netRef.current) netRef.current.textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '-';
   }
 
   const orphan = isOrphanTypeId(row.typeId, assemblies);
@@ -106,7 +106,7 @@ function CeilRow({ row, index, dispatch, assemblies, derived, mode }) {
   );
 }
 
-function fmtTotal(n) { return n > 0 ? n.toLocaleString() : '—'; }
+function fmtTotal(n) { return n > 0 ? n.toLocaleString() : '-'; }
 
 export default function CeilingsPage({ active }) {
   const [state, dispatch] = useStore();

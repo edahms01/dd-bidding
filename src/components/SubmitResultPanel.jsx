@@ -65,7 +65,7 @@ export default function SubmitResultPanel({ result, agentOptions, dispatch }) {
           <div style={{ fontSize: 24, color: '#e85c4a', marginBottom: 10 }}>✕</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Bid submission failed</div>
           <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
-            Nothing was saved — your draft is unchanged. Check your connection and try again.
+            Nothing was saved. Your draft is unchanged. Check your connection and try again.
           </div>
           <button className="btn btn-primary" onClick={() => dispatch({ type: 'OPEN_FINALIZE_MODAL', options: agentOptions || [] })}>Try again</button>
         </div>
@@ -80,7 +80,7 @@ export default function SubmitResultPanel({ result, agentOptions, dispatch }) {
         <div style={{ fontSize: 24, color: 'var(--green)', marginBottom: 10 }}>✓</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Bid submitted</div>
         <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
-          {saved.project_name || '(unnamed project)'} — {fmtCost(saved.final_bid)}
+          {saved.project_name || '(unnamed project)'}: {fmtCost(saved.final_bid)}
         </div>
         <RecommendedVsChosen saved={saved} agentOptions={agentOptions} />
         <div style={{ marginTop: 20 }}>

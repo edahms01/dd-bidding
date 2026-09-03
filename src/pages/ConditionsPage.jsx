@@ -59,8 +59,8 @@ export default function ConditionsPage({ active }) {
       <div className="section-label">Height zones</div>
       <div className="grid g3" style={{ marginBottom: 24 }}>
         <div className="field"><span className="lbl">Max ceiling height (ft)</span><Field id="cond-maxht" type="number" path={['conditions', 'maxHt']} get={get} dispatch={dispatch} placeholder="e.g. 24" /></div>
-        <div className="field"><span className="lbl">SF above 12 ft</span><Field id="cond-sf12" type="number" path={['conditions', 'sfAbove12']} get={get} dispatch={dispatch} placeholder="sq ft — triggers lift adder" /></div>
-        <div className="field"><span className="lbl">SF above 20 ft</span><Field id="cond-sf20" type="number" path={['conditions', 'sfAbove20']} get={get} dispatch={dispatch} placeholder="sq ft — high-lift zone" /></div>
+        <div className="field"><span className="lbl">SF above 12 ft</span><Field id="cond-sf12" type="number" path={['conditions', 'sfAbove12']} get={get} dispatch={dispatch} placeholder="sq ft, triggers lift adder" /></div>
+        <div className="field"><span className="lbl">SF above 20 ft</span><Field id="cond-sf20" type="number" path={['conditions', 'sfAbove20']} get={get} dispatch={dispatch} placeholder="sq ft, high-lift zone" /></div>
       </div>
 
       <div className="section-label">Site flags</div>
@@ -103,7 +103,7 @@ export default function ConditionsPage({ active }) {
         </div>
         <div className="flag-card">
           <span className="lbl">Waste factor override</span>
-          <Field id="cond-waste" type="number" path={['conditions', 'wastePct']} get={get} dispatch={dispatch} placeholder="% — blank = default (10%)" />
+          <Field id="cond-waste" type="number" path={['conditions', 'wastePct']} get={get} dispatch={dispatch} placeholder="%, blank = default (10%)" />
         </div>
       </div>
 

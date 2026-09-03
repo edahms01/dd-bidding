@@ -42,7 +42,7 @@ export default function BidUpdateRow({ bid, open, onSaved }) {
       });
       onSaved();
     } catch (e) {
-      alert('Failed to save update — check your connection and try again.');
+      alert('Failed to save update. Check your connection and try again.');
     }
   }
 

@@ -7,7 +7,7 @@ import { clearAll, loadSeed } from './helpers.js';
 // way to end up with an unresolved reference is an assembly deleted
 // while a row still references it — exactly what this spec exercises.
 
-test('the dropdown options match the "id — studSize / boardType / L#" format and update live as assemblies change', async ({ page }) => {
+test('the dropdown options match the "id: studSize / boardType / L#" format and update live as assemblies change', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
   await loadSeed(page);
@@ -16,7 +16,7 @@ test('the dropdown options match the "id — studSize / boardType / L#" format a
   await page.click('#tab-walls');
   const select = page.locator('#wall-body tr').first().locator('td:nth-child(2) select');
   // Seed data's W1: studSize '3-5/8"', boardType 'Standard', finishLevel 3.
-  await expect(select.locator('option[value="W1"]')).toHaveText('W1 — 3-5/8" / Standard / L3');
+  await expect(select.locator('option[value="W1"]')).toHaveText('W1: 3-5/8" / Standard / L3');
 
   // Add a brand new assembly on Tab 4 and confirm it shows up as a
   // selectable option here without any reload.

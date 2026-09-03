@@ -54,7 +54,7 @@ async function _loadDemo({ live }) {
     });
     if (!res.ok) throw new Error('dev-seed-bids failed: ' + res.status);
   } catch (e) {
-    alert('Failed to load seed bid history — check your connection and try again.');
+    alert('Failed to load seed bid history. Check your connection and try again.');
     return;
   }
 
@@ -100,7 +100,7 @@ async function _loadDemo({ live }) {
       if (result && result._liveError) {
         _demoToolbarNote('Live agent call failed: ' + result._liveError, 'err');
         alert('The live bid-agent call failed:\n\n' + result._liveError +
-              '\n\nThe Bid Strategy tab shows the "agent unavailable" state — ' +
+              '\n\nThe Bid Strategy tab shows the "agent unavailable" state: ' +
               'no recommendation was generated. Use "Load Demo" for the offline response.');
       } else {
         _demoToolbarNote('Live agent responded ✓', 'ok');
@@ -140,7 +140,7 @@ async function clearSeedData() {
     const res = await fetch('/.netlify/functions/dev-clear-bids', { method: 'POST' });
     if (!res.ok) throw new Error('dev-clear-bids failed: ' + res.status);
   } catch (e) {
-    alert('Failed to clear bid history — check your connection and try again.');
+    alert('Failed to clear bid history. Check your connection and try again.');
     return;
   }
 

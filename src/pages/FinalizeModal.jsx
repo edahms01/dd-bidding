@@ -110,7 +110,7 @@ export default function FinalizeModal() {
       // 7, hidden behind this still-open modal on Tab 8) — same
       // wrong-tab-bug reasoning as before, preserved unchanged. Show the
       // failure here too, where the user is actually looking.
-      dispatch({ type: 'SET_FINALIZE_ERROR', error: 'Bid submission failed — check your connection and try again.' });
+      dispatch({ type: 'SET_FINALIZE_ERROR', error: 'Bid submission failed. Check your connection and try again.' });
       dispatch({ type: 'SET_FINALIZE_SUBMITTING', value: false });
     }
   }
