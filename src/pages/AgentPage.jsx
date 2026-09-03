@@ -203,7 +203,10 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
       {isRec && (
         <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)', letterSpacing: '.03em' }}>Agent pick</span>
       )}
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
+      {/* Title label sits alongside this card's own WIN LIKELIHOOD / Experimental
+          captions (both --text3) — matched to --text3 so it isn't brighter than
+          its siblings. The bid amount below stays --text: it's the decision number. */}
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
       <div style={{ fontFamily: 'monospace', fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1, marginBottom: 3 }}>{fmtCost(opt.bidAmount)}</div>
       <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>{opt.margin}% margin</div>
       <div>
@@ -221,7 +224,9 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
         </button>
         {attrOpen && <WinLikelihoodAttribution optionType={opt.type} intelligence={intelligence} />}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginTop: 12, marginBottom: 14 }}>{opt.rationale}</div>
+      {/* Reasoning sentence — same kind of content as the Agent analysis box
+          above, so matched to its treatment (--text2). */}
+      <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.55, marginTop: 12, marginBottom: 14 }}>{opt.rationale}</div>
       {/* Expected value pinned to the card's bottom edge (marginTop:auto in
           a flex-column card, and the card row is align-items:stretch, so
           every card's divider line sits at the same height regardless of
