@@ -90,6 +90,12 @@
 .agent-accordion-body{padding:14px 16px 16px}
 .agent-accordion-body .tbl-wrap{margin-bottom:0}
 .agent-accordion-body table{width:100%}
+/* Bid-options card row: horizontal scrollbar once the cards (min 210px
+   each) can't all fit the viewport, instead of squeezing to nothing.
+   overflow-y resolves to auto here but never clips — nothing is taller
+   than the row, and the "Expected value" hover tooltip pops up from low
+   in a card, well inside the box. */
+.agent-cards-scroll{overflow-x:auto;padding-bottom:6px}
 /* Bid Strategy option-card "Expected value" hover tooltip — carries the
    EV honesty caveat that used to be a standing paragraph. */
 .ev-tip{position:relative;outline:none}

@@ -185,7 +185,7 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
       data-bid-opt={opt.type}
       onClick={() => dispatch({ type: 'SELECT_AGENT_OPTION', option: opt.type })}
       style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
+        flex: 1, minWidth: 210, display: 'flex', flexDirection: 'column',
         background: isSelected ? 'var(--action-dim)' : 'var(--surface)',
         border: '1px solid ' + (isSelected ? 'var(--action-border)' : 'var(--border)'),
         borderRadius: 'var(--rl)', padding: '18px 16px', cursor: 'pointer', position: 'relative', transition: 'all .15s'
@@ -280,10 +280,15 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
             onRerun={() => window.runCalculation?.()}
           />
         )}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
-          {(r.options || []).map((opt) => (
-            <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} intelligence={intelligence} />
-          ))}
+        {/* The three cards keep a readable min-width instead of squeezing
+            to nothing; this wrapper scrolls horizontally once the viewport
+            can't fit them (same pattern as .tbl-wrap). */}
+        <div className="agent-cards-scroll">
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+            {(r.options || []).map((opt) => (
+              <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} intelligence={intelligence} />
+            ))}
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, padding: '0 2px' }}>
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>← Higher win rate</span>
