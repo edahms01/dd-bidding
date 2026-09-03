@@ -14,6 +14,17 @@
 /* Desktop: the mobile-only drawer trigger, backdrop, and the
    drawer-only "Bid summary" nav item are inert. */
 .nav-hamburger { display: none; }
+
+/* ── Whole-app horizontal scroll on a narrow desktop viewport ────────
+   Above the phone/tablet line the app keeps its full desktop layout;
+   below the width that layout actually needs (a narrow editor pane,
+   a split window), scroll the entire app sideways instead of squeezing
+   the nav + content into an unusable sliver. <=768px has its own mobile
+   layout that fits narrow, so this is scoped to min-width:769px. */
+@media (min-width: 769px) {
+  html, body { overflow-x: auto; }
+  .shell { min-width: 960px; }
+}
 .nav-item-mobile { display: none; }
 
 @media (min-width: 769px) {
