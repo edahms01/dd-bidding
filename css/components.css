@@ -90,6 +90,9 @@
 /* ── FORM ELEMENTS (field wrapper + label) ── */
 .field{display:flex;flex-direction:column;gap:5px}
 .lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+/* DateField (src/components/DateField.jsx) — base.css styles the text
+   input; this only flags an unparseable entry on blur. */
+.datefield-input.invalid{border-color:var(--danger)}
 
 /* ── GRIDS ── */
 .grid{display:grid;gap:14px;margin-bottom:20px}

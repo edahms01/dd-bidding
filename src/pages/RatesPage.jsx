@@ -292,7 +292,7 @@ export default function RatesPage({ active }) {
             </div>
           ))}
         </div>
-        <div className="sub-lbl">Drywall board by type ($/SF)</div>
+        <div className="sub-lbl" style={{ marginTop: 28 }}>Drywall board by type ($/SF)</div>
         <div className="rgrid mat-grid" style={{ marginBottom: 14 }}>
           {[
             ['Standard', 'std'], ['Type-X', 'typex'], ['Moisture', 'moist'], ['Impact', 'imp']
@@ -304,6 +304,7 @@ export default function RatesPage({ active }) {
             </div>
           ))}
         </div>
+        <div className="sub-lbl" style={{ marginTop: 28 }}>Finishing materials</div>
         <div className="rgrid mat-grid">
           <div className="rcard"><div className="rcard-lbl">Tape + compound <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-tape" className="ri M" path={['rates', 'tape']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Flat allowance across all finished SF.</div><div className="esc-row"><span>Esc</span><EscField id="esc-tape" path={['rateEscalation', 'tape']} get={get} dispatch={dispatch} /><span>%</span></div></div>
           <div className="rcard"><div className="rcard-lbl">Insulation <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-insul" className="ri M" path={['rates', 'insul']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Applied to assemblies with insulation flagged.</div><div className="esc-row"><span>Esc</span><EscField id="esc-insul" path={['rateEscalation', 'insul']} get={get} dispatch={dispatch} /><span>%</span></div></div>

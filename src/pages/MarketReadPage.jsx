@@ -163,7 +163,7 @@ export default function MarketReadPage({ active }) {
         </div>
       </div>
 
-      <div className="sub-lbl">Competitive signals</div>
+      <div className="sub-lbl" style={{ marginTop: 28 }}>Competitive signals</div>
       <div className="flag-grid">
         <div className="flag-card">
           <span className="lbl">Competition level</span>
