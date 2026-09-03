@@ -69,23 +69,18 @@ function SeverityPill({ severity }) {
 }
 
 // Collapsible wrapper for Signal summary / Risk flags / Historical context —
-// all three start closed (they read as clutter open; the estimator drops
-// into whichever one they want). Header mimics .section-label's type
-// treatment so it still looks like a section heading.
+// all three start closed (they read as clutter open). The whole thing is a
+// bordered panel (.agent-accordion in components.css) so the expanded text
+// reads as contained inside a section, not loose page noise.
 function Accordion({ title, count, children }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="section-block">
+    <div className="agent-accordion" data-open={open ? 'true' : 'false'}>
       <button
         type="button"
         className="agent-section-toggle"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-          background: 'none', border: 'none', borderBottom: '1px solid var(--border)',
-          padding: '0 0 8px', margin: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit'
-        }}
       >
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{title}</span>
         {count != null && (
@@ -94,7 +89,7 @@ function Accordion({ title, count, children }) {
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 10, color: 'var(--text3)' }}>{open ? '▲' : '▼'}</span>
       </button>
-      {open && <div style={{ marginTop: 12 }}>{children}</div>}
+      {open && <div className="agent-accordion-body">{children}</div>}
     </div>
   );
 }
@@ -190,7 +185,8 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
       data-bid-opt={opt.type}
       onClick={() => dispatch({ type: 'SELECT_AGENT_OPTION', option: opt.type })}
       style={{
-        flex: 1, background: isSelected ? 'var(--action-dim)' : 'var(--surface)',
+        flex: 1, display: 'flex', flexDirection: 'column',
+        background: isSelected ? 'var(--action-dim)' : 'var(--surface)',
         border: '1px solid ' + (isSelected ? 'var(--action-border)' : 'var(--border)'),
         borderRadius: 'var(--rl)', padding: '18px 16px', cursor: 'pointer', position: 'relative', transition: 'all .15s'
       }}
@@ -216,12 +212,13 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
         </button>
         {attrOpen && <WinLikelihoodAttribution optionType={opt.type} intelligence={intelligence} />}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginTop: 12 }}>{opt.rationale}</div>
-      {/* Expected value moved to the card bottom under an "Experimental"
-          label; its definition is now a hover tooltip on the words
-          "Expected value" (.ev-tip / .ev-tip-pop in components.css) rather
-          than a standing paragraph below the cards. */}
-      <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginTop: 12, marginBottom: 14 }}>{opt.rationale}</div>
+      {/* Expected value pinned to the card's bottom edge (marginTop:auto in
+          a flex-column card, and the card row is align-items:stretch, so
+          every card's divider line sits at the same height regardless of
+          rationale length). Definition is a hover tooltip on the words
+          "Expected value" (.ev-tip / .ev-tip-pop in components.css). */}
+      <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
         <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>Experimental</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
           <span
@@ -302,22 +299,22 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         {/* <WhatIfSlider options={r.options} /> */}
       </div>
 
-      {/* Signal summary / Risk flags / Historical context — unified into
-          one visual language: a .tbl-wrap table, a leading number column,
-          bordered rows, muted body text, and a compact right-aligned pill
-          where the section carries a status/severity. Header labels are
-          stripped to just the one that adds meaning (Impact / Severity);
-          each section sits in a closed-by-default accordion. */}
+      {/* Signal summary / Risk flags / Historical context — one shared
+          visual language: a .tbl-wrap table with bordered rows, muted body
+          text, and a compact right-aligned pill where the section carries a
+          status/severity. Header labels are stripped to just the one that
+          adds meaning (Impact / Severity); each section is a bordered,
+          closed-by-default accordion panel. */}
       <Accordion title="Signal summary" count={r.signals ? r.signals.length : 0}>
         {r.signals && r.signals.length > 0 ? (
           <div className="tbl-wrap">
             <table>
-              <thead><tr><th style={{ width: 28 }} /><th /><th>Impact</th></tr></thead>
+              <thead><tr><th /><th /><th>Impact</th></tr></thead>
               <tbody>
                 {r.signals.map((s, i) => (
                   <tr key={i}>
-                    <td style={{ color: 'var(--text3)', verticalAlign: 'top' }}>{i + 1}</td>
-                    <td><span style={{ fontWeight: 500 }}>{s.label}</span><div style={{ color: 'var(--text2)', marginTop: 2 }}>{s.value}{s.note && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{s.note}</div>}</div></td>
+                    <td style={{ fontWeight: 500 }}>{s.label}</td>
+                    <td style={{ color: 'var(--text2)' }}>{s.value}{s.note && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{s.note}</div>}</td>
                     <td><StatusPill status={s.status} /></td>
                   </tr>
                 ))}
@@ -335,7 +332,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         ) : (
           <div className="tbl-wrap">
             <table>
-              <thead><tr><th style={{ width: 28 }}>#</th><th /><th>Severity</th></tr></thead>
+              <thead><tr><th style={{ width: 28 }} /><th /><th>Severity</th></tr></thead>
               <tbody>
                 {r.riskFlags.map((f, i) => (
                   <tr key={i}>

@@ -78,10 +78,18 @@
 /* ── SECTION BLOCK ── */
 .section-block{margin-bottom:32px}
 .section-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-/* Bid Strategy collapsible section headers (Signal summary / Risk flags /
-   Historical context) — see src/pages/AgentPage.jsx <Accordion>. */
-.agent-section-toggle:hover>span:first-child{color:var(--text2)}
-.agent-section-toggle:hover>span:last-child{color:var(--text2)}
+/* Bid Strategy collapsible sections (Signal summary / Risk flags /
+   Historical context) — see src/pages/AgentPage.jsx <Accordion>. Each is a
+   bordered panel so its expanded content reads as contained, not loose. */
+.agent-accordion{border:1px solid var(--border);border-radius:var(--rl);background:var(--surface);margin-bottom:12px;overflow:hidden}
+.agent-accordion:first-of-type{margin-top:4px}
+.agent-section-toggle{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;
+  padding:12px 16px;margin:0;cursor:pointer;text-align:left;font-family:inherit}
+.agent-accordion[data-open="true"] .agent-section-toggle{border-bottom:1px solid var(--border)}
+.agent-section-toggle:hover>span:first-child,.agent-section-toggle:hover>span:last-child{color:var(--text2)}
+.agent-accordion-body{padding:14px 16px 16px}
+.agent-accordion-body .tbl-wrap{margin-bottom:0}
+.agent-accordion-body table{width:100%}
 /* Bid Strategy option-card "Expected value" hover tooltip — carries the
    EV honesty caveat that used to be a standing paragraph. */
 .ev-tip{position:relative;outline:none}
