@@ -128,8 +128,7 @@ export default function MarketReadPage({ active }) {
             <option value="neutral">Neutral</option>
             <option value="pass">Can afford to pass</option>
           </Select>
-          <div className="rhint">Direct signal on aggressiveness; agent weighs this heavily against final bid</div>
-          <div className="rhint" id="pipeline-count-hint" />
+          <div className="rhint">Direct signal on aggressiveness; weighed heavily against the final bid. <span id="pipeline-count-hint" /></div>
         </div>
         <div className="flag-card">
           <span className="lbl">Material price trend</span>

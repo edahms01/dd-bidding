@@ -107,7 +107,7 @@ export default function ConditionsPage({ active }) {
         </div>
       </div>
 
-      <div className="grid g2" style={{ marginBottom: 20 }}>
+      <div className="grid g3" style={{ marginBottom: 20 }}>
         <div className="field"><span className="lbl">Estimated delivery trips</span><Field id="cond-trips" type="number" path={['conditions', 'trips']} get={get} dispatch={dispatch} placeholder="e.g. 4" /></div>
       </div>
     </div>
