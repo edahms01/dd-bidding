@@ -41,7 +41,11 @@ import { agentStaleness } from '../state/agentStaleness.js';
 import { expectedValueRange } from '../state/expectedValue.js';
 import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
 import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
-import WhatIfSlider from '../components/WhatIfSlider.jsx';
+// What-if price slider (5.3) is commented out below — not deleted. It's a
+// direction worth expanding later; the component and its CSS/spec stay in
+// the tree. To bring it back: restore this import and the <WhatIfSlider>
+// render in the "Bid options" section, and un-skip agent-what-if-slider.spec.js.
+// import WhatIfSlider from '../components/WhatIfSlider.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtFactorValue(v) { return v ? v.charAt(0).toUpperCase() + v.slice(1) : 'Not set'; }
@@ -52,9 +56,42 @@ function StatusPill({ status }) {
   return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)' }}>Neutral</span>;
 }
 
-function FlagDot({ severity }) {
-  const col = severity === 'high' ? '#e85c4a' : severity === 'medium' ? 'var(--accent)' : 'var(--text3)';
-  return <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 5, display: 'inline-block' }} />;
+// Severity rendered with the exact pill geometry StatusPill/WinLikelihoodPill
+// use, so Risk flags reads in the same visual language as Signal summary's
+// Status column (Eric's ask: unify these three sections' presentation).
+function SeverityPill({ severity }) {
+  const s = severity === 'high'
+    ? { background: 'rgba(232,92,74,.12)', border: '1px solid rgba(232,92,74,.3)', color: 'var(--danger)', label: 'High' }
+    : severity === 'medium'
+      ? { background: 'rgba(232,124,42,.1)', border: '1px solid rgba(232,124,42,.3)', color: 'var(--accent)', label: 'Medium' }
+      : { background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)', label: 'Low' };
+  return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: s.background, border: s.border, color: s.color, whiteSpace: 'nowrap' }}>{s.label}</span>;
+}
+
+// Collapsible wrapper for Signal summary / Risk flags / Historical context —
+// all three start closed (they read as clutter open). The whole thing is a
+// bordered panel (.agent-accordion in components.css) so the expanded text
+// reads as contained inside a section, not loose page noise.
+function Accordion({ title, count, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="agent-accordion" data-open={open ? 'true' : 'false'}>
+      <button
+        type="button"
+        className="agent-section-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{title}</span>
+        {count != null && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+        )}
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 10, color: 'var(--text3)' }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && <div className="agent-accordion-body">{children}</div>}
+    </div>
+  );
 }
 
 const WIN_LIKELIHOOD_STYLES = {
@@ -67,7 +104,7 @@ const WIN_LIKELIHOOD_STYLES = {
 
 function WinLikelihoodPill({ val }) {
   const s = WIN_LIKELIHOOD_STYLES[val] || { background: 'rgba(255,255,255,.04)', border: '1px solid var(--border2)', color: 'var(--text3)' };
-  return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '—'}</span>;
+  return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '-'}</span>;
 }
 
 // 5.2 — the pill is a black box built from four intelligence signals plus
@@ -104,7 +141,13 @@ function WinLikelihoodAttribution({ optionType, intelligence }) {
   );
 }
 
-function Header({ options, dispatch, blocked }) {
+// Explicit hand-off to the AI agent. runCalculation() (js/ui.js) does the
+// calculation AND launches the bid agent — navigating to this tab no
+// longer does that on its own, so nothing reaches the agent without one
+// of these deliberate presses.
+function sendToAgent() { window.runCalculation?.(); }
+
+function Header({ options, dispatch, blocked, onSend, sendLabel }) {
   return (
     <div className="page-hdr">
       <div>
@@ -113,6 +156,9 @@ function Header({ options, dispatch, blocked }) {
       </div>
       <div className="page-actions">
         <button className="btn btn-ghost" onClick={() => window.goto('market')}>← Back</button>
+        {onSend && (
+          <button id="agent-send-btn" className="btn btn-ghost" onClick={onSend}>{sendLabel || 'Send to Agent'}</button>
+        )}
         {/* A2 cleanup pass: dispatches OPEN_FINALIZE_MODAL directly —
             window._showFinalizeModal/window.__getLastAgentResult are
             gone, they had no remaining classic-script consumer once
@@ -148,7 +194,8 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
       data-bid-opt={opt.type}
       onClick={() => dispatch({ type: 'SELECT_AGENT_OPTION', option: opt.type })}
       style={{
-        flex: 1, background: isSelected ? 'var(--action-dim)' : 'var(--surface)',
+        flex: 1, minWidth: 210, display: 'flex', flexDirection: 'column',
+        background: isSelected ? 'var(--action-dim)' : 'var(--surface)',
         border: '1px solid ' + (isSelected ? 'var(--action-border)' : 'var(--border)'),
         borderRadius: 'var(--rl)', padding: '18px 16px', cursor: 'pointer', position: 'relative', transition: 'all .15s'
       }}
@@ -156,7 +203,7 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
       {isRec && (
         <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)', letterSpacing: '.03em' }}>Agent pick</span>
       )}
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>{opt.label}</div>
       <div style={{ fontFamily: 'monospace', fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1, marginBottom: 3 }}>{fmtCost(opt.bidAmount)}</div>
       <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>{opt.margin}% margin</div>
       <div>
@@ -174,13 +221,36 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
         </button>
         {attrOpen && <WinLikelihoodAttribution optionType={opt.type} intelligence={intelligence} />}
       </div>
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>Expected value</div>
-        <div className="option-ev" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--text)' }}>
-          {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '—'}
+      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginTop: 12, marginBottom: 14 }}>{opt.rationale}</div>
+      {/* Expected value pinned to the card's bottom edge (marginTop:auto in
+          a flex-column card, and the card row is align-items:stretch, so
+          every card's divider line sits at the same height regardless of
+          rationale length). Definition is a hover tooltip on the words
+          "Expected value" (.ev-tip / .ev-tip-pop in components.css). */}
+      <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.08em', marginBottom: 5, textTransform: 'uppercase' }}>Experimental</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+          <span
+            className="ev-tip"
+            tabIndex={0}
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontSize: 11, color: 'var(--text3)', borderBottom: '1px dotted var(--text3)', cursor: 'help' }}
+          >
+            Expected value
+            <span className="ev-caveat ev-tip-pop" role="tooltip">
+              <strong>Expected value</strong> blends each option's profit with how often you'd expect to win at
+              that price, a way to compare options that aren't equally winnable. A fatter margin you rarely land
+              can be worth less than a leaner one you usually win. Use it to weigh the three options against each
+              other and spot when a small price move buys a big jump in win odds, not as a dollar forecast.
+              Win-likelihood is a hand-tuned score, not a calibrated probability, so read the range as
+              directional, not precise.
+            </span>
+          </span>
+          <span className="option-ev" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: 'var(--text2)' }}>
+            {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '-'}
+          </span>
         </div>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, marginTop: 12 }}>{opt.rationale}</div>
     </div>
   );
 }
@@ -189,16 +259,16 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
   const showStale = staleness.stale && generatedBidPrice != null;
   return (
     <>
-      <Header options={r.options} dispatch={dispatch} blocked={blocked} />
+      <Header options={r.options} dispatch={dispatch} blocked={blocked} onSend={sendToAgent} sendLabel="↻ Re-run agent" />
       {historyUnavailable && (
         <div style={{ background: 'rgba(232,124,42,.08)', border: '1px solid rgba(232,124,42,.3)', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 20, fontSize: 12, color: 'var(--accent)' }}>
-          Historical bid data unavailable — recommendation based on this bid only.
+          Historical bid data unavailable. Recommendation based on this bid only.
         </div>
       )}
 
       <div className="section-block">
         <div className="section-label">Agent analysis</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '16px 18px', fontSize: 14, color: 'var(--text2)', lineHeight: 1.7 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '16px 18px', fontSize: 15, color: 'var(--text)', lineHeight: 1.7 }}>
           {r.reasoning || 'No analysis provided.'}
         </div>
       </div>
@@ -219,34 +289,41 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
             onRerun={() => window.runCalculation?.()}
           />
         )}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
-          {(r.options || []).map((opt) => (
-            <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} intelligence={intelligence} />
-          ))}
+        {/* The three cards keep a readable min-width instead of squeezing
+            to nothing; this wrapper scrolls horizontally once the viewport
+            can't fit them (same pattern as .tbl-wrap). */}
+        <div className="agent-cards-scroll">
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+            {(r.options || []).map((opt) => (
+              <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} intelligence={intelligence} />
+            ))}
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, padding: '0 2px' }}>
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>← Higher win rate</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)', margin: '0 16px' }} />
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>Higher margin →</span>
         </div>
-        {/* 5.1 honesty constraint — EV is a range, and this caveat is
-            always visible with it. deriveWinLikelihood() is a hand-tuned
-            score, not calibrated probability (docs §5.1). */}
-        <div className="ev-caveat" style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, marginTop: 10 }}>
-          Expected value = win-likelihood band × margin&nbsp;$. Win-likelihood is a hand-tuned score,
-          not a calibrated probability — treat EV as directional, not precise.
-        </div>
-        {/* 5.3 — sibling of the cards, not a child of any [data-bid-opt]
-            card, so a drag/click on it can't fire SELECT_AGENT_OPTION. */}
-        <WhatIfSlider options={r.options} />
+        {/* 5.1 honesty caveat now lives in the per-card "Expected value"
+            hover tooltip (OptionCard's .ev-tip), not a standing paragraph. */}
+        {/* 5.3 what-if price slider — commented out (Eric: not helpful right
+            now, keeping the work). Sibling of the cards, not a child of any
+            [data-bid-opt] card, so a drag/click on it can't fire
+            SELECT_AGENT_OPTION. Restore this + the import above to bring back. */}
+        {/* <WhatIfSlider options={r.options} /> */}
       </div>
 
-      <div className="section-block">
-        <div className="section-label">Signal summary</div>
+      {/* Signal summary / Risk flags / Historical context — one shared
+          visual language: a .tbl-wrap table with bordered rows, muted body
+          text, and a compact right-aligned pill where the section carries a
+          status/severity. Header labels are stripped to just the one that
+          adds meaning (Impact / Severity); each section is a bordered,
+          closed-by-default accordion panel. */}
+      <Accordion title="Signal summary" count={r.signals ? r.signals.length : 0}>
         {r.signals && r.signals.length > 0 ? (
           <div className="tbl-wrap">
             <table>
-              <thead><tr><th>Signal</th><th>Value</th><th>Status</th></tr></thead>
+              <thead><tr><th /><th /><th>Impact</th></tr></thead>
               <tbody>
                 {r.signals.map((s, i) => (
                   <tr key={i}>
@@ -261,43 +338,50 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         ) : (
           <div style={{ color: 'var(--text3)', fontSize: 13, padding: '8px 0' }}>No signals returned.</div>
         )}
-      </div>
+      </Accordion>
 
-      <div className="section-block">
-        <div className="section-label">Risk flags</div>
+      <Accordion title="Risk flags" count={r.riskFlags ? r.riskFlags.length : 0}>
         {!r.riskFlags || r.riskFlags.length === 0 ? (
           <div style={{ color: 'var(--text3)', fontSize: 13, padding: '8px 0' }}>No significant risk flags identified.</div>
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
-            {r.riskFlags.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <FlagDot severity={f.severity} />
-                <div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginRight: 8 }}>{f.severity}</span>
-                  <span style={{ fontSize: 13, color: 'var(--text2)' }}>{f.message}</span>
-                </div>
-              </div>
-            ))}
+          <div className="tbl-wrap">
+            <table>
+              <thead><tr><th style={{ width: 28 }} /><th /><th>Severity</th></tr></thead>
+              <tbody>
+                {r.riskFlags.map((f, i) => (
+                  <tr key={i}>
+                    <td style={{ color: 'var(--text3)', verticalAlign: 'top' }}>{i + 1}</td>
+                    <td style={{ color: 'var(--text2)', lineHeight: 1.5 }}>{f.message}</td>
+                    <td><SeverityPill severity={f.severity} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+      </Accordion>
 
-      <div className="section-block">
-        <div className="section-label">Historical context</div>
+      <Accordion title="Historical context" count={r.historicalNotes ? r.historicalNotes.length : 0}>
         {!r.historicalNotes || r.historicalNotes.length === 0 ? (
           <div style={{ color: 'var(--text3)', fontSize: 13, padding: '8px 0' }}>
             No historical data yet for this GC or building type. Win rate tracking will appear here after bids are logged.
           </div>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {r.historicalNotes.map((note, i) => (
-              <li key={i} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)', fontSize: 13, color: 'var(--text2)', paddingLeft: 16, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 0, color: 'var(--text3)' }}>›</span>{note}
-              </li>
-            ))}
-          </ul>
+          <div className="tbl-wrap">
+            <table>
+              <thead><tr><th style={{ width: 28 }} /><th /></tr></thead>
+              <tbody>
+                {r.historicalNotes.map((note, i) => (
+                  <tr key={i}>
+                    <td style={{ color: 'var(--text3)', verticalAlign: 'top' }}>{i + 1}</td>
+                    <td style={{ color: 'var(--text2)', lineHeight: 1.5 }}>{note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </Accordion>
     </>
   );
 }
@@ -347,9 +431,13 @@ export default function AgentPage({ active }) {
     body = (
       <>
         <Header options={[]} dispatch={dispatch} blocked={blocked} />
+        {/* Nothing is sent to the agent by opening this tab — the estimator
+            presses the button when the bid is ready. */}
         <div className="empty-state">
-          Fill in your bid through the Cost Summary step to get a recommendation.
-          <div style={{ marginTop: 12 }}>
+          This bid hasn't been sent to the AI agent yet. Review the Cost Summary and Market Read,
+          then send it when you're ready for a strategy recommendation.
+          <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center' }}>
+            <button id="agent-send-btn" className="btn btn-primary btn-sm" onClick={sendToAgent}>Send to Agent</button>
             <button className="btn btn-ghost btn-sm" onClick={() => window.goto('output')}>Go to Cost Summary →</button>
           </div>
         </div>

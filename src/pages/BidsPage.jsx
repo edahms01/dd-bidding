@@ -26,7 +26,7 @@ import BidUpdateRow from '../components/BidUpdateRow.jsx';
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(n) { return (+n).toFixed(1) + '%'; }
 function fmtDate(d) {
-  if (!d) return '—';
+  if (!d) return '-';
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString();
 }
@@ -124,7 +124,7 @@ export default function BidsPage({ active }) {
   async function handleDeleteBid(id) {
     if (!confirm('Delete this bid record? This cannot be undone.')) return;
     try { await window.deleteBid(id); loadBids(); }
-    catch (e) { alert('Failed to delete bid — check your connection and try again.'); }
+    catch (e) { alert('Failed to delete bid. Check your connection and try again.'); }
   }
 
   const rows = [...drafts.map(draftRow), ...bids.map(bidRow)]
@@ -148,8 +148,8 @@ export default function BidsPage({ active }) {
     <div className={'page' + (active ? ' active' : '')} id="page-bids" data-noautosave>
       <div className="page-hdr">
         <div>
-          <div className="page-title">Bids</div>
-          <div className="page-sub">Every bid — in progress, submitted, and decided</div>
+          <div className="page-title">Bid History</div>
+          <div className="page-sub">Every bid: in progress, submitted, and decided</div>
         </div>
         <div className="page-actions">
           {/* 8.4 — the bid/no-bid gate is reached only from here, not the
@@ -160,18 +160,18 @@ export default function BidsPage({ active }) {
 
       {bidsStatus === 'error' && (
         <div className="empty-state" style={{ color: 'var(--danger)' }}>
-          Couldn't load submitted bids — check your connection. Drafts below are still current.
+          Couldn't load submitted bids. Check your connection; drafts below are still current.
         </div>
       )}
 
       <div className="totals-bar" style={{ marginBottom: 24 }}>
         <div className="total-item"><div className="total-val">{submitted.length}</div><div className="total-lbl">Bids</div></div>
         <div className="total-div" />
-        <div className="total-item"><div className="total-val">{decided.length > 0 ? winRate + '%' : '—'}</div><div className="total-lbl">Win rate</div></div>
+        <div className="total-item"><div className="total-val">{decided.length > 0 ? winRate + '%' : '-'}</div><div className="total-lbl">Win rate</div></div>
         <div className="total-div" />
         <div className="total-item"><div className="total-val">{won.length}</div><div className="total-lbl">Won</div></div>
         <div className="total-div" />
-        <div className="total-item"><div className={'total-val' + (avgMargin !== null ? ' green' : '')}>{avgMargin !== null ? fmtPct(avgMargin) : '—'}</div><div className="total-lbl">Avg margin (wins)</div></div>
+        <div className="total-item"><div className={'total-val' + (avgMargin !== null ? ' green' : '')}>{avgMargin !== null ? fmtPct(avgMargin) : '-'}</div><div className="total-lbl">Avg margin (wins)</div></div>
       </div>
 
       <div className="section-block">
@@ -188,7 +188,7 @@ export default function BidsPage({ active }) {
               {rows.length === 0 && bidsStatus === 'loading' ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids yet — start one with “New Bid”.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids yet. Start one with “New Bid”.</td></tr>
               ) : shown.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids match the current filter.</td></tr>
               ) : shown.map((r) => (
@@ -200,9 +200,9 @@ export default function BidsPage({ active }) {
                         <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--action)', border: '1px solid var(--action-border)', borderRadius: 8, padding: '1px 6px' }}>current</span>
                       )}
                     </td>
-                    <td style={{ color: 'var(--text2)' }}>{r.gc || '—'}</td>
-                    <td style={{ color: 'var(--text2)' }}>{r.buildingType || '—'}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount ? 'var(--green)' : 'var(--text3)' }}>{r.amount ? fmtCost(r.amount) : '—'}</td>
+                    <td style={{ color: 'var(--text2)' }}>{r.gc || '-'}</td>
+                    <td style={{ color: 'var(--text2)' }}>{r.buildingType || '-'}</td>
+                    <td style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount ? 'var(--green)' : 'var(--text3)' }}>{r.amount ? fmtCost(r.amount) : '-'}</td>
                     <td style={{ whiteSpace: 'nowrap', color: 'var(--text2)' }}>{fmtDate(r.dateVal)}</td>
                     <td><StatusPill status={r.status} /></td>
                     <td style={{ whiteSpace: 'nowrap' }}>

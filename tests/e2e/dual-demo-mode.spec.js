@@ -3,7 +3,7 @@ import { clearAll } from './helpers.js';
 
 // Dual demo mode — the dev toolbar has two demo-load buttons:
 //   "Load Demo"              → offline, canned agent response (DEMO_MODE)
-//   "Load Demo — live agent" → same seed data, real Anthropic call
+//   "Load Demo (live agent)" → same seed data, real Anthropic call
 //
 // These tests must NEVER let the live path fire — the Playwright webServer
 // runs `netlify dev`, which can reach a real ANTHROPIC_API_KEY. Every
@@ -14,7 +14,7 @@ test.describe('dual demo mode', () => {
   test('both demo-load buttons exist and the live one is visually distinct', async ({ page }) => {
     await page.goto('/');
     const offline = page.locator('#dev-toolbar button:text-is("Load Demo")');
-    const live    = page.locator('#dev-toolbar button:text-is("Load Demo — live agent")');
+    const live    = page.locator('#dev-toolbar button:text-is("Load Demo (live agent)")');
     await expect(offline).toBeVisible();
     await expect(live).toBeVisible();
     // The live button carries the caution treatment, the offline one doesn't.
@@ -35,7 +35,7 @@ test.describe('dual demo mode', () => {
 
     await page.goto('/');
     await clearAll(page);
-    await page.click('#dev-toolbar button:text-is("Load Demo — live agent")');
+    await page.click('#dev-toolbar button:text-is("Load Demo (live agent)")');
     await page.waitForTimeout(1500); // past the 500ms pre-run + margin
 
     expect(agentHits).toBe(0);

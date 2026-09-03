@@ -14,7 +14,7 @@
 // every LegacyPage the moment the user navigated away — a real
 // behavior regression, not a refactor.
 // ─────────────────────────────────────────────────────────────────────
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useStore } from './state/store.jsx';
 import { registerBridges } from './state/bridges.js';
 import { parseHash, canonicalHash } from './state/router.js';
@@ -58,6 +58,88 @@ const WORKFLOW_TABS = [
   { id: 'market',      num: 8, label: 'Market Read' },
   { id: 'agent',       num: 9, label: 'Bid Strategy' }
 ];
+
+function fmtWhen(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d)) return '';
+  const diff = Date.now() - d.getTime();
+  const min = Math.round(diff / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return min + 'm ago';
+  const hr = Math.round(min / 60);
+  if (hr < 24) return hr + 'h ago';
+  const day = Math.round(hr / 24);
+  if (day < 7) return day + 'd ago';
+  return d.toLocaleDateString();
+}
+
+// Header "Open Bid" combobox — lists saved drafts ("open" bids, i.e.
+// work-in-progress, not yet submitted) most-recently-changed first and
+// switches to the chosen one. Backend is the existing localStorage draft
+// store: window.getAllDrafts() + window.switchToDraft(), the same pair
+// BidsPage already uses for its Open buttons.
+function OpenBidMenu() {
+  const [open, setOpen] = useState(false);
+  const [drafts, setDrafts] = useState([]);
+  const ref = useRef(null);
+
+  function refresh() {
+    let map = {};
+    try { map = window.getAllDrafts ? window.getAllDrafts() : {}; } catch (e) { map = {}; }
+    setDrafts(
+      Object.values(map).sort(
+        (a, b) => new Date(b.lastModifiedAt || b.createdAt || 0) - new Date(a.lastModifiedAt || a.createdAt || 0)
+      )
+    );
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    function onKey(e) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  let activeId = null;
+  try { activeId = localStorage.getItem('dirigo_active_draft_id'); } catch (e) { /* private mode */ }
+
+  return (
+    <div className="open-bid-menu" ref={ref}>
+      <button
+        className="btn btn-ghost btn-sm"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => { if (!open) refresh(); setOpen((o) => !o); }}
+      >
+        Open Bid <span aria-hidden="true" style={{ fontSize: 9, marginLeft: 2 }}>▾</span>
+      </button>
+      {open && (
+        <div className="open-bid-dropdown" role="listbox">
+          {drafts.length === 0 ? (
+            <div className="open-bid-empty">No saved bids yet</div>
+          ) : (
+            drafts.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                role="option"
+                aria-selected={d.id === activeId}
+                className={'open-bid-option' + (d.id === activeId ? ' current' : '')}
+                onClick={() => { setOpen(false); if (d.id !== activeId) window.switchToDraft?.(d.id); }}
+              >
+                <span className="open-bid-name">{d.project?.name?.trim() || 'Untitled bid'}</span>
+                <span className="open-bid-when">{fmtWhen(d.lastModifiedAt || d.createdAt)}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AppShell() {
   const [state, dispatch] = useStore();
@@ -223,10 +305,16 @@ export default function AppShell() {
             </svg>
           </div>
           <div>
-            <div className="logo-name">Dirigo Drywall</div>
-            <div className="logo-sub">Bid System</div>
+            <div className="logo-name">Bid IQ</div>
+            <div className="logo-sub">Dirigo Drywall</div>
           </div>
         </div>
+        {/* Bid controls sit on the left, next to the logo/title.
+            "+ New Bid" always spawns a fresh draft (the left-nav
+            "Current bid" item is the route back to work in progress);
+            "Open Bid" switches to an existing saved draft. */}
+        <button id="new-bid-btn" className="btn btn-primary btn-sm" onClick={() => window.createDraft?.()}>+ New Bid</button>
+        <OpenBidMenu />
         <div className="header-actions">
           {/* Static JSX text — populateForm() mutates this span's
               textContent directly via document.querySelector('.proj-badge
@@ -238,13 +326,15 @@ export default function AppShell() {
               directly by js/forms.js's _setIndicator(); static JSX here
               means React never overwrites it. */}
           <span id="autosave-indicator" className="autosave-indicator" />
+          {/* Export / Import buttons commented out — not needed right now,
+              kept for a future re-enable. window.exportBid /
+              window.handleImportFile (js/forms.js) are untouched, and the
+              hidden #import-file-input stays mounted so the flow still
+              works if re-enabled (and so import-driven tests keep running).
           <button className="btn btn-ghost btn-sm" onClick={() => window.exportBid?.()}>Export</button>
           <button className="btn btn-ghost btn-sm" onClick={() => document.getElementById('import-file-input').click()}>Import</button>
+          */}
           <input type="file" id="import-file-input" accept="application/json" style={{ display: 'none' }} onChange={(e) => window.handleImportFile?.(e)} />
-          {/* Phase C 2.5 — "New Bid" is a header action now, not a nav
-              destination. The left-nav "Current bid" item is the route
-              back to work in progress; this always spawns a fresh one. */}
-          <button id="new-bid-btn" className="btn btn-primary btn-sm" onClick={() => window.createDraft?.()}>+ New Bid</button>
         </div>
       </header>
 
@@ -267,6 +357,27 @@ export default function AppShell() {
             read getComputedStyle(nav).width, it never changed) before
             fixing. */}
         <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '') + (navDrawerOpen ? ' drawer-open' : '')} id="app-leftnav">
+          {/* Collapse toggle at the top of the sidebar (standard sidebar
+              pattern — VS Code / Linear / Notion), right-aligned when
+              expanded, centred when collapsed. */}
+          <button
+            className="nav-toggle"
+            aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            onClick={() => {
+              const collapsed = !navCollapsed;
+              localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
+              dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
+            }}
+          >
+            <span id="nav-toggle-icon">
+              {navCollapsed ? (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
+              )}
+            </span>
+          </button>
           <div className="nav-items">
             {/* Phase C 2.5 — the workflow nav item is "the current bid"
                 now (labelled with the active draft's project name), not
@@ -295,15 +406,23 @@ export default function AppShell() {
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid summary</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bids">
+            {/* Separates the current-bid group above from Bid History below. */}
+            <div className="nav-divider" role="separator" />
+
+            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bid History">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="12" height="3" rx="1" />
                 <rect x="2" y="8" width="12" height="3" rx="1" />
                 <line x1="4.5" y1="13" x2="11.5" y2="13" />
               </svg>
-              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bids</span>}
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid History</span>}
             </div>
+          </div>
 
+          {/* Settings pinned to the bottom of the nav (just above the demo
+              controls bar). .nav-items above has flex:1, so this sinks. */}
+          <div className="nav-footer">
+            <div className="nav-divider" role="separator" />
             <div className="nav-item nav-placeholder" title="Coming soon">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="8" cy="8" r="2" />
@@ -312,20 +431,6 @@ export default function AppShell() {
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Settings</span>}
             </div>
           </div>
-
-          <button className="nav-toggle" onClick={() => {
-            const collapsed = !navCollapsed;
-            localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
-            dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
-          }}>
-            <span id="nav-toggle-icon">
-              {navCollapsed ? (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
-              )}
-            </span>
-          </button>
         </nav>
 
         <div className="workflow-area">

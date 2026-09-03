@@ -23,7 +23,7 @@ const FACTORS = [
   },
   {
     key: 'gc', label: 'GC history',
-    hint: 'Past experience with this GC — payment, coordination, fairness',
+    hint: 'Past experience with this GC: payment, coordination, fairness',
     options: [['good', 'Good history'], ['ok', 'Neutral or unknown'], ['bad', 'Difficult / burned before']]
   },
   {
@@ -49,7 +49,7 @@ const blankAnswers = () => Object.fromEntries(FACTORS.map((f) => [f.key, 'ok']))
 function verdict(total) {
   if (total >= 4) return { label: 'Bid', tone: 'good', blurb: 'The signals line up. Pursue this one.' };
   if (total <= -4) return { label: 'Pass', tone: 'bad', blurb: 'Too much working against it. Better to sit this out.' };
-  return { label: 'Proceed with caution', tone: 'ok', blurb: 'Mixed signals — bid only if you can price the risk in.' };
+  return { label: 'Proceed with caution', tone: 'ok', blurb: 'Mixed signals; bid only if you can price the risk in.' };
 }
 
 const TONE = {
@@ -76,7 +76,7 @@ export default function BidDecisionPage({ active }) {
       <div className="page-hdr">
         <div>
           <div className="page-title">Bid / no-bid gate</div>
-          <div className="page-sub">A quick gut-check before committing estimating time — not part of the bid itself</div>
+          <div className="page-sub">A quick gut-check before committing estimating time (not part of the bid itself)</div>
         </div>
         <div className="page-actions">
           <button className="btn btn-ghost" onClick={() => dispatch({ type: 'GOTO_SECTION', section: 'bids' })}>← Back to Bids</button>

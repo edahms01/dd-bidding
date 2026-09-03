@@ -43,7 +43,7 @@ test('a per-assembly waste override changes Bid Output and survives export/impor
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-qa-waste-export.json');
   await download.saveAs(filePath);
@@ -80,7 +80,7 @@ test('an explicit 0% override is distinct from an unset one and survives export/
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-qa-zero-waste-export.json');
   await download.saveAs(filePath);

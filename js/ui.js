@@ -1362,7 +1362,7 @@ async function _finalizeBid() {
     // re-enable the button so they can retry without leaving the modal.
     const errEl = document.getElementById('finalize-modal-error');
     if (errEl) {
-      errEl.textContent = 'Bid submission failed — check your connection and try again.';
+      errEl.textContent = 'Bid submission failed. Check your connection and try again.';
       errEl.style.display = 'block';
     }
     if (confirmBtn) confirmBtn.disabled = false;
@@ -1383,7 +1383,7 @@ function _showBidToast(label, amount) {
     'box-shadow:0 4px 12px rgba(0,0,0,.3)', 'z-index:1100',
     'transition:opacity .4s ease'
   ].join(';');
-  toast.textContent = 'Bid submitted — ' + fmtCost(amount) + ' logged to history ✓';
+  toast.textContent = 'Bid submitted: ' + fmtCost(amount) + ' logged to history ✓';
   document.body.appendChild(toast);
 
   setTimeout(() => {

@@ -38,11 +38,11 @@ export default function BidTotalRail({ output }) {
   if (!output) {
     return (
       <div className="bid-total-rail">
-        <div className="total-item"><div className="total-val">—</div><div className="total-lbl">Direct cost</div></div>
+        <div className="total-item"><div className="total-val">-</div><div className="total-lbl">Direct cost</div></div>
         <div className="total-div" />
-        <div className="total-item"><div className="total-val">—</div><div className="total-lbl">Markup</div></div>
+        <div className="total-item"><div className="total-val">-</div><div className="total-lbl">Markup</div></div>
         <div className="total-div" />
-        <div className="total-item"><div className="total-val">—</div><div className="total-lbl">Bid price</div></div>
+        <div className="total-item"><div className="total-val">-</div><div className="total-lbl">Bid price</div></div>
       </div>
     );
   }

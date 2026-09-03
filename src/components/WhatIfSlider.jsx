@@ -19,7 +19,7 @@ import { useState } from 'react';
 import { interpolateAtBid } from '../state/expectedValue.js';
 
 function fmtCost(n) { return '$' + Math.round(n || 0).toLocaleString(); }
-function fmtPct(n) { return n == null ? '—' : (+n).toFixed(1) + '%'; }
+function fmtPct(n) { return n == null ? '-' : (+n).toFixed(1) + '%'; }
 
 export default function WhatIfSlider({ options }) {
   const priced = (options || []).filter((o) => o.bidAmount != null && o.margin != null);
@@ -94,12 +94,12 @@ export default function WhatIfSlider({ options }) {
           Win likelihood <span className="whatif-win" style={{ color: 'var(--text2)' }}>{winText}</span>
         </span>
         <span style={{ color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
-          EV <span className="whatif-ev">{at.ev ? fmtCost(at.ev.lo) + '–' + fmtCost(at.ev.hi) : '—'}</span>
+          EV <span className="whatif-ev">{at.ev ? fmtCost(at.ev.lo) + '–' + fmtCost(at.ev.hi) : '-'}</span>
         </span>
       </div>
 
       <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8, lineHeight: 1.5 }}>
-        Interpolated between the agent's three options — it does not re-run the model. Exploratory only; changes nothing.
+        Interpolated between the agent's three options. It does not re-run the model. Exploratory only; changes nothing.
       </div>
     </div>
   );

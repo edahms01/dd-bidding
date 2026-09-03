@@ -65,7 +65,7 @@ test('double-clicking Finalize during the network round trip creates exactly one
 
   await page.waitForTimeout(1200);
   const bids = await page.evaluate(() => fetch('/.netlify/functions/bids').then(r => r.json()));
-  const submittedCount = bids.filter(b => b.project_name === 'Harborview Plaza — Retail Fit-Out').length;
+  const submittedCount = bids.filter(b => b.project_name === 'Harborview Plaza - Retail Fit-Out').length;
   expect(submittedCount).toBe(1);
 });
 
@@ -83,7 +83,7 @@ test('the Bids list shows a visible error note when the submitted-bids fetch fai
     }
   });
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   // Phase C 2.5 — drafts (sync) are unaffected; only the async bids fetch
   // failed, so the note is scoped and the draft list still renders.
   await expect(page.locator("text=Couldn't load submitted bids")).toBeVisible();

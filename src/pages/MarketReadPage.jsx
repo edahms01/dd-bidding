@@ -65,10 +65,15 @@ export default function MarketReadPage({ active }) {
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-market">
       <div className="page-hdr">
-        <div><div className="page-title">Market Read</div><div className="page-sub">Price-driving judgement — read the market now that the job's scope and cost are known</div></div>
+        <div><div className="page-title">Market Read</div><div className="page-sub">Price-driving judgement: read the market now that the job's scope and cost are known</div></div>
         <div className="page-actions">
           <button className="btn btn-ghost" onClick={() => window.goto('output')}>← Back</button>
-          <button className="btn btn-primary" onClick={() => window.goto('agent')}>Next: Bid Strategy →</button>
+          {/* Deliberate send: this is the one conscious hand-off of the bid
+              to the AI agent. It runs the calculation + launches the agent
+              (window.runCalculation), then opens Bid Strategy to show the
+              result. Navigating to Bid Strategy any other way no longer
+              pushes anything to the agent. */}
+          <button className="btn btn-primary" onClick={() => { window.runCalculation?.(); window.goto('agent'); }}>Send to Agent →</button>
         </div>
       </div>
 
@@ -78,17 +83,17 @@ export default function MarketReadPage({ active }) {
           className={'conf-btn' + (c.confidence === 'hi' ? ' hi' : '')}
           id="c-hi"
           onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'hi' })}
-        >High — straightforward</button>
+        >High, straightforward</button>
         <button
           className={'conf-btn' + (c.confidence === 'md' ? ' md' : '')}
           id="c-md"
           onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'md' })}
-        >Medium — some unknowns</button>
+        >Medium, some unknowns</button>
         <button
           className={'conf-btn' + (c.confidence === 'lo' ? ' lo' : '')}
           id="c-lo"
           onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'lo' })}
-        >Low — significant risk</button>
+        >Low, significant risk</button>
       </div>
       <div className="field"><span className="lbl">Estimator notes</span>
         <textarea
@@ -113,7 +118,7 @@ export default function MarketReadPage({ active }) {
             <option value="partial">Partially booked</option>
             <option value="tight">Nearly full</option>
           </Select>
-          <div className="rhint">Tight crews = higher margin target — agent uses this to set pricing floor</div>
+          <div className="rhint">Tight crews = higher margin target; agent uses this to set pricing floor</div>
         </div>
         <div className="flag-card">
           <span className="lbl">Pipeline pressure</span>
@@ -123,7 +128,7 @@ export default function MarketReadPage({ active }) {
             <option value="neutral">Neutral</option>
             <option value="pass">Can afford to pass</option>
           </Select>
-          <div className="rhint">Direct signal on aggressiveness — agent weighs this heavily against final bid</div>
+          <div className="rhint">Direct signal on aggressiveness; agent weighs this heavily against final bid</div>
           <div className="rhint" id="pipeline-count-hint" />
         </div>
         <div className="flag-card">
@@ -175,17 +180,17 @@ export default function MarketReadPage({ active }) {
         <div className="flag-card">
           <span className="lbl">Known competitors</span>
           <Field id="intel-competitors" path={['intelligence', 'knownCompetitors']} get={get} dispatch={dispatch} placeholder="e.g. ABC Drywall, Smith & Co." />
-          <div className="rhint">Logged for Phase 5B win-rate pattern analysis — not used in current calculation</div>
+          <div className="rhint">Logged for Phase 5B win-rate pattern analysis; not used in current calculation</div>
         </div>
         <div className="flag-card">
           <span className="lbl">Dirigo's edge</span>
           <Select id="intel-edge" path={['intelligence', 'dirigoEdge']} get={get} dispatch={dispatch}>
             <option value="">Select…</option>
-            <option value="strong">Strong — we're best fit</option>
+            <option value="strong">Strong, we're best fit</option>
             <option value="neutral">Neutral</option>
-            <option value="weak">Weak — others better positioned</option>
+            <option value="weak">Weak, others better positioned</option>
           </Select>
-          <div className="rhint">Self-assessed fit — strong edge supports premium pricing over competitors</div>
+          <div className="rhint">Self-assessed fit; strong edge supports premium pricing over competitors</div>
         </div>
       </div>
     </div>

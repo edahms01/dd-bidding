@@ -24,7 +24,7 @@
       "fireRating": "1-hr",
       "acoustic": "Yes",
       "finishLevel": 3,
-      "notes": "Demising wall — fire rated",
+      "notes": "Demising wall - fire rated",
       "wastePctOverride": null
     },
     {
@@ -37,7 +37,7 @@
       "fireRating": "None",
       "acoustic": "No",
       "finishLevel": 4,
-      "notes": "Exterior-adjacent wall — moisture resistant",
+      "notes": "Exterior-adjacent wall - moisture resistant",
       "wastePctOverride": null
     },
     {
@@ -69,7 +69,7 @@
   ],
   "walls": [
     {
-      "location": "Level 1 — Sales floor",
+      "location": "Level 1 - Sales floor",
       "typeId": "W1",
       "height": 14,
       "lf": 320,
@@ -78,7 +78,7 @@
       "netSF": 4100
     },
     {
-      "location": "Level 1 — Back of house",
+      "location": "Level 1 - Back of house",
       "typeId": "W2",
       "height": 14,
       "lf": 180,
@@ -87,7 +87,7 @@
       "netSF": 2400
     },
     {
-      "location": "Level 1 — Feature wall",
+      "location": "Level 1 - Feature wall",
       "typeId": "W3",
       "height": 16,
       "lf": 45,
@@ -96,7 +96,7 @@
       "netSF": 720
     },
     {
-      "location": "Level 2 — Office interiors",
+      "location": "Level 2 - Office interiors",
       "typeId": "W1",
       "height": 10,
       "lf": 210,
@@ -105,7 +105,7 @@
       "netSF": 1820
     },
     {
-      "location": "Level 2 — Demising walls",
+      "location": "Level 2 - Demising walls",
       "typeId": "W2",
       "height": 10,
       "lf": 140,
@@ -116,7 +116,7 @@
   ],
   "ceilings": [
     {
-      "location": "Level 1 — Sales floor",
+      "location": "Level 1 - Sales floor",
       "typeId": "C1",
       "height": 14,
       "grossSF": 3800,
@@ -125,7 +125,7 @@
       "netSF": 3580
     },
     {
-      "location": "Level 1 — Back of house",
+      "location": "Level 1 - Back of house",
       "typeId": "C1",
       "height": 12,
       "grossSF": 1200,
@@ -134,7 +134,7 @@
       "netSF": 1120
     },
     {
-      "location": "Level 1 — Entry soffit",
+      "location": "Level 1 - Entry soffit",
       "typeId": "C2",
       "height": 16,
       "grossSF": 480,
@@ -143,7 +143,7 @@
       "netSF": 480
     },
     {
-      "location": "Level 2 — Office",
+      "location": "Level 2 - Office",
       "typeId": "C2",
       "height": 10,
       "grossSF": 2100,
@@ -167,7 +167,7 @@
     "trips": 6,
     "confidence": "md",
     "durationWeeks": 14,
-    "notes": "Tight site — loading dock shared with adjacent tenant. GC has confirmed phased ceiling access on Level 2. Curved feature wall at main entrance needs close attention."
+    "notes": "Tight site - loading dock shared with adjacent tenant. GC has confirmed phased ceiling access on Level 2. Curved feature wall at main entrance needs close attention."
   },
   "rates": {
     "framing": 4.2,
@@ -238,12 +238,12 @@
     "openDraftCount": 0
   },
   "project": {
-    "name": "Harborview Plaza — Retail Fit-Out",
+    "name": "Harborview Plaza - Retail Fit-Out",
     "gc": "Callahan Construction Group",
     "buildingType": "Retail",
     "bidDate": "2026-07-15",
     "address": "1240 Harbor Blvd, Portland, ME 04101",
-    "drawingsRef": "Rev C — 2025-08-12",
+    "drawingsRef": "Rev C - 2025-08-12",
     "startDate": "2026-09-13",
     "durationWeeks": 14,
     "floors": 2,

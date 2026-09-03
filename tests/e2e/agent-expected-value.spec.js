@@ -17,7 +17,7 @@ async function seedToAgent(page) {
   await page.waitForTimeout(1000);
 }
 
-test('every option card shows EV as a range, with the always-visible honesty caveat', async ({ page }) => {
+test('every option card shows EV as a range, with the honesty caveat in a hover tooltip', async ({ page }) => {
   await seedToAgent(page);
 
   const evs = page.locator('#page-agent [data-bid-opt] .option-ev');
@@ -36,9 +36,14 @@ test('every option card shows EV as a range, with the always-visible honesty cav
   await expect(page.locator('#page-agent [data-bid-opt="competitive"] .option-ev'))
     .toHaveText('$42,493–$54,634');
 
-  await expect(page.locator('#page-agent .ev-caveat')).toBeVisible();
-  await expect(page.locator('#page-agent .ev-caveat')).toContainText('hand-tuned score');
-  await expect(page.locator('#page-agent .ev-caveat')).toContainText('not a calibrated probability');
+  // The EV caveat is now a per-card hover tooltip on the "Expected value"
+  // label under each card's Experimental section, not a standing paragraph.
+  const tip = page.locator('#page-agent [data-bid-opt="competitive"] .ev-caveat');
+  await expect(tip).toBeHidden();
+  await page.locator('#page-agent [data-bid-opt="competitive"] .ev-tip').hover();
+  await expect(tip).toBeVisible();
+  await expect(tip).toContainText('hand-tuned score');
+  await expect(tip).toContainText('not a calibrated probability');
 });
 
 test('clicking a win-likelihood pill expands the four contributing signals with directions', async ({ page }) => {

@@ -14,6 +14,17 @@
 /* Desktop: the mobile-only drawer trigger, backdrop, and the
    drawer-only "Bid summary" nav item are inert. */
 .nav-hamburger { display: none; }
+
+/* ── Whole-app horizontal scroll on a narrow desktop viewport ────────
+   Above the phone/tablet line the app keeps its full desktop layout;
+   below the width that layout actually needs (a narrow editor pane,
+   a split window), scroll the entire app sideways instead of squeezing
+   the nav + content into an unusable sliver. <=768px has its own mobile
+   layout that fits narrow, so this is scoped to min-width:769px. */
+@media (min-width: 769px) {
+  html, body { overflow-x: auto; }
+  .shell { min-width: 960px; }
+}
 .nav-item-mobile { display: none; }
 
 @media (min-width: 769px) {
@@ -94,24 +105,24 @@
   .header { padding: 0 12px; gap: 8px; }
   .header .proj-badge,
   .header #autosave-indicator,
+  .open-bid-menu,
   .header-actions > .btn-ghost { display: none; }
   .header-actions { gap: 6px; min-width: 0; }
+  /* No left-nav to clear on a phone (it's an off-canvas drawer) — drop the
+     desktop nudge so New Bid doesn't crowd the logo. */
+  #new-bid-btn { margin-left: 6px; }
   .logo-mark { min-width: 0; overflow: hidden; }
   .logo-name, .logo-sub { white-space: nowrap; }
 
-  /* ── Step bar → horizontally scrollable chips ────────────────────
-     .workflow-area / .body are overflow:hidden, so the scroll has to
-     live on .tabs itself. id+class beats the parent's rules. */
+  /* ── Step bar → hide the scrollbar on phones (the base .tabs rule in
+     components.css already makes it scroll; here the chips are their own
+     affordance under a ~44px strip). ─────────────────────────────────── */
   #app-tabs.tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;             /* the chips are their own affordance under a ~44px strip */
+    scrollbar-width: none;
     padding: 0 12px;
   }
   #app-tabs.tabs::-webkit-scrollbar { display: none; }
-  #app-tabs .tab { flex-shrink: 0; }
 
   /* ── Inputs to 16px — stops iOS auto-zoom on focus ───────────────── */
   input[type=text], input[type=number], input[type=date], select, textarea,
@@ -125,8 +136,11 @@
      A media-query !important is the intended override for that one node. */
   #modal-custom-amount { font-size: 16px !important; }
 
-  /* ── Demo controls hidden on phones (earmarked in components.css) ── */
+  /* ── Demo controls hidden on phones (earmarked in components.css) ──
+     #dev-toolbar-show needs !important to beat body.devbar-hidden's
+     display:block. */
   .dev-toolbar { display: none; }
+  #dev-toolbar-show { display: none !important; }
 
   /* ── Tap targets to >=44px ───────────────────────────────────────── */
   .btn, .btn-sm { min-height: 44px; }

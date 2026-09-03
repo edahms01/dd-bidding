@@ -33,7 +33,7 @@ export default function AgentStalenessWarning({ bidPriceDelta, generatedBidPrice
         <div style={{ marginTop: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={onRerun}>Re-run agent</button>
           <span style={{ marginLeft: 8, color: 'var(--text3)' }}>
-            Demo mode: option amounts are fixed — re-running refreshes this check, not the numbers.
+            Demo mode: option amounts are fixed; re-running refreshes this check, not the numbers.
           </span>
         </div>
       )}

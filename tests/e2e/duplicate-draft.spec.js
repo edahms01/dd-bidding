@@ -8,7 +8,7 @@ test('duplicating a draft creates a separate Dashboard entry; editing the copy l
   await page.fill('#proj-name', 'QA Original');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   await page.locator('tr', { hasText: 'QA Original' }).locator('button:has-text("Duplicate")').click();
   await expect(page.locator('#page-bids tbody tr')).toHaveCount(2);
 
@@ -18,7 +18,7 @@ test('duplicating a draft creates a separate Dashboard entry; editing the copy l
   await page.fill('#proj-name', 'QA Original — edited copy');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   const dashText = page.locator('#page-bids tbody');
   await expect(dashText).toContainText('QA Original — edited copy');
   await expect(dashText).toContainText('QA Original'); // the untouched original is still there
@@ -37,7 +37,7 @@ test('duplicating a draft with zero rows in assemblies/walls/ceilings does not e
   await page.click('#asm-body tr:first-child .del-btn');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   await page.locator('tr', { hasText: 'QA Zero Row Source' }).locator('button:has-text("Duplicate")').click();
   await expect(page.locator('#page-bids tbody tr')).toHaveCount(2);
 });

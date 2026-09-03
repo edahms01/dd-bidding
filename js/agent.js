@@ -35,11 +35,11 @@ if (typeof window !== 'undefined') {
 
 const AGENT_FALLBACK = {
   options: [
-    { type: 'competitive', label: 'Competitive', bidAmount: null, margin: null, winLikelihood: 'High',        rationale: 'Agent unavailable — calculate a competitive price manually.' },
-    { type: 'recommended', label: 'Recommended', bidAmount: null, margin: null, winLikelihood: 'Medium',      rationale: 'Agent unavailable — review signals manually.' },
-    { type: 'ambitious',   label: 'Ambitious',   bidAmount: null, margin: null, winLikelihood: 'Low–Medium',  rationale: 'Agent unavailable — calculate an ambitious price manually.' }
+    { type: 'competitive', label: 'Competitive', bidAmount: null, margin: null, winLikelihood: 'High',        rationale: 'Agent unavailable. Calculate a competitive price manually.' },
+    { type: 'recommended', label: 'Recommended', bidAmount: null, margin: null, winLikelihood: 'Medium',      rationale: 'Agent unavailable. Review signals manually.' },
+    { type: 'ambitious',   label: 'Ambitious',   bidAmount: null, margin: null, winLikelihood: 'Low–Medium',  rationale: 'Agent unavailable. Calculate an ambitious price manually.' }
   ],
-  reasoning:       'Bid agent is temporarily unavailable — review signals manually.',
+  reasoning:       'Bid agent is temporarily unavailable. Review signals manually.',
   signals:         [],
   riskFlags:       [{ severity: 'high', message: 'Could not reach the bid agent. Submit your bid based on your own judgment.' }],
   historicalNotes: []
@@ -122,7 +122,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         bidAmount:      271000,
         margin:         22.4,
         winLikelihood:  deriveWinLikelihood(intel, 'competitive'),
-        rationale:      'Sharpens the number to maximise win probability. Best used when pipeline pressure is high or the GC relationship needs strengthening. Leaves less room for cost overruns — only viable if confidence in the takeoff is solid.'
+        rationale:      'Sharpens the number to maximise win probability. Best used when pipeline pressure is high or the GC relationship needs strengthening. Leaves less room for cost overruns; only viable if confidence in the takeoff is solid.'
       },
       {
         type:           'recommended',
@@ -130,7 +130,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         bidAmount:      284500,
         margin:         28.4,
         winLikelihood:  deriveWinLikelihood(intel, 'recommended'),
-        rationale:      "The agent's best read of this bid given current signals. Callahan Construction Group values quality over lowest price and your relationship is strong — this margin is defensible. The 8% contingency is appropriate given medium confidence on the takeoff."
+        rationale:      "The agent's best read of this bid given current signals. Callahan Construction Group values quality over lowest price and your relationship is strong, so this margin is defensible. The 8% contingency is appropriate given medium confidence on the takeoff."
       },
       {
         type:           'ambitious',
@@ -138,12 +138,12 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         bidAmount:      298000,
         margin:         34.1,
         winLikelihood:  deriveWinLikelihood(intel, 'ambitious'),
-        rationale:      'Reaches for maximum margin at the cost of win probability. Justified when crews are fully available and pipeline is healthy — a loss here costs nothing. Only viable with a GC who prioritises quality over price, which Callahan does. Worth attempting if Dirigo has recently won other work from this GC.'
+        rationale:      'Reaches for maximum margin at the cost of win probability. Justified when crews are fully available and pipeline is healthy; a loss here costs nothing. Only viable with a GC who prioritises quality over price, which Callahan does. Worth attempting if Dirigo has recently won other work from this GC.'
       }
     ],
 
     reasoning: 'Harborview Plaza is a well-defined retail fit-out with manageable complexity. ' +
-      'Your direct cost model is solid — the restricted site access and curved feature wall are ' +
+      'Your direct cost model is solid. The restricted site access and curved feature wall are ' +
       'both captured in conditions and the 12% waste factor is appropriate for a two-level retail ' +
       'scope with exterior exposure. Callahan Construction Group values quality over lowest price ' +
       'and your relationship is strong, which makes the Recommended or Ambitious options both viable. ' +
@@ -154,7 +154,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         label:  'GC relationship',
         value:  'Strong',
         status: 'positive',
-        note:   'Callahan has awarded Dirigo work before. Relationship is an asset here — price accordingly.'
+        note:   'Callahan has awarded Dirigo work before. Relationship is an asset here, so price accordingly.'
       },
       {
         label:  'GC price sensitivity',
@@ -164,7 +164,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
       },
       {
         label:  'Competition level',
-        value:  'Moderate — 3–4 bidders',
+        value:  'Moderate, 3–4 bidders',
         status: 'neutral',
         note:   'Summit Drywall and Northeast Interiors are standard competition for this scope. Neither is known to significantly undercut on retail work.'
       },
@@ -184,11 +184,11 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         label:  'Material price trend',
         value:  'Stable',
         status: 'positive',
-        note:   'Overall material pricing is stable, but 2-1/2" stud and Type-X board are individually flagged with a 5% rate escalation on this bid — estimator judgment on specific commodity risk, not a blanket markup.'
+        note:   'Overall material pricing is stable, but 2-1/2" stud and Type-X board are individually flagged with a 5% rate escalation on this bid: estimator judgment on specific commodity risk, not a blanket markup.'
       },
       {
         label:  "Dirigo's edge",
-        value:  'Strong — best fit',
+        value:  'Strong, best fit',
         status: 'positive',
         note:   'Retail fit-out with plaster feature elements and exterior exposure plays to Dirigo strengths.'
       },
@@ -196,7 +196,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         label:  'Estimator confidence',
         value:  'Medium',
         status: 'warning',
-        note:   'Medium confidence noted. The 8% contingency is appropriate — do not reduce it before reviewing the Level 2 ceiling quantities.'
+        note:   'Medium confidence noted. The 8% contingency is appropriate; do not reduce it before reviewing the Level 2 ceiling quantities.'
       }
     ],
 
@@ -211,11 +211,11 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
       },
       {
         severity: 'medium',
-        message:  'Exterior exposure on Level 1 feature wall adds weatherproofing requirements. Verify spec section with GC — moisture-resistant assembly W3 may need additional waterproofing membrane not currently in scope.'
+        message:  'Exterior exposure on Level 1 feature wall adds weatherproofing requirements. Verify spec section with GC; moisture-resistant assembly W3 may need additional waterproofing membrane not currently in scope.'
       },
       {
         severity: 'low',
-        message:  'Start date is 90 days out. A 5% escalation is already flagged on 2-1/2" stud pricing — confirm it still tracks current supplier quotes before locking them in.'
+        message:  'Start date is 90 days out. A 5% escalation is already flagged on 2-1/2" stud pricing; confirm it still tracks current supplier quotes before locking them in.'
       },
       {
         severity: 'low',
@@ -225,7 +225,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
 
     historicalNotes: [
       'No previous bids logged against Callahan Construction Group. After this bid is submitted and the outcome is known, that data will inform future recommendations for this GC.',
-      'No completed retail projects in bid history yet. Cost variance tracking — how closely your estimate matched actual job cost — will appear here after your first retail job closes.',
+      'No completed retail projects in bid history yet. Cost variance tracking (how closely your estimate matched actual job cost) will appear here after your first retail job closes.',
       'Tip: the more bids you log with outcomes, the more precisely the agent can identify which GC relationships, building types, and markup levels produce the best win rates for Dirigo.'
     ]
   };
@@ -307,7 +307,7 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
     return _liveFallback('timed out after ' + (MAX_WAIT_MS / 1000) + 's waiting for the bid agent');
   } catch (e) {
     console.error('Bid agent (async) error:', e);
-    return _liveFallback('network error — ' + (e && e.message ? e.message : 'request failed'));
+    return _liveFallback('network error: ' + (e && e.message ? e.message : 'request failed'));
   }
 }
 

@@ -34,7 +34,13 @@ export function registerBridges(dispatch) {
     // 'conditions' removed: ConditionsPage now handles its own
     // on-become-active side effect (_renderPipelineHint()) via its own
     // effect, same pattern as RatesPage's template-list load.
-    if (id === 'output') window.runCalculation?.();
+    //
+    // 'output' runs calculateOnly() (numbers only) — NOT runCalculation(),
+    // which also fires _launchBidAgent(). The bid agent is now only ever
+    // invoked by an explicit "Send to Agent" button press (Market Read's
+    // Next button, Bid Strategy's own button, the staleness "Re-run"
+    // button), never as a side effect of navigating to a tab.
+    if (id === 'output') window.calculateOnly?.();
     if (id === 'agent') window.renderAgentTab?.();
   };
 

@@ -16,6 +16,13 @@ async function seedToAgent(page) {
   await page.waitForTimeout(1000);
 }
 
+// The what-if slider is commented out of AgentPage.jsx (Eric: not helpful
+// right now, keeping the work for a possible future expansion). The
+// component (src/components/WhatIfSlider.jsx) and its interpolation logic
+// (src/state/expectedValue.js interpolateAtBid) stay in the tree; these
+// tests are skipped, not deleted — un-skip when the slider is restored.
+test.describe.skip('what-if price slider (commented out — see AgentPage.jsx)', () => {
+
 const ANCHOR = {
   competitive: { amount: 271000, margin: '22.4%', win: 'Very High', ev: '$42,493–$54,634' },
   recommended: { amount: 284500, margin: '28.4%', win: 'High',      ev: '$44,439–$60,599' },
@@ -77,4 +84,6 @@ test('moving the slider changes nothing on the bid — selection stays on recomm
   await page.click('#agent-finalize-btn');
   await expect(page.locator('[data-modal-opt="recommended"].selected')).toHaveCount(1);
   await expect(page.locator('[data-modal-opt="ambitious"].selected')).toHaveCount(0);
+});
+
 });

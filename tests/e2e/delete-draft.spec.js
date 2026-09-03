@@ -11,7 +11,7 @@ test('deleting a draft prompts for confirmation, then removes it from the list a
   await page.fill('#proj-name', 'QA To Keep');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
 
   let dialogSeen = false;
   page.once('dialog', d => { dialogSeen = true; d.accept(); });
@@ -35,7 +35,7 @@ test('deleting the only active draft replaces it immediately — never leaves a 
   await page.fill('#proj-name', 'QA Only Draft');
   await page.waitForTimeout(900);
 
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
   page.once('dialog', d => d.accept());
   await page.locator('tr', { hasText: 'QA Only Draft' }).locator('button:has-text("×")').click();
   await page.waitForTimeout(200);

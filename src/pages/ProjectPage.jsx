@@ -50,7 +50,7 @@ export default function ProjectPage({ active }) {
             <option>Education</option><option>Hospitality</option><option>Mixed use</option><option>Other</option>
           </select>
         </div>
-        <div className="field"><span className="lbl">Drawing set ref</span><Field id="proj-drawings" path={['project', 'drawingsRef']} get={get} dispatch={dispatch} placeholder="e.g. Rev B — 2024-03-15" /></div>
+        <div className="field"><span className="lbl">Drawing set ref</span><Field id="proj-drawings" path={['project', 'drawingsRef']} get={get} dispatch={dispatch} placeholder="e.g. Rev B, 2024-03-15" /></div>
       </div>
       <div className="grid g3">
         <div className="field"><span className="lbl">Est. start date</span><Field id="proj-start" type="date" path={['project', 'startDate']} get={get} dispatch={dispatch} /></div>

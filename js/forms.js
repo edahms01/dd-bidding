@@ -51,7 +51,7 @@ function addWall() {
     <td><input type="number" min="0" placeholder="0" style="width:72px" class="wlf"></td>
     <td><input type="number" min="0" placeholder="0" style="width:80px" class="wgsf" oninput="calcWall(this)"></td>
     <td><input type="number" min="0" placeholder="0" style="width:80px" class="wded" oninput="calcWall(this)"></td>
-    <td><span class="calc-cell wnet">—</span></td>
+    <td><span class="calc-cell wnet">-</span></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
   document.getElementById('wall-body').appendChild(tr);
 }
@@ -60,7 +60,7 @@ function calcWall(el) {
   const tr = el.closest('tr');
   const g  = parseFloat(tr.querySelector('.wgsf').value) || 0;
   const d  = parseFloat(tr.querySelector('.wded').value) || 0;
-  tr.querySelector('.wnet').textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '—';
+  tr.querySelector('.wnet').textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '-';
 }
 
 // ── CEILING ROWS ──────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function addCeil() {
     <td><input type="number" min="0" placeholder="0" style="width:72px" class="cgsf" oninput="calcCeil(this)"></td>
     <td><input type="number" min="0" placeholder="0" style="width:72px"></td>
     <td><input type="number" min="0" placeholder="0" style="width:80px" class="cded" oninput="calcCeil(this)"></td>
-    <td><span class="calc-cell cnet">—</span></td>
+    <td><span class="calc-cell cnet">-</span></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
   document.getElementById('ceil-body').appendChild(tr);
 }
@@ -83,7 +83,7 @@ function calcCeil(el) {
   const tr = el.closest('tr');
   const g  = parseFloat(tr.querySelector('.cgsf').value) || 0;
   const d  = parseFloat(tr.querySelector('.cded').value) || 0;
-  tr.querySelector('.cnet').textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '—';
+  tr.querySelector('.cnet').textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '-';
 }
 
 // ── POPULATE FORM ─────────────────────────────────────────────────────
@@ -815,7 +815,7 @@ function _setIndicator(status, when) {
     const t = (when || new Date()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     el.textContent = 'Saved ✓ ' + t;
   } else if (status === 'error') {
-    el.textContent = 'Save failed — check storage';
+    el.textContent = 'Save failed. Check storage';
   } else {
     el.textContent = '';
   }
@@ -915,7 +915,7 @@ function handleImportFile(event) {
   reader.onload = () => {
     const result = validateImportPayload(reader.result);
     if (!result.valid) {
-      _showFormToast('Import failed — ' + result.error, 'error');
+      _showFormToast('Import failed: ' + result.error, 'error');
       input.value = ''; // allow reselecting the same filename after fixing it
       return;
     }
@@ -948,7 +948,7 @@ function handleImportFile(event) {
     input.value = '';
   };
   reader.onerror = () => {
-    _showFormToast('Import failed — could not read the file.', 'error');
+    _showFormToast('Import failed. Could not read the file.', 'error');
     input.value = '';
   };
   reader.readAsText(file);

@@ -18,7 +18,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '../state/store.jsx';
 
-function fmt(n) { return n > 0 ? '$' + Math.round(n).toLocaleString() : '—'; }
+function fmt(n) { return n > 0 ? '$' + Math.round(n).toLocaleString() : '-'; }
 
 // Mirrors js/state.js's collectFormData()'s num(): parseFloat, NaN -> 0.
 // Applied before saving a rate template — see handleSaveTemplate().
@@ -60,7 +60,7 @@ function EscField({ path, dispatch, get, id }) {
       id={id}
       className="esc-input"
       type="number"
-      placeholder="—"
+      placeholder="-"
       value={get(path)}
       onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', ...path], value: e.target.value })}
     />
@@ -152,7 +152,7 @@ export default function RatesPage({ active }) {
       await loadTemplates();
       window._showFormToast?.('Template saved ✓', 'success');
     } catch (e) {
-      alert('Failed to save template — check your connection and try again.');
+      alert('Failed to save template. Check your connection and try again.');
     }
   }
 
@@ -189,23 +189,23 @@ export default function RatesPage({ active }) {
       setSelectedTemplateId('');
       window._showFormToast?.('Template deleted ✓', 'success');
     } catch (e) {
-      alert('Failed to delete template — check your connection and try again.');
+      alert('Failed to delete template. Check your connection and try again.');
     }
   }
 
   const finishDots = { 1: '#555a6b', 2: '#4a8fe8', 3: '#2ab5a0', 4: '#e87c2a', 5: '#3abf7a' };
   const finishDesc = {
-    1: 'Tape only — concealed areas',
-    2: 'Tape + compound — wet areas',
-    3: 'Standard commercial — paint ready',
-    4: 'High quality — most commercial work',
-    5: 'Premium — skim coat, critical lighting'
+    1: 'Tape only, concealed areas',
+    2: 'Tape + compound, wet areas',
+    3: 'Standard commercial, paint ready',
+    4: 'High quality, most commercial work',
+    5: 'Premium: skim coat, critical lighting'
   };
 
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-rates" ref={rootRef} onInput={recomputeTotals}>
       <div className="page-hdr">
-        <div><div className="page-title">Rates</div><div className="page-sub">Current pricing for this project — labor, materials, and logistics</div></div>
+        <div><div className="page-title">Rates</div><div className="page-sub">Current pricing for this project: labor, materials, and logistics</div></div>
         <div className="page-actions">
           <select
             id="rate-template-select"
@@ -250,7 +250,7 @@ export default function RatesPage({ active }) {
           <div className="rcard"><div className="rcard-lbl">Labor burden <span className="badge b-pct">%</span></div><div className="iw"><RateField id="rate-burden" className="ri L" path={['rates', 'burdenPct']} get={get} dispatch={dispatch} placeholder="32" /><span className="isfx">%</span></div><div className="rhint">Payroll tax, workers comp, benefits. 28–40%.</div></div>
           <div className="rcard"><div className="rcard-lbl">Supervision <span className="badge b-pct">%</span></div><div className="iw"><RateField id="rate-super" className="ri L" path={['rates', 'superPct']} get={get} dispatch={dispatch} placeholder="8" /><span className="isfx">%</span></div><div className="rhint">Foreman as % of total labor. 6–12%.</div></div>
         </div>
-        <div className="sub-lbl">Taping + finishing — by finish level ($/SF)</div>
+        <div className="sub-lbl">Taping + finishing, by finish level ($/SF)</div>
         <div className="ftable">
           <div className="fth"><div>Level</div><div>Description</div><div>Rate ($/SF)</div></div>
           {[1, 2, 3, 4, 5].map((lvl) => (
@@ -262,7 +262,7 @@ export default function RatesPage({ active }) {
           ))}
         </div>
         <div className="divider" />
-        <div className="sub-lbl" style={{ marginBottom: 10 }}>Height adders — labor uplift %</div>
+        <div className="sub-lbl" style={{ marginBottom: 10 }}>Height adders, labor uplift %</div>
         <div className="adder-row">
           <div className="acard"><div><div className="albl">Above 12 ft</div><div className="asub">Requires lift. Applied to SF above 12 ft.</div></div><div className="aiw"><RateField id="rate-add12" className="ai L" path={['rates', 'adder12Pct']} get={get} dispatch={dispatch} placeholder="15" /><span className="apct">%</span></div></div>
           <div className="acard"><div><div className="albl">Above 20 ft</div><div className="asub">High-lift zone. Stacked on 12 ft adder.</div></div><div className="aiw"><RateField id="rate-add20" className="ai L" path={['rates', 'adder20Pct']} get={get} dispatch={dispatch} placeholder="30" /><span className="apct">%</span></div></div>
@@ -272,7 +272,7 @@ export default function RatesPage({ active }) {
       <div className="rgroup">
         <div className="rgroup-hdr">
           <div className="rgroup-icon icon-m">M</div>
-          <div><div className="rgroup-title">Material rates</div><div className="rgroup-desc">Current supplier pricing — waste factor from conditions applied automatically</div></div>
+          <div><div className="rgroup-title">Material rates</div><div className="rgroup-desc">Current supplier pricing; waste factor from conditions applied automatically</div></div>
         </div>
         <div className="sub-lbl">Stud + track by size ($/LF)</div>
         <div className="rgrid g5" style={{ marginBottom: 14 }}>
@@ -307,7 +307,7 @@ export default function RatesPage({ active }) {
       <div className="rgroup">
         <div className="rgroup-hdr">
           <div className="rgroup-icon icon-x">X</div>
-          <div><div className="rgroup-title">Logistics</div><div className="rgroup-desc">Per-trip and per-unit costs — quantities from conditions</div></div>
+          <div><div className="rgroup-title">Logistics</div><div className="rgroup-desc">Per-trip and per-unit costs; quantities from conditions</div></div>
         </div>
         <div className="rgrid g3">
           <div className="rcard"><div className="rcard-lbl">Delivery <span className="badge b-flat">per trip</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-delivery" className="ri X" path={['rates', 'delivery']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/trip</span></div><div className="rhint">Multiplied by estimated delivery trips.</div></div>

@@ -18,7 +18,7 @@ test('blank Intelligence fields export as null, not empty string, while building
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-intelligence-null-export.json');
   await download.saveAs(filePath);
@@ -51,7 +51,7 @@ test('a filled-in Intelligence field is unaffected — real values still export 
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button:has-text("Export")')
+    page.evaluate(() => window.exportBid())
   ]);
   const filePath = path.join(os.tmpdir(), 'dirigo-intelligence-filled-export.json');
   await download.saveAs(filePath);

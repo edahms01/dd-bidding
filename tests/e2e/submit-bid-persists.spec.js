@@ -64,7 +64,7 @@ test('submitting a bid saves it, and it survives a full reload', async ({ page }
   // Reload the whole page — confirms this is actually server-side now,
   // not just working because the page never refreshed.
   await page.reload();
-  await page.click('.nav-item[title="Bids"]');
+  await page.click('.nav-item[title="Bid History"]');
 
   const page_ = page.locator('#page-bids');
   await expect(page_).toContainText('Harborview');
