@@ -16,8 +16,8 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
 
-function Field({ path, dispatch, get, id, type = 'text', placeholder }) {
-  return (
+function Field({ path, dispatch, get, id, type = 'text', placeholder, suffix }) {
+  const input = (
     <input
       id={id}
       type={type}
@@ -25,6 +25,15 @@ function Field({ path, dispatch, get, id, type = 'text', placeholder }) {
       value={get(path)}
       onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', ...path], value: e.target.value })}
     />
+  );
+  if (!suffix) return input;
+  // Lightweight persistent unit label — keeps the unit visible after the
+  // placeholder clears, without the bordered .iw box the Rates tab uses.
+  return (
+    <div className="field-with-sfx">
+      {input}
+      <span className="unit-sfx">{suffix}</span>
+    </div>
   );
 }
 
@@ -71,7 +80,7 @@ export default function ConditionsPage({ active }) {
             <option value="no">No</option><option value="yes">Yes</option>
           </Select>
           {c.curvedWalls === 'yes' && (
-            <Field id="f-curved-lf" type="number" path={['conditions', 'curvedWallsLF']} get={get} dispatch={dispatch} placeholder="LF of curved walls" />
+            <Field id="f-curved-lf" type="number" path={['conditions', 'curvedWallsLF']} get={get} dispatch={dispatch} placeholder="length" suffix="LF" />
           )}
         </div>
         <div className="flag-card">
@@ -86,7 +95,7 @@ export default function ConditionsPage({ active }) {
             <option value="no">No</option><option value="yes">Yes</option>
           </Select>
           {c.phasedWork === 'yes' && (
-            <Field id="f-phase-n" type="number" path={['conditions', 'phaseCount']} get={get} dispatch={dispatch} placeholder="Number of phases" />
+            <Field id="f-phase-n" type="number" path={['conditions', 'phaseCount']} get={get} dispatch={dispatch} placeholder="count" suffix="phases" />
           )}
         </div>
         <div className="flag-card">
@@ -103,12 +112,17 @@ export default function ConditionsPage({ active }) {
         </div>
         <div className="flag-card">
           <span className="lbl">Waste factor override</span>
-          <Field id="cond-waste" type="number" path={['conditions', 'wastePct']} get={get} dispatch={dispatch} placeholder="%, blank = default (10%)" />
+          <Field id="cond-waste" type="number" path={['conditions', 'wastePct']} get={get} dispatch={dispatch} placeholder="blank = 10%" suffix="%" />
+          <div className="rhint">Job-wide waste % on board material. Blank = 10%. Individual assemblies can override this on the Assemblies tab.</div>
         </div>
       </div>
 
       <div className="grid g3" style={{ marginBottom: 20 }}>
-        <div className="field"><span className="lbl">Estimated delivery trips</span><Field id="cond-trips" type="number" path={['conditions', 'trips']} get={get} dispatch={dispatch} placeholder="e.g. 4" /></div>
+        <div className="flag-card">
+          <span className="lbl">Estimated delivery trips</span>
+          <Field id="cond-trips" type="number" path={['conditions', 'trips']} get={get} dispatch={dispatch} placeholder="e.g. 4" />
+          <div className="rhint">Used to calculate delivery cost on the Rates tab.</div>
+        </div>
       </div>
     </div>
   );

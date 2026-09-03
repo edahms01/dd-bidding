@@ -46,8 +46,20 @@
 .ri{flex:1;background:transparent;border:none;outline:none;padding:8px 10px;font-size:14px;font-weight:500;color:var(--text);font-variant-numeric:tabular-nums;width:100%;min-width:0}
 .ri::placeholder{color:var(--text3);font-weight:400;font-family:system-ui,sans-serif;font-size:12px}
 .rhint{font-size:12px;color:var(--text3);margin-top:6px;line-height:1.4}
-.sub-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.sub-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:4px}
 .rgrid{display:grid;gap:10px;margin-bottom:12px}
+/* Lightweight persistent unit suffix (Site Conditions) — .isfx typography
+   without .iw's border-box framing, which would clash with the plain
+   <select>s sharing a .flag-card. */
+.unit-sfx{font-size:11px;color:var(--text3);align-self:center;white-space:nowrap}
+.field-with-sfx{display:flex;align-items:center;gap:6px}
+.field-with-sfx input{flex:1;min-width:0}
+/* Takeoff Type ID / Stud size columns — wide enough on desktop for the
+   enriched "W#: stud / board / L#" option label; held near their original
+   width on a phone (css/responsive.css), where a tapped <select> opens the
+   OS picker and shows full option text regardless of column width. */
+.col-typeid{width:182px}
+.col-studsize{width:98px}
 .ftable{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:12px}
 .fth{display:grid;grid-template-columns:96px 1fr 130px;padding:9px 14px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
 .frow{display:grid;grid-template-columns:96px 1fr 130px;padding:9px 14px;border-bottom:1px solid var(--border);align-items:center;transition:background .1s}

@@ -156,7 +156,7 @@ export default function AssembliesPage({ active }) {
       <div className="tbl-wrap sticky-col">
         <table>
           <colgroup>
-            <col style={{ width: 60 }} /><col style={{ width: 84 }} /><col style={{ width: 82 }} />
+            <col style={{ width: 60 }} /><col style={{ width: 84 }} /><col className="col-studsize" />
             <col style={{ width: 68 }} /><col style={{ width: 60 }} /><col style={{ width: 108 }} />
             <col style={{ width: 74 }} /><col style={{ width: 62 }} /><col style={{ width: 60 }} />
             <col /><col style={{ width: 62 }} /><col style={{ width: 58 }} />

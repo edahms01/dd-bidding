@@ -239,7 +239,7 @@ export default function WallsPage({ active }) {
       <div className="tbl-wrap sticky-col">
         <table>
           <colgroup>
-            <col style={{ width: 150 }} /><col style={{ width: 64 }} /><col style={{ width: 78, visibility: mode === 'area' ? 'collapse' : 'visible' }} />
+            <col style={{ width: 150 }} /><col className="col-typeid" /><col style={{ width: 78, visibility: mode === 'area' ? 'collapse' : 'visible' }} />
             <col style={{ width: 82 }} /><col style={{ width: 92 }} /><col style={{ width: 92 }} />
             <col style={{ width: 72 }} /><col style={{ width: 58 }} />
           </colgroup>

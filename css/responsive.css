@@ -241,6 +241,13 @@
     background: var(--action); border: none; margin-top: -11px;
   }
   .whatif-anchor { padding: 6px 4px; }
+
+  /* ── Takeoff Type ID / Stud size columns: hold near their original
+     desktop width on a phone. The enriched option label still shows in
+     full when the <select> is tapped (OS picker), so the wider desktop
+     column (css/pages.css) would only add horizontal scroll here. */
+  .col-typeid { width: 66px; }
+  .col-studsize { width: 84px; }
 }
 
 @media (max-width: 480px) {
