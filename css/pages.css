@@ -10,16 +10,17 @@
 .conf-btn.lo{background:var(--danger-dim);border-color:var(--danger-border);color:var(--danger)}
 
 /* ── RATES (Rates page) ── */
-/* Template toolbar: the base `select{width:100%}` (base.css) otherwise
-   stretches the template dropdown to 400-700px, blowing the button labels
-   onto wrapped lines. Cap the select; pack the whole toolbar left on one
-   nowrap row right after the title (drop the .page-hdr space-between so it
-   isn't shoved to the far edge where it runs out of room); let the title
-   text wrap instead of the toolbar. */
-#page-rates .page-hdr{justify-content:flex-start;gap:28px;flex-wrap:wrap}
-#page-rates .page-actions{flex-wrap:nowrap;align-items:center}
-#page-rates #rate-template-select{width:auto;flex:0 1 200px;min-width:130px}
-#page-rates .page-actions .btn{flex-shrink:0;white-space:nowrap}
+/* Template controls sit with the title on the left; Back / Next stay in
+   the standard .page-actions position on the right, same as every other
+   tab. .page-hdr wraps so on a narrow window Back/Next drop below rather
+   than colliding with the template row. The base `select{width:100%}`
+   (base.css) is capped here or it stretches to 400-700px and wraps the
+   button labels. */
+#page-rates .page-hdr{flex-wrap:wrap;gap:16px 24px}
+#page-rates .rates-hdr-lead{display:flex;align-items:center;gap:24px;flex-wrap:wrap;min-width:0}
+#page-rates .rate-template-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+#page-rates .rate-template-controls #rate-template-select{width:auto;flex:0 1 200px;min-width:130px}
+#page-rates .rate-template-controls .btn{flex-shrink:0;white-space:nowrap}
 
 .rgroup{margin-bottom:32px}
 .rgroup-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:11px;border-bottom:1px solid var(--border)}
