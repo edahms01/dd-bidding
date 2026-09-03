@@ -41,7 +41,11 @@ import { agentStaleness } from '../state/agentStaleness.js';
 import { expectedValueRange } from '../state/expectedValue.js';
 import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
 import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
-import WhatIfSlider from '../components/WhatIfSlider.jsx';
+// What-if price slider (5.3) is commented out below — not deleted. It's a
+// direction worth expanding later; the component and its CSS/spec stay in
+// the tree. To bring it back: restore this import and the <WhatIfSlider>
+// render in the "Bid options" section, and un-skip agent-what-if-slider.spec.js.
+// import WhatIfSlider from '../components/WhatIfSlider.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtFactorValue(v) { return v ? v.charAt(0).toUpperCase() + v.slice(1) : 'Not set'; }
@@ -52,9 +56,47 @@ function StatusPill({ status }) {
   return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)' }}>Neutral</span>;
 }
 
-function FlagDot({ severity }) {
-  const col = severity === 'high' ? '#e85c4a' : severity === 'medium' ? 'var(--accent)' : 'var(--text3)';
-  return <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 5, display: 'inline-block' }} />;
+// Severity rendered with the exact pill geometry StatusPill/WinLikelihoodPill
+// use, so Risk flags reads in the same visual language as Signal summary's
+// Status column (Eric's ask: unify these three sections' presentation).
+function SeverityPill({ severity }) {
+  const s = severity === 'high'
+    ? { background: 'rgba(232,92,74,.12)', border: '1px solid rgba(232,92,74,.3)', color: 'var(--danger)', label: 'High' }
+    : severity === 'medium'
+      ? { background: 'rgba(232,124,42,.1)', border: '1px solid rgba(232,124,42,.3)', color: 'var(--accent)', label: 'Medium' }
+      : { background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', color: 'var(--text3)', label: 'Low' };
+  return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: s.background, border: s.border, color: s.color, whiteSpace: 'nowrap' }}>{s.label}</span>;
+}
+
+// Collapsible wrapper for Signal summary / Risk flags / Historical context —
+// all three start closed (they read as clutter open; the estimator drops
+// into whichever one they want). Header mimics .section-label's type
+// treatment so it still looks like a section heading.
+function Accordion({ title, count, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="section-block">
+      <button
+        type="button"
+        className="agent-section-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          background: 'none', border: 'none', borderBottom: '1px solid var(--border)',
+          padding: '0 0 8px', margin: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit'
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{title}</span>
+        {count != null && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+        )}
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 10, color: 'var(--text3)' }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && <div style={{ marginTop: 12 }}>{children}</div>}
+    </div>
+  );
 }
 
 const WIN_LIKELIHOOD_STYLES = {
@@ -180,7 +222,7 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
           {ev ? fmtCost(ev.lo) + '–' + fmtCost(ev.hi) : '—'}
         </div>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, marginTop: 12 }}>{opt.rationale}</div>
+      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginTop: 12 }}>{opt.rationale}</div>
     </div>
   );
 }
@@ -198,7 +240,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
 
       <div className="section-block">
         <div className="section-label">Agent analysis</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '16px 18px', fontSize: 14, color: 'var(--text2)', lineHeight: 1.7 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '16px 18px', fontSize: 15, color: 'var(--text)', lineHeight: 1.7 }}>
           {r.reasoning || 'No analysis provided.'}
         </div>
       </div>
@@ -232,17 +274,27 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         {/* 5.1 honesty constraint — EV is a range, and this caveat is
             always visible with it. deriveWinLikelihood() is a hand-tuned
             score, not calibrated probability (docs §5.1). */}
-        <div className="ev-caveat" style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, marginTop: 10 }}>
-          Expected value = win-likelihood band × margin&nbsp;$. Win-likelihood is a hand-tuned score,
-          not a calibrated probability — treat EV as directional, not precise.
+        <div className="ev-caveat" style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.55, marginTop: 10 }}>
+          <strong style={{ color: 'var(--text2)', fontWeight: 600 }}>Expected value</strong> blends each option's
+          profit with how often you'd expect to win at that price — a way to compare options that aren't
+          equally winnable. A fatter margin you rarely land can be worth less than a leaner one you usually
+          win. Use it to weigh the three options against each other and spot when a small price move buys a
+          big jump in win odds — not as a dollar forecast. Win-likelihood is a hand-tuned score, not a
+          calibrated probability, so read the range as directional, not precise.
         </div>
-        {/* 5.3 — sibling of the cards, not a child of any [data-bid-opt]
-            card, so a drag/click on it can't fire SELECT_AGENT_OPTION. */}
-        <WhatIfSlider options={r.options} />
+        {/* 5.3 what-if price slider — commented out (Eric: not helpful right
+            now, keeping the work). Sibling of the cards, not a child of any
+            [data-bid-opt] card, so a drag/click on it can't fire
+            SELECT_AGENT_OPTION. Restore this + the import above to bring back. */}
+        {/* <WhatIfSlider options={r.options} /> */}
       </div>
 
-      <div className="section-block">
-        <div className="section-label">Signal summary</div>
+      {/* Signal summary / Risk flags / Historical context — unified into
+          one visual language (a .tbl-wrap table with an uppercase th row,
+          bordered td rows, muted body text, and a compact right-aligned
+          pill where the section has a status/severity), each inside a
+          closed-by-default accordion (Eric: they read as clutter open). */}
+      <Accordion title="Signal summary" count={r.signals ? r.signals.length : 0}>
         {r.signals && r.signals.length > 0 ? (
           <div className="tbl-wrap">
             <table>
@@ -261,43 +313,49 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         ) : (
           <div style={{ color: 'var(--text3)', fontSize: 13, padding: '8px 0' }}>No signals returned.</div>
         )}
-      </div>
+      </Accordion>
 
-      <div className="section-block">
-        <div className="section-label">Risk flags</div>
+      <Accordion title="Risk flags" count={r.riskFlags ? r.riskFlags.length : 0}>
         {!r.riskFlags || r.riskFlags.length === 0 ? (
           <div style={{ color: 'var(--text3)', fontSize: 13, padding: '8px 0' }}>No significant risk flags identified.</div>
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
-            {r.riskFlags.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <FlagDot severity={f.severity} />
-                <div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginRight: 8 }}>{f.severity}</span>
-                  <span style={{ fontSize: 13, color: 'var(--text2)' }}>{f.message}</span>
-                </div>
-              </div>
-            ))}
+          <div className="tbl-wrap">
+            <table>
+              <thead><tr><th>Risk</th><th>Severity</th></tr></thead>
+              <tbody>
+                {r.riskFlags.map((f, i) => (
+                  <tr key={i}>
+                    <td style={{ color: 'var(--text2)', lineHeight: 1.5 }}>{f.message}</td>
+                    <td><SeverityPill severity={f.severity} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+      </Accordion>
 
-      <div className="section-block">
-        <div className="section-label">Historical context</div>
+      <Accordion title="Historical context" count={r.historicalNotes ? r.historicalNotes.length : 0}>
         {!r.historicalNotes || r.historicalNotes.length === 0 ? (
           <div style={{ color: 'var(--text3)', fontSize: 13, padding: '8px 0' }}>
             No historical data yet for this GC or building type. Win rate tracking will appear here after bids are logged.
           </div>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {r.historicalNotes.map((note, i) => (
-              <li key={i} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)', fontSize: 13, color: 'var(--text2)', paddingLeft: 16, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 0, color: 'var(--text3)' }}>›</span>{note}
-              </li>
-            ))}
-          </ul>
+          <div className="tbl-wrap">
+            <table>
+              <thead><tr><th style={{ width: 28 }}>#</th><th>Note</th></tr></thead>
+              <tbody>
+                {r.historicalNotes.map((note, i) => (
+                  <tr key={i}>
+                    <td style={{ color: 'var(--text3)', verticalAlign: 'top' }}>{i + 1}</td>
+                    <td style={{ color: 'var(--text2)', lineHeight: 1.5 }}>{note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </Accordion>
     </>
   );
 }

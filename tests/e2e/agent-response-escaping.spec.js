@@ -62,6 +62,13 @@ test('agent-returned text with markup-like content renders as literal text in ev
 
   const agentPage = page.locator('#page-agent');
 
+  // Signal summary / Risk flags / Historical context are collapsed
+  // accordions now — expand all three so their fields are in the DOM to
+  // assert on.
+  for (const toggle of await agentPage.locator('.agent-section-toggle').all()) {
+    await toggle.click();
+  }
+
   // Every injected tag must show up as literal visible text...
   await expect(agentPage).toContainText('Reasoning <b>bold injected</b> text.');
   await expect(agentPage).toContainText('Recommended <i>label</i>');
@@ -70,7 +77,9 @@ test('agent-returned text with markup-like content renders as literal text in ev
   await expect(agentPage).toContainText('Signal <b>label</b>');
   await expect(agentPage).toContainText('Signal <b>value</b>');
   await expect(agentPage).toContainText('Signal <b>note</b>');
-  await expect(agentPage).toContainText('high <b>sev</b>');
+  // Risk severity is no longer echoed as raw agent text — SeverityPill maps
+  // it to a fixed 'High'/'Medium'/'Low' label — so there's nothing to
+  // escape there now; the message field is still rendered verbatim.
   await expect(agentPage).toContainText('Risk <b>message</b>');
   await expect(agentPage).toContainText('Historical <b>note</b> text.');
 
