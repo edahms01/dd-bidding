@@ -110,7 +110,12 @@
 #page-rates .taping-adders-row .ftable{margin-bottom:0}
 #page-rates .taping-adders-row .fth,
 #page-rates .taping-adders-row .frow{grid-template-columns:78px minmax(0,1fr) 104px}
-#page-rates .adders-col{display:flex;flex-direction:column;gap:10px}
+/* No gap between the "Height adders" sub-label and the first card — the
+   sub-label's own margin-bottom (8px, same as the taping sub-label) is
+   the only spacing, so the first card's top lines up with the taping
+   table's top. Inter-card spacing is a margin instead. */
+#page-rates .adders-col{display:flex;flex-direction:column}
+#page-rates .adders-col .acard + .acard{margin-top:10px}
 #page-rates .adders-col .acard{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px;padding:12px 14px}
 #page-rates .adders-col .acard > div:first-child{min-width:0}
 #page-rates .adders-col .aiw{align-self:flex-start}

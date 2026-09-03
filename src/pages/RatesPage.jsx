@@ -269,7 +269,7 @@ export default function RatesPage({ active }) {
             </div>
           </div>
           <div className="adders-col">
-            <div className="sub-lbl" style={{ marginBottom: 10 }}>Height adders, labor uplift %</div>
+            <div className="sub-lbl">Height adders, labor uplift %</div>
             <div className="acard"><div><div className="albl">Above 12 ft</div><div className="asub">Requires lift. Applied to SF above 12 ft.</div></div><div className="aiw"><RateField id="rate-add12" className="ai L" path={['rates', 'adder12Pct']} get={get} dispatch={dispatch} placeholder="15" /><span className="apct">%</span></div></div>
             <div className="acard"><div><div className="albl">Above 20 ft</div><div className="asub">High-lift zone. Stacked on 12 ft adder.</div></div><div className="aiw"><RateField id="rate-add20" className="ai L" path={['rates', 'adder20Pct']} get={get} dispatch={dispatch} placeholder="30" /><span className="apct">%</span></div></div>
           </div>
