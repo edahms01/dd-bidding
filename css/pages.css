@@ -10,6 +10,15 @@
 .conf-btn.lo{background:var(--danger-dim);border-color:var(--danger-border);color:var(--danger)}
 
 /* ── RATES (Rates page) ── */
+/* Template toolbar: the base `select{width:100%}` (base.css) otherwise
+   stretches the template dropdown to 400-700px, which on a nowrap
+   .page-actions row squeezes the Load / Save / Back / Next buttons until
+   their labels wrap and the buttons blow up tall. Cap the select, let the
+   row wrap, and keep each button at its natural narrow width. */
+#page-rates .page-actions{flex-wrap:wrap;align-items:center;row-gap:8px}
+#page-rates #rate-template-select{width:auto;flex:0 1 220px;min-width:140px}
+#page-rates .page-actions .btn{flex-shrink:0;white-space:nowrap}
+
 .rgroup{margin-bottom:32px}
 .rgroup-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:11px;border-bottom:1px solid var(--border)}
 .rgroup-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
