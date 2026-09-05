@@ -57,7 +57,10 @@ function collectFormData() {
     if (!inp[0]) return;
     // Number.isNaN, not ||, since an explicit 0% waste override is a
     // real value distinct from "not set" (Tier 3 per-assembly waste).
-    const wasteVal = parseFloat(inp[2]?.value);
+    // UI-fixes batch (2026-09-04): AssembliesPage.jsx moved Waste %
+    // ahead of Notes in the row (inp[1] is now Waste %, inp[2] Notes) --
+    // positional indices below updated to match, not left stale.
+    const wasteVal = parseFloat(inp[1]?.value);
     assemblies.push({
       id:          inp[0].value.trim(),
       category:    sel[0]?.value || 'Wall',
@@ -68,7 +71,7 @@ function collectFormData() {
       fireRating:  sel[5]?.value || 'None',
       acoustic:    sel[6]?.value || 'No',
       finishLevel: parseInt(sel[7]?.value) || 3,
-      notes:       inp[1]?.value || '',
+      notes:       inp[2]?.value || '',
       wastePctOverride: Number.isNaN(wasteVal) ? null : wasteVal
     });
   });

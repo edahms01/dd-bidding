@@ -152,7 +152,14 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .del-btn:hover{color:var(--danger)}
 .dup-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px;line-height:1;font-family:inherit}
 .dup-btn:hover{color:var(--action)}
-.row-actions{display:flex;align-items:center;gap:2px;white-space:nowrap}
+/* Applied to a <td> directly. display:flex on a table-cell breaks its
+   own vertical-align (browsers stop centering it, pinning content to
+   the top of the row) -- table-cell display keeps this td's box
+   centered like every plain sibling td, and the two icons center
+   themselves inside it via their own line-height instead. */
+.row-actions{display:table-cell;vertical-align:middle;white-space:nowrap}
+.row-actions .del-btn,.row-actions .dup-btn{vertical-align:middle}
+.row-actions .dup-btn{margin-right:2px}
 .add-row-btn{font-size:12px;color:var(--teal);cursor:pointer;padding:7px 0;display:inline-flex;align-items:center;gap:5px;background:none;border:none;font-family:inherit}
 .add-row-btn:hover{opacity:.75}
 .calc-cell{font-size:13px;font-weight:600;color:var(--text);padding:6px 8px;background:var(--bg);border-radius:6px;min-width:60px;display:inline-block}

@@ -25,6 +25,7 @@ function addAsm() {
   const id  = 'W' + num;
   const tr  = document.createElement('tr');
   tr.innerHTML = `
+    <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>
     <td><input type="text" value="${id}" data-auto="${id}" class="asm-id" style="width:52px"></td>
     <td><select style="width:78px" onchange="updateAsmId(this,${num})"><option>Wall</option><option>Ceiling</option></select></td>
     <td><select style="width:76px"><option>1-5/8"</option><option>2-1/2"</option><option>3-5/8"</option><option>4"</option><option>6"</option></select></td>
@@ -34,9 +35,8 @@ function addAsm() {
     <td><select style="width:68px"><option>None</option><option>1-hr</option><option>2-hr</option></select></td>
     <td><select style="width:58px"><option>No</option><option>Yes</option></select></td>
     <td><select style="width:54px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></td>
-    <td><input type="text" placeholder="notes" style="width:110px"></td>
-    <td><input type="number" min="0" class="asm-waste" placeholder="def." style="width:56px"></td>
-    <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
+    <td><input type="number" min="0" class="asm-waste" style="width:56px"></td>
+    <td><input type="text" style="width:110px"></td>`;
   document.getElementById('asm-body').appendChild(tr);
 }
 
@@ -318,12 +318,15 @@ function populateForm(state) {
         if (sels[5]) sels[5].value = asm.fireRating  || 'None';
         if (sels[6]) sels[6].value = asm.acoustic    || 'No';
         if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
-        if (inps[1]) inps[1].value = asm.notes       || '';
         // ?? not || — an explicit 0% override must render as "0", not
         // fall back to a blank input (which collectFormData() would
         // then re-read as "not set" on the next pass, silently
-        // reverting it).
-        if (inps[2]) inps[2].value = String(asm.wastePctOverride ?? '');
+        // reverting it). UI-fixes batch (2026-09-04): Waste % now sits
+        // ahead of Notes in the row (inps[1] is Waste %, inps[2] Notes)
+        // — matches addAsm()'s reordered markup and collectFormData()'s
+        // updated positional read.
+        if (inps[1]) inps[1].value = String(asm.wastePctOverride ?? '');
+        if (inps[2]) inps[2].value = asm.notes       || '';
       });
     }
   }
