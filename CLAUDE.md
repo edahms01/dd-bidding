@@ -130,10 +130,14 @@ base.css        universal reset + bare-element form-control resets only (input[t
 components.css  every class-named reusable UI used on ≥2 pages: shell/header/tabs/page-scaffold,
                 buttons, autosave-indicator, .field/.lbl, grids, section-block, pills, generic
                 table/th/td/del-btn/add-row-btn/calc-cell, totals-bar (Rates + Output share it),
-                left-nav, the finalize modal (incl. bid-option-*), demo-controls
+                left-nav, the finalize modal (incl. bid-option-*), demo-controls, the .tray/
+                .tray-cols/.tray-col enclosure (tray-cols is an auto-fit CSS grid — wraps its
+                columns 3→2→1 with no JS; --col-min = var(--rr-width); see §6.10 in the UX doc)
 pages.css       genuinely single-page classes only: the Conditions-flags block and the entire
                 Rates block (rgroup/rcard/badges/ftable/stud-card/adder-row/etc.)
-responsive.css  empty stub — Phase D
+responsive.css  populated over Phases D–E + follow-up batches — the ≤768px mobile layer
+                (nav drawer, grid/tray collapse, sticky columns, 16px inputs, tap targets) and
+                a ≥769px whole-app horizontal-scroll rule (.shell{min-width:960px})
 print.css       empty stub — Phase G
 ```
 
@@ -177,6 +181,7 @@ Tests never fire a live call: `dual-demo-mode.spec.js` intercepts `**/.netlify/f
 - `tests/e2e/helpers.js` exports `clearAll(page)`/`loadSeed(page)` — always use these, never a bare `page.click('button:has-text("Clear all data")')`, since `clearSeedData()` is an async fetch-then-reload and a bare click races ahead of the reload.
 - Specs assert on **spec files as the unit**, not test count — the Phase A migration's parity gate treats "any spec file needing modification" as evidence behavior changed. See `docs/step-0-coverage-report.md` for the full inventory.
 - ~~One test is intentionally inverted~~ — resolved in Phase A2.5 (see Known follow-ups below). `tests/e2e/finalize-modal-selection-not-persisted.spec.js` used to pass because of a real bug and was expected to fail once fixed; it's now a normal positive regression test asserting the fixed behavior directly.
+- **`tests/e2e/bid-total-rail-visibility-and-flash.spec.js` (all 3 tests) is a KNOWN pre-existing failure, not a regression — stop rediscovering it.** `.bid-total-rail` renders 0× against the local `netlify dev` server regardless of branch (confirmed by running it with unrelated changes stashed). It's a delete candidate, already flagged as such; do not re-investigate it on each new branch or attribute it to unrelated work. If a change genuinely touches `BidTotalRail.jsx` / `state.ui.output` / the rail's gating, that's the one time to look again.
 - **A stray dev server left running on port 5173 from an unrelated project silently hijacks this app's own `netlify dev` proxy — every test then fails against the wrong site, not an error.** `netlify.toml`'s `[dev]` block hardcodes `targetPort = 5173`; if that port is already occupied when `netlify dev` starts, its own Vite instance quietly shifts to another port (5174, 5175, …) but the proxy keeps forwarding to the hardcoded 5173 regardless — landing on whatever else is listening there. Playwright's `reuseExistingServer: !process.env.CI` compounds this: a broken/stale server already bound to port 4173 gets reused without question. Hit directly during Phase B (a leftover `DahmsIO/website` Vite dev server on 5173, from an earlier unrelated session on this machine, made every single Playwright spec time out against completely unrelated marketing-site content — not a code bug, thirteen minutes of a hung suite before it was traced to `lsof -i :5173`). **Before trusting a suite of near-uniform timeouts/failures as a real regression, check `lsof -i :4173 -i :5173` for anything not this project's own process first.**
 
 ## Known follow-ups (accepted technical debt, not yet scheduled)

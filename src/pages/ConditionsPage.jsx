@@ -109,7 +109,9 @@ export default function ConditionsPage({ active }) {
                   value={get(['conditions', 'sfAbove20'])}
                   onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'sfAbove20'], value: e.target.value })} />
               } />
-            <div className="sub-lbl" style={{ marginTop: 28 }}>Delivery</div>
+          </div>
+          <div className="tray-col">
+            <div className="sub-lbl">Delivery</div>
             <RRRow name="Estimated delivery trips" sfx="trips"
               tip="Used to calculate delivery cost on the Rates tab."
               valueEl={

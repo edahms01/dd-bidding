@@ -175,18 +175,16 @@
      768px. Neither source mockup (rates-standardized-layout-v4.html /
      site-conditions-redesign-v2.html) has any @media rules at all — this
      is new production CSS, not ported from either. */
-  /* align-items:flex-start (components.css's desktop rule) means
-     "don't stretch, size to content" -- harmless in row-direction
-     (it's only about vertical top-alignment between columns of
-     different height there), but once flex-direction flips to column
-     here the cross-axis becomes horizontal, and the same "don't
-     stretch" behavior lets .tray-col shrink-wrap to its own content's
-     preferred width instead of filling the available space. That's
-     what actually made the max-width caps below meaningless -- found
-     by tracing an overflowing row back through .tray-col (was 367.9px
-     inside a ~302px-wide tray, itself inside a 390px viewport) to this
-     one inherited property, not assumed from reading the collapse rule. */
-  .tray-cols { flex-direction: column; align-items: stretch; gap: 4px; }
+  /* The desktop rule is CSS Grid auto-fit (components.css); it collapses to
+     one *track* on its own at narrow widths, but minmax(col-min, max-content)
+     sizes that lone track to its content, not the full tray — with
+     justify-content:center it would sit as a centered narrow block. Forcing
+     a single 1fr track here is what makes .tray-col fill the tray on a phone
+     (the same end the old flex align-items:stretch achieved). Still
+     load-bearing: verified an overflowing row traced back through a
+     shrink-wrapped .tray-col (367.9px inside a ~302px tray in a 390px
+     viewport) before this rule, so removing it is not an option. */
+  .tray-cols { grid-template-columns: 1fr; gap: 4px; }
   /* Side-by-side trays (Rates: Logistics + Markup) stack on a phone. */
   .tray-row { flex-direction: column; gap: 0; }
   /* A column-width standalone tray (Market Read: Known competitors) goes

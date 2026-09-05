@@ -354,7 +354,9 @@ export default function RatesPage({ active }) {
               valueEl={<RateField id="rate-burden" className="rr-val pct L" path={['rates', 'burdenPct']} get={get} dispatch={dispatch} placeholder="32" />} />
             <RRRow name="Supervision" tip="Foreman as % of total labor. 6–12%." sfx="%"
               valueEl={<RateField id="rate-super" className="rr-val pct L" path={['rates', 'superPct']} get={get} dispatch={dispatch} placeholder="8" />} />
-            <div className="sub-lbl" style={{ marginTop: 28 }}>Height adders, labor uplift %</div>
+          </div>
+          <div className="tray-col">
+            <div className="sub-lbl">Height adders, labor uplift %</div>
             <RRRow name="Above 12 ft" tip="Requires lift. Applied to SF above 12 ft." sfx="%"
               valueEl={<RateField id="rate-add12" className="rr-val pct L" path={['rates', 'adder12Pct']} get={get} dispatch={dispatch} placeholder="15" />} />
             <RRRow name="Above 20 ft" tip="High-lift zone. Stacked on 12 ft adder." sfx="%"
@@ -389,7 +391,9 @@ export default function RatesPage({ active }) {
                     valueEl={<RateField id={'rate-stud' + slug} className="rr-val cur M" path={['rates', 'stud', sz]} get={get} dispatch={dispatch} placeholder="0.00" />} />} />
               );
             })}
-            <div className="sub-lbl" style={{ marginTop: 28 }}>Drywall board by type ($/SF)</div>
+          </div>
+          <div className="tray-col">
+            <div className="sub-lbl">Drywall board by type ($/SF)</div>
             {[['Standard', 'std', 'Standard'], ['Type-X', 'typex', 'Type-X'], ['Moisture', 'moist', 'Moisture-resist.'], ['Impact', 'imp', 'Impact-resist.']].map(([boardType, slug, label]) => (
               <EscConnected key={boardType} id={'esc-brd-' + slug} path={['rateEscalation', 'board', boardType]} get={get} dispatch={dispatch}
                 rowEl={<RRRow name={label} pfx="$"
