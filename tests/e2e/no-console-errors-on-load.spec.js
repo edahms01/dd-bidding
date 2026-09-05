@@ -38,6 +38,8 @@ test('page load and a full pass through every tab produce zero console errors an
   }
   await page.click('.nav-item[data-nav="bids"]');
   await page.waitForTimeout(200);
+  await page.click('.nav-item[data-nav="insights"]');
+  await page.waitForTimeout(200);
   await page.click('.nav-item[data-nav="workflow"]');
   await page.waitForTimeout(150);
 

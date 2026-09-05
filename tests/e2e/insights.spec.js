@@ -62,13 +62,24 @@ test('seed data — the realistic "not enough data" primary state', async ({ pag
   await expect(season.locator('.insight-note')).toBeVisible();
 
   // Competitor patterns: two single-loss competitors, both below the
-  // 2-priced-loss threshold so the undercut column is "—".
+  // 2-priced-loss threshold so the undercut column is a dash.
   const comp = tray(page, 'Competitor loss patterns');
   await expect(comp.locator('tbody tr')).toHaveCount(2);
   await expect(comp).toContainText('Northeast Drywall Inc.');
   await expect(comp).toContainText('Summit Drywall');
   await expect(comp.locator('tbody tr td:nth-child(3)').first()).toHaveText('-');
   await expect(comp.locator('.insight-note')).toBeVisible();
+
+  // GC scorecard (8.3): one row per seed GC (5), first-seen casing.
+  const score = tray(page, 'Scorecard by general contractor');
+  await expect(score.locator('tbody tr')).toHaveCount(5);
+  await expect(score).toContainText('Cianbro Corporation');
+  // A won GC shows a real win rate + margin; a pending-only GC shows a dash.
+  const cianbro = score.locator('tbody tr', { hasText: 'Cianbro Corporation' });
+  await expect(cianbro.locator('td:nth-child(3)')).toHaveText('100%');
+  await expect(cianbro.locator('td:nth-child(4)')).toContainText('%');
+  const consigli = score.locator('tbody tr', { hasText: 'Consigli Construction Co.' });
+  await expect(consigli.locator('td:nth-child(3)')).toHaveText('-');
 });
 
 test('populated data — margin bands and a confident competitor undercut render', async ({ page }) => {
@@ -102,6 +113,13 @@ test('populated data — margin bands and a confident competitor undercut render
   await expect(beacon.locator('td:nth-child(2)')).toHaveText('4');
   await expect(beacon.locator('td:nth-child(3)')).toHaveText('6%');
   await expect(comp.locator('.insight-note')).toHaveCount(0);
+
+  // GC scorecard: 2 GCs, equal bid counts -> alphabetical, Suffolk first.
+  const score = tray(page, 'Scorecard by general contractor');
+  await expect(score.locator('tbody tr')).toHaveCount(2);
+  await expect(score.locator('tbody tr').first()).toContainText('Suffolk');
+  await expect(score.locator('tbody tr', { hasText: 'Suffolk' }).locator('td:nth-child(3)')).toHaveText('56%');
+  await expect(score.locator('tbody tr', { hasText: 'Turner Construction' }).locator('td:nth-child(3)')).toHaveText('33%');
 });
 
 test('mobile 390px — no horizontal body scroll on Insights', async ({ page }) => {
@@ -116,4 +134,8 @@ test('mobile 390px — no horizontal body scroll on Insights', async ({ page }) 
   await expect(page.locator('#page-insights')).toHaveClass(/active/);
   const overflow = await page.evaluate(() => document.body.scrollWidth - document.body.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+
+  // The GC scorecard inherits BidsPage's sticky first column on a phone.
+  const firstCell = tray(page, 'Scorecard by general contractor').locator('.tbl-wrap.sticky-col tbody td:first-child').first();
+  await expect(firstCell).toHaveCSS('position', 'sticky');
 });

@@ -298,6 +298,8 @@ bites.
 **8.3 GC scorecard — APPROVED.**
 Win rate, average margin, and cost variance by GC.
 
+**Implemented — Phase F, Step 2 (2026-09-05).** A section within the Insights page (`src/components/GcScorecard.jsx`), a `.tbl-wrap sticky-col` table: **General contractor · Bids · Win rate · Avg margin (wins) · Avg cost variance**, one row per GC, most-active first (alphabetical tiebreak). Aggregation is `src/state/gcScorecard.js`'s pure `computeGcScorecard(bids)` — **not** added to `js/history-analytics.js` (Phase F non-goal), but unit-tested like every other calc function in the app (`tests/unit/gcScorecard.test.js`, 12 cases — Q3 at plan review). No new domain math: win rate is `BidsPage.jsx`'s totals-bar formula, avg margin is its wins-only `avgMargin`, avg cost variance is `getHistorySummary()`'s `avgCostVariance` (won bids, `cost_variance` not null) — each grouped by `gc`. GCs with no decided bids show `-` for win rate / margin; blank-`gc` bids are omitted rather than bucketed. On the 5 seed bids every GC has one bid so cost variance is sparse — the realistic thin-data state, tested directly.
+
 **8.4 Bid/no-bid gate — APPROVED as a standalone screen, not a workflow step. Implemented (Phase C, Step 5, 2026-09-01).**
 A short scoring screen — fit, GC history, competition, crew capacity, schedule risk — recommending whether to bid at all. Deliberately outside the 9-step flow so it doesn't lengthen it further. Reached from the Bids list.
 
