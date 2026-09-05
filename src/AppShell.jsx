@@ -375,31 +375,27 @@ export default function AppShell() {
             read getComputedStyle(nav).width, it never changed) before
             fixing. */}
         <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '') + (navDrawerOpen ? ' drawer-open' : '')} id="app-leftnav">
-          {/* Top row of the sidebar: the "Open bids" section label fills
-              the space left of the collapse toggle (standard sidebar
-              pattern — VS Code / Linear / Notion). Toggle right-aligned
-              when expanded, centred (label hidden) when collapsed. */}
-          <div className="leftnav-top">
-            {navLabelsVisible && <div className="section-label leftnav-title">Open bids</div>}
-            <button
-              className="nav-toggle"
-              aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-              title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-              onClick={() => {
-                const collapsed = !navCollapsed;
-                localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
-                dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
-              }}
-            >
-              <span id="nav-toggle-icon">
-                {navCollapsed ? (
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
-                )}
-              </span>
-            </button>
-          </div>
+          {/* Collapse toggle at the top of the sidebar (standard sidebar
+              pattern — VS Code / Linear / Notion), right-aligned when
+              expanded, centred when collapsed. */}
+          <button
+            className="nav-toggle"
+            aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            onClick={() => {
+              const collapsed = !navCollapsed;
+              localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
+              dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
+            }}
+          >
+            <span id="nav-toggle-icon">
+              {navCollapsed ? (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
+              )}
+            </span>
+          </button>
           <div className="nav-items">
             {/* Phase C 2.5 established a single "current bid" nav item;
                 this replaces it with one row per open draft (everything
@@ -410,8 +406,15 @@ export default function AppShell() {
                 on whatever step you left off (GOTO_SECTION); clicking
                 any other row switches to that draft (switchToDraft,
                 which lands on its Project step). "New Bid" is a header
-                action. The "Open bids" label lives in .leftnav-top above,
-                hidden in the 48px collapsed rail same as .nav-label. */}
+                action. The "Open bids" label reuses .section-label but
+                drops its rule (border-bottom) — it's a nav-column header,
+                not a page section divider; hidden in the 48px collapsed
+                rail same as .nav-label. */}
+            {navLabelsVisible && (
+              <div className="section-label" style={{ margin: '4px 6px 10px', borderBottom: 'none', paddingBottom: 0 }}>
+                Open bids
+              </div>
+            )}
             {openDrafts.map((d) => {
               const isActiveDraft = d.id === activeDraftId;
               // The active draft's name comes from live reducer state

@@ -28,7 +28,7 @@ test('lists every open draft, newest first, and marks the active one', async ({ 
   expect(await page.evaluate(() => Object.keys(window.getAllDrafts()).length)).toBe(3);
 
   // The section label shows (and is a real .section-label, per the brief).
-  await expect(page.locator('.leftnav-top .section-label')).toHaveText('Open bids');
+  await expect(page.locator('.nav-items .section-label')).toHaveText('Open bids');
 
   // Only the active draft's row is .active.
   await expect(page.locator('.nav-item[data-nav="workflow"].active .nav-label')).toHaveText('Gamma');
