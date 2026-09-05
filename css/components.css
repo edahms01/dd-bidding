@@ -265,11 +265,14 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
    The 40px bottom padding clears the fixed demo-controls bar / "DEMO ▴"
    pill (same clearance .page uses), so Settings stays fully visible. */
 .nav-footer{padding:8px 8px 40px;flex-shrink:0}
-/* Sidebar collapse toggle — sits at the TOP of .leftnav, right-aligned
-   when expanded, centred when collapsed (standard sidebar pattern). */
-.nav-toggle{display:flex;align-items:center;justify-content:center;align-self:flex-end;margin:8px;padding:10px;border:1px solid var(--border);border-radius:var(--r);background:transparent;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
+/* Sidebar top row — the "Open bids" label fills the space left of the
+   collapse toggle; the toggle sits at the TOP of .leftnav, right-aligned
+   when expanded, centred (label hidden) when collapsed. */
+.leftnav-top{display:flex;align-items:center;gap:8px;padding:8px}
+.leftnav-top .leftnav-title{flex:1;min-width:0;margin:0;padding:0;border-bottom:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leftnav.collapsed .leftnav-top{justify-content:center}
+.nav-toggle{display:flex;align-items:center;justify-content:center;padding:10px;border:1px solid var(--border);border-radius:var(--r);background:transparent;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
 .nav-toggle:hover{background:var(--surface2);color:var(--text2)}
-.leftnav.collapsed .nav-toggle{align-self:center}
 
 /* ── WORKFLOW AREA ── */
 .workflow-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}

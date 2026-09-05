@@ -206,16 +206,21 @@ test.describe('nav drawer @ phone-390', () => {
     expect(box.x).toBeGreaterThanOrEqual(-1); // now on-screen
 
     // Background content is non-interactive while the drawer is open: a
-    // tap aimed at a step-bar chip lands on the backdrop (which closes
-    // the drawer) and never reaches the chip's handler, so the workflow
-    // does NOT navigate. force:true bypasses Playwright's actionability
-    // wait (the chip is covered) and clicks at its coordinates, which is
-    // exactly the "tap-through" a real finger would attempt.
+    // tap aimed at a step-bar chip never reaches the chip's handler, so
+    // the workflow does NOT navigate. force:true bypasses Playwright's
+    // actionability wait (the chip is covered) and clicks at its
+    // coordinates, exactly the "tap-through" a real finger would attempt.
+    // #tab-conditions's centre sits over the 260px-wide drawer body
+    // itself (not the dimmed backdrop to its right), so the drawer
+    // legitimately stays open — what matters is that the chip's handler
+    // did not fire. The drawer is then closed explicitly via the backdrop.
     await page.click('#tab-conditions', { force: true });
     await page.waitForTimeout(260);
     await expect(page.locator('#page-project')).toHaveClass(/active/);
     await expect(page.locator('#page-conditions')).not.toHaveClass(/active/);
-    await expect(nav).not.toHaveClass(/drawer-open/); // the backdrop caught it and closed
+    await backdrop.click({ position: { x: 360, y: 400 } });
+    await page.waitForTimeout(260);
+    await expect(nav).not.toHaveClass(/drawer-open/);
 
     // Backdrop tap closes it — click well right of the ~260px drawer.
     await hamburger.click();
