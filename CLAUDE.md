@@ -130,10 +130,14 @@ base.css        universal reset + bare-element form-control resets only (input[t
 components.css  every class-named reusable UI used on ≥2 pages: shell/header/tabs/page-scaffold,
                 buttons, autosave-indicator, .field/.lbl, grids, section-block, pills, generic
                 table/th/td/del-btn/add-row-btn/calc-cell, totals-bar (Rates + Output share it),
-                left-nav, the finalize modal (incl. bid-option-*), demo-controls
+                left-nav, the finalize modal (incl. bid-option-*), demo-controls, the .tray/
+                .tray-cols/.tray-col enclosure (tray-cols is an auto-fit CSS grid — wraps its
+                columns 3→2→1 with no JS; --col-min = var(--rr-width); see §6.10 in the UX doc)
 pages.css       genuinely single-page classes only: the Conditions-flags block and the entire
                 Rates block (rgroup/rcard/badges/ftable/stud-card/adder-row/etc.)
-responsive.css  empty stub — Phase D
+responsive.css  populated over Phases D–E + follow-up batches — the ≤768px mobile layer
+                (nav drawer, grid/tray collapse, sticky columns, 16px inputs, tap targets) and
+                a ≥769px whole-app horizontal-scroll rule (.shell{min-width:960px})
 print.css       empty stub — Phase G
 ```
 
