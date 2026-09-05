@@ -24,8 +24,9 @@
 // UI-fixes batch; it has since moved to the bottom of the Rates tab
 // (RatesPage.jsx) so the markup %s sit with the other rate inputs. The
 // inputs are still React-controlled off state.bid.markupInputs there, so
-// collectFormData()/__hydrateMarkup/the runCalculation() contingency
-// pre-fill all keep working unchanged.
+// collectFormData()/__hydrateMarkup keep working unchanged. Contingency is
+// purely manual now — the old confidence-level auto-fill was removed
+// 2026-09-05.
 //
 // submitBid() (js/ui.js)'s post-finalize success/failure panel used to
 // overwrite #output-bid's content directly — window.__setSubmitResult

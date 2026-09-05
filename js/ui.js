@@ -332,20 +332,6 @@ function _renderOutputLegacy(state, wallCosts, ceilCosts, summary, markupResult)
 
 // ── ORCHESTRATION ─────────────────────────────────────────────────────
 
-// A2: Conditions converted to React — STATE.conf alone is stale the
-// instant a user picks a confidence level in the browser, since
-// ConditionsPage.jsx's buttons dispatch straight into the reducer and
-// never call setConf() (see js/forms.js and CLAUDE.md). Same accessor
-// js/state.js's collectFormData() reads confidence through, not
-// reimplemented per call site — both call sites below used to read
-// STATE.conf directly and silently pre-filled contingency to 0
-// regardless of the confidence actually selected; found by reproducing
-// it directly (select High confidence, run a calculation, contingency
-// pre-filled to 0 instead of 4), not assumed.
-function _currentConfidence() {
-  return (typeof window !== 'undefined' && window.__getConfidence) ? window.__getConfidence() : STATE.conf;
-}
-
 // 4.2: split out of what used to be the single runCalculation() function.
 // calculateOnly() is the numbers-only half — everything through
 // renderOutput()/_lastCalc* stashing, no agent launch. runCalculation()
@@ -359,25 +345,6 @@ function _currentConfidence() {
 // explicitly with Eric rather than assumed, since "numbers update live"
 // doesn't imply "relaunch an AI call on every keystroke."
 function calculateOnly() {
-  // Pre-fill contingency from confidence if field is empty (only fires on first calculate)
-  // A2: markup-contingency is a React-controlled input now (OutputPage.jsx)
-  // — the direct .value write below is still required (collectFormData(),
-  // called synchronously right after this, reads live DOM), but on its
-  // own it would be silently reverted the next time anything re-renders
-  // OutputPage (React re-asserts whatever state.bid.markupInputs.
-  // contingencyPct still holds — '', since this write never told the
-  // reducer). window.__hydrateMarkup's merge semantics (LOAD_SECTION,
-  // store.jsx) update just this one field without touching overheadPct/
-  // profitPct. Same dual-write shape as every other scalar hydration —
-  // checklist item 4.
-  const contingencyEl = document.getElementById('markup-contingency');
-  if (contingencyEl && !contingencyEl.value) {
-    const conf = _currentConfidence();
-    const prefill = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
-    contingencyEl.value = prefill;
-    window.__hydrateMarkup?.({ contingencyPct: prefill });
-  }
-
   const state        = collectFormData();
   // Resolved once, before any row-level calculation — see js/calculator.js's
   // applyRateEscalation() doc comment. Only the wall/ceiling calls receive
@@ -475,18 +442,6 @@ async function _launchBidAgent(state, summary, markupResult) {
 // estimated_material_cost, which are legitimately plain-calculator-
 // derived and out of scope for this fix.
 async function submitBid(finalizeSelection) {
-  // Same pre-fill logic as runCalculation — ensure contingency is set before
-  // reading. Same dual-write reasoning too (see runCalculation()'s comment) —
-  // the direct .value write alone would be silently reverted next time
-  // anything re-renders OutputPage's now-controlled markup-contingency input.
-  const contingencyEl = document.getElementById('markup-contingency');
-  if (contingencyEl && !contingencyEl.value) {
-    const conf = _currentConfidence();
-    const prefill = conf === 'hi' ? 4 : conf === 'md' ? 8 : conf === 'lo' ? 15 : 0;
-    contingencyEl.value = prefill;
-    window.__hydrateMarkup?.({ contingencyPct: prefill });
-  }
-
   const state        = collectFormData();
   const escalatedRates = applyRateEscalation(state.rates, state.rateEscalation);
   const wallCosts    = calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions);
