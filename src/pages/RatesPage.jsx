@@ -28,9 +28,9 @@
 // sits at the bottom of the page in a `.tray-row` beside the Logistics
 // tray — Logistics as column 1, Markup as column 2. The inputs stay React-
 // controlled off state.bid.markupInputs — collectFormData() still reads
-// #markup-* by id, and runCalculation()'s contingency-from-confidence
-// pre-fill (js/ui.js) still writes #markup-contingency + dispatches
-// __hydrateMarkup — none of that cares which page renders the fields.
+// #markup-* by id. Risk/contingency is purely manual: it starts blank and
+// stays blank until the estimator types a value (the old
+// confidence-level auto-fill was removed 2026-09-05).
 // ─────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '../state/store.jsx';
@@ -436,7 +436,7 @@ export default function RatesPage({ active }) {
                   <input id="markup-overhead" className="rr-val pct" type="number" min="0" step="0.1" placeholder="10.0"
                     value={mu.overheadPct} onChange={(e) => setMarkup('overheadPct', e.target.value)} />
                 } />
-              <RRRow name="Risk / contingency" sfx="%" tip="Pre-filled from confidence level; editable"
+              <RRRow name="Risk / contingency" sfx="%" tip="Estimator's own judgment call on buffer for this job"
                 valueEl={
                   <input id="markup-contingency" className="rr-val pct" type="number" min="0" step="0.1" placeholder="-"
                     value={mu.contingencyPct} onChange={(e) => setMarkup('contingencyPct', e.target.value)} />

@@ -250,9 +250,10 @@ export const initialState = {
     // free via its wholesale deep-clone of initialState.bid below.
     wallsMode: 'dimensions',
     ceilingsMode: 'dimensions',
-    // Matches the original static markup's blank <input>s exactly —
-    // contingencyPct gets pre-filled from confidence by runCalculation()
-    // itself (js/ui.js's _currentConfidence()-driven logic), not here.
+    // Matches the original static markup's blank <input>s exactly.
+    // contingencyPct is purely manual — starts '' and stays '' until the
+    // estimator types a value; nothing auto-fills it from confidence (that
+    // link was removed 2026-09-05).
     markupInputs: { overheadPct: '', contingencyPct: '', profitPct: '' }
   }
 };
