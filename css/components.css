@@ -300,4 +300,93 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
   color:var(--text3);cursor:pointer;opacity:.75}
 #dev-toolbar-show:hover{opacity:1;color:var(--text2)}
 body.devbar-hidden .dev-toolbar{display:none}
+
+/* ── .rr-* / .tray — compact numeric-field system ──
+   Written once here per bid-iq-compact-ui-design-system-v2.md §16, shared
+   by every migrated tab (Rates, Site Conditions, Cost Summary, Market
+   Read) instead of being reimplemented per page. Verbatim from
+   rates-standardized-layout-v4.html / site-conditions-redesign-v2.html
+   (byte-identical between the two source mockups). Pairs with
+   src/state/useUniformRowWidths.js, which sets --box-width/--sfx-width/
+   --rr-width per page. This is a numeric-field playbook only (design doc
+   §15) — does not apply to free-text fields (Project stays untouched). */
+.rr{display:flex;align-items:center;gap:10px;width:var(--rr-width, auto);
+    background:var(--surface2);border-radius:8px;padding:9px 10px;}
+.rr-l{display:flex;align-items:baseline;gap:6px;min-width:0;overflow:hidden;
+      white-space:nowrap;text-overflow:ellipsis;}
+.rr-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.rr-name{font-weight:700;font-size:13.5px;white-space:nowrap;}
+.rr-sub{font-size:11px;color:var(--text3);white-space:nowrap;}
+
+/* Tooltip "i" icon — replaces permanent inline hint text (design doc §5). */
+.info{width:14px;height:14px;border-radius:50%;border:1px solid var(--text3);color:var(--text3);
+      font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      cursor:default;position:relative;font-style:italic;font-family:Georgia,serif;}
+.info:hover::after{content:attr(data-tip);position:absolute;bottom:135%;left:50%;
+      transform:translateX(-50%);background:#0a0c11;border:1px solid var(--border);
+      color:var(--text);font-size:11.5px;font-style:normal;font-family:-apple-system,sans-serif;
+      padding:7px 10px;border-radius:6px;width:190px;white-space:normal;line-height:1.4;
+      z-index:5;box-shadow:0 4px 16px rgba(0,0,0,.4);}
+
+/* Input box (currency / percent / quantity). */
+.rr-input{display:flex;align-items:center;justify-content:center;background:var(--surface);
+          border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;
+          margin-left:auto;width:var(--box-width, auto);}
+.rr-pfx{height:32px;display:flex;align-items:center;padding:0 6px;color:var(--text3);
+        font-size:12px;background:var(--bg);flex-shrink:0;}
+/* .rr-input .rr-val, not bare .rr-val: base.css's `input[type=number]`
+   (an attribute selector, specificity 0,0,1,1) otherwise beats a plain
+   single class (0,0,1,0) on background/border/border-radius/padding/
+   font-size -- found via visual verification, not assumed from reading
+   the CSS. It silently produced a bordered, surface2-background, wide-
+   padded inner box nested inside .rr-input (a visible double border),
+   and on the narrow percent width left only ~15px of content padding
+   for a bold 2-digit value, clipping it against the box edge. The
+   contextual selector's specificity (0,0,2,0) beats the base rule
+   unconditionally, not just by cascade/source-order luck. */
+.rr-input .rr-val{height:32px;text-align:right;background:transparent;border:none;border-radius:0;
+        color:var(--text);font-weight:700;font-size:13.5px;padding:0 5px 0 3px;font-family:inherit;
+        flex-shrink:0;width:auto;-moz-appearance:textfield;}
+.rr-input .rr-val.cur{width:calc(8ch + 8px);}
+.rr-input .rr-val.pct{width:calc(3ch + 8px);}
+.rr-input .rr-val.qty{width:calc(5ch + 8px);}
+/* Real bug found via visual verification, not assumed from the mockup:
+   neither source mockup suppresses the native number-input spin buttons.
+   At the currency width (8ch+8px) there's just enough room for the
+   spinner and the digits to coexist; at the percent width (3ch+8px) the
+   spinner ate the entire box, silently pushing typed digits out of the
+   visible (overflow:hidden) area -- values were present in the DOM and
+   correct, just not rendered. Universally correct for a compact numeric
+   field regardless of box width, not a deviation from the approved look. */
+.rr-val::-webkit-inner-spin-button,
+.rr-val::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.rr-sfx{height:32px;width:var(--sfx-width, auto);text-align:center;display:flex;
+        align-items:center;justify-content:center;color:var(--text3);font-size:10.5px;flex-shrink:0;}
+
+/* Select box — same --box-width as .rr-input, one uniform size per tab. */
+.rr-select{height:32px;margin-left:auto;flex-shrink:0;width:var(--box-width, auto);
+          background:var(--surface);border:1px solid var(--border);border-radius:6px;
+          color:var(--text);font-weight:700;font-size:13.5px;padding:0 8px;
+          font-family:inherit;appearance:none;text-align:center;text-align-last:center;}
+
+/* Connected group — a Yes/No select with an attached child input that
+   animates open/closed based on the select's value (Curved walls / Phased
+   work on Site Conditions). */
+.rr-connected{width:var(--rr-width, auto);}
+.rr-connected .rr{width:100%;border-radius:8px;transition:border-radius .18s ease;}
+.rr-connected.expanded .rr{border-radius:8px 8px 0 0;}
+.rr-connected .rr-child{width:100%;background:var(--surface2);border-radius:0 0 8px 8px;
+      display:flex;align-items:center;gap:8px;max-height:0;opacity:0;overflow:hidden;
+      padding:0 10px;transition:max-height .2s ease, opacity .15s ease, padding .2s ease;}
+.rr-connected.expanded .rr-child{max-height:44px;opacity:1;padding:9px 10px;}
+.rr-child-lbl{font-size:11.5px;color:var(--text3);margin-right:auto;}
+
+/* Tray enclosure (design doc §3 — Option B, finalized). */
+.tray{border:1px solid var(--border);border-radius:var(--rl);
+      background:color-mix(in srgb, var(--surface) 30%, var(--bg));
+      padding:22px 28px;margin-bottom:20px;width:100%;}
+.tray-hdr{font-weight:700;font-size:14.5px;margin-bottom:16px;padding-bottom:11px;
+          border-bottom:1px solid var(--border);}
+.tray-cols{display:flex;gap:64px;justify-content:center;align-items:flex-start;}
+.tray-col{display:flex;flex-direction:column;gap:8px;}
 body.devbar-hidden #dev-toolbar-show{display:block}

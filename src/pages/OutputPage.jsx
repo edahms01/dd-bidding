@@ -22,6 +22,12 @@
 // same pattern as every scalar page. collectFormData() (js/state.js)
 // keeps reading these by DOM id unmodified, same as it always has.
 //
+// UI-fixes batch (2026-09-05): migrated from .rcard/.iw/.badge to the
+// shared .rr-*/.tray system (see RatesPage.jsx's migration note). One
+// small "Markup" tray, single column — only 3 fields, no split needed,
+// per the audit plan's lower-confidence extension (neither source
+// mockup covers Cost Summary directly).
+//
 // submitBid() (js/ui.js)'s post-finalize success/failure panel used to
 // overwrite #output-bid's content directly — window.__setSubmitResult
 // now dispatches into state.ui.submitResult instead, and this page
@@ -35,8 +41,11 @@
 // matching the original's implicit behavior (any renderOutput() call
 // overwrote whatever #output-bid held, submit panel included).
 // ─────────────────────────────────────────────────────────────────────
+import { useRef } from 'react';
 import { useStore } from '../state/store.jsx';
 import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
+import { RRRow } from '../components/RRRow.jsx';
+import { useUniformRowWidths } from '../state/useUniformRowWidths.js';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(n)  { return (+n).toFixed(1) + '%'; }
@@ -224,11 +233,13 @@ export default function OutputPage({ active }) {
   const [state, dispatch] = useStore();
   const { output, submitResult, agent } = state.ui;
   const mu = state.bid.markupInputs;
+  const rootRef = useRef(null);
+  useUniformRowWidths(rootRef);
 
   const setMarkup = (field, value) => dispatch({ type: 'SET_FIELD', path: ['bid', 'markupInputs', field], value });
 
   return (
-    <div className={'page' + (active ? ' active' : '')} id="page-output">
+    <div className={'page' + (active ? ' active' : '')} id="page-output" ref={rootRef}>
       <div className="page-hdr">
         <div><div className="page-title">Cost Summary</div><div className="page-sub">Direct cost breakdown and pricing</div></div>
         <div className="page-actions">
@@ -248,25 +259,25 @@ export default function OutputPage({ active }) {
           : <div className="empty-state">Enter rates and takeoff quantities. The cost summary calculates automatically.</div>}
       </div>
 
-      <div className="section-block">
-        <div className="section-label">Markup</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '20px 20px 8px' }}>
-          <div className="rgrid g3">
-            <div className="rcard">
-              <div className="rcard-lbl">Company overhead <span className="badge b-pct">%</span></div>
-              <div className="iw"><input id="markup-overhead" className="ri" type="number" min="0" step="0.1" placeholder="10.0" value={mu.overheadPct} onChange={(e) => setMarkup('overheadPct', e.target.value)} /><span className="isfx">%</span></div>
-              <div className="rhint">Office, insurance, fleet, as % of direct costs</div>
-            </div>
-            <div className="rcard">
-              <div className="rcard-lbl">Risk / contingency <span className="badge b-pct">%</span></div>
-              <div className="iw"><input id="markup-contingency" className="ri" type="number" min="0" step="0.1" placeholder="-" value={mu.contingencyPct} onChange={(e) => setMarkup('contingencyPct', e.target.value)} /><span className="isfx">%</span></div>
-              <div className="rhint">Pre-filled from confidence level; editable</div>
-            </div>
-            <div className="rcard">
-              <div className="rcard-lbl">Profit margin <span className="badge b-pct">%</span></div>
-              <div className="iw"><input id="markup-profit" className="ri" type="number" min="0" step="0.1" placeholder="8.0" value={mu.profitPct} onChange={(e) => setMarkup('profitPct', e.target.value)} /><span className="isfx">%</span></div>
-              <div className="rhint">Target profit on direct costs</div>
-            </div>
+      <div className="tray">
+        <div className="tray-hdr">Markup</div>
+        <div className="tray-cols">
+          <div className="tray-col">
+            <RRRow name="Company overhead" sfx="%" tip="Office, insurance, fleet, as % of direct costs"
+              valueEl={
+                <input id="markup-overhead" className="rr-val pct" type="number" min="0" step="0.1" placeholder="10.0"
+                  value={mu.overheadPct} onChange={(e) => setMarkup('overheadPct', e.target.value)} />
+              } />
+            <RRRow name="Risk / contingency" sfx="%" tip="Pre-filled from confidence level; editable"
+              valueEl={
+                <input id="markup-contingency" className="rr-val pct" type="number" min="0" step="0.1" placeholder="-"
+                  value={mu.contingencyPct} onChange={(e) => setMarkup('contingencyPct', e.target.value)} />
+              } />
+            <RRRow name="Profit margin" sfx="%" tip="Target profit on direct costs"
+              valueEl={
+                <input id="markup-profit" className="rr-val pct" type="number" min="0" step="0.1" placeholder="8.0"
+                  value={mu.profitPct} onChange={(e) => setMarkup('profitPct', e.target.value)} />
+              } />
           </div>
         </div>
       </div>

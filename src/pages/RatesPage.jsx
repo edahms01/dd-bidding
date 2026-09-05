@@ -14,9 +14,19 @@
 // uncontrolled inputs, not wired to reducer state, exactly matching
 // current behavior (they contribute to the displayed totals bar but
 // nowhere else, same as today).
+//
+// UI-fixes batch (2026-09-04): migrated from the old per-field
+// .rcard/.iw/.fiw/.siw/.aiw "dialects" to the shared .rr-*/.tray system
+// (css/components.css, per rates-standardized-layout-v4.html +
+// bid-iq-compact-ui-design-system-v2.md). See useUniformRowWidths for
+// the --box-width/--sfx-width/--rr-width measurement mechanism this
+// relies on. Field ids/classes (rate-*/esc-*, the L/M/X totals-bar
+// classing) are unchanged — only the surrounding markup moved.
 // ─────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '../state/store.jsx';
+import { useUniformRowWidths } from '../state/useUniformRowWidths.js';
+import { RRRow } from '../components/RRRow.jsx';
 
 function fmt(n) { return n > 0 ? '$' + Math.round(n).toLocaleString() : '-'; }
 
@@ -39,6 +49,17 @@ function sumClassIn(root, cls) {
     if (!isNaN(v)) t += v;
   });
   return t;
+}
+
+// True if state.bid.rateEscalation carries any actually-set value (a
+// number, including 0, or a non-empty string). '' — the initialState
+// default — and null — seed's "unset" marker — both count as not-set.
+// Drives the escalation-fields toggle's default-open exception (see
+// RatesPage() below): loading a bid that already has escalation set
+// must not silently hide it behind an off-by-default toggle.
+function anyRateEscalationSet(esc) {
+  if (esc && typeof esc === 'object') return Object.values(esc).some(anyRateEscalationSet);
+  return esc !== '' && esc !== null && esc !== undefined;
 }
 
 function RateField({ path, dispatch, get, className, id, placeholder }) {
@@ -67,6 +88,14 @@ function EscField({ path, dispatch, get, id }) {
   );
 }
 
+function EscRow({ show, id, path, get, dispatch }) {
+  return (
+    <div className="esc-row" style={{ display: show ? undefined : 'none' }}>
+      <span>Esc</span><EscField id={id} path={path} get={get} dispatch={dispatch} /><span>%</span>
+    </div>
+  );
+}
+
 export default function RatesPage({ active }) {
   const [state, dispatch] = useStore();
   const rootRef = useRef(null);
@@ -74,6 +103,19 @@ export default function RatesPage({ active }) {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [needsImmediateSave, setNeedsImmediateSave] = useState(false);
+  // Escalation fields sit behind a per-visit display toggle. Local state
+  // only — never dispatched into the reducer, never exported, not bid
+  // data. Default closed; the exception below opens it for a bid that
+  // already carries an escalation value. The .esc-row inputs stay
+  // mounted when closed (CSS display:none, not unmounted) — collectFormData()
+  // scans the DOM by id for esc-* fields, so unmounting them would drop
+  // every escalation value from autosave/export/calc. Visibility only.
+  const [showEsc, setShowEsc] = useState(false);
+  const escUserSetRef = useRef(false);
+
+  // Measures --box-width/--sfx-width/--rr-width for every .rr row on this
+  // page (design doc §7/§8/§16) — see useUniformRowWidths.js.
+  useUniformRowWidths(rootRef);
 
   // See handleLoadTemplate() below for why this can't just call
   // window._autosave() inline at dispatch time.
@@ -131,6 +173,23 @@ export default function RatesPage({ active }) {
     if (active) loadTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
+
+  // Re-evaluate the escalation toggle's default every time Rates becomes
+  // active (and whenever the loaded escalation data changes underneath
+  // it — draft switch, seed load, hydration landing a tick late): closed
+  // unless the bid already has an escalation value, in which case open so
+  // the value isn't silently hidden. Stops auto-tracking for the rest of
+  // the visit once the user works the toggle by hand; that latch resets
+  // on leaving Rates, so the next visit starts from the default again.
+  useEffect(() => {
+    if (!active) { escUserSetRef.current = false; return; }
+    if (!escUserSetRef.current) setShowEsc(anyRateEscalationSet(state.bid.rateEscalation));
+  }, [active, state.bid.rateEscalation]);
+
+  const toggleEsc = useCallback(() => {
+    escUserSetRef.current = true;
+    setShowEsc((v) => !v);
+  }, []);
 
   async function handleSaveTemplate() {
     const name = prompt('Name this rate template:');
@@ -193,11 +252,18 @@ export default function RatesPage({ active }) {
     }
   }
 
-  const finishDots = { 1: '#555a6b', 2: '#4a8fe8', 3: '#2ab5a0', 4: '#e87c2a', 5: '#3abf7a' };
-  const finishDesc = {
+  // Finish-level dots/tooltips — verbatim from rates-standardized-layout-
+  // v4.html. Level 3 gets no tooltip (and no .info icon at all): the
+  // mockup's own measure-area row has the icon markup with no data-tip,
+  // an unresolved content gap, not a Code omission — Eric's call was to
+  // drop the icon entirely rather than invent placeholder copy. Levels
+  // 1/2/4/5's tooltip text is byte-identical to this app's pre-existing
+  // finish-level descriptions (moved into a tooltip per design doc §5,
+  // not new copy).
+  const finishDots = { 1: '#8a93a6', 2: '#4a8fe8', 3: '#4fbf6a', 4: '#e8a33d', 5: '#4fbf6a' };
+  const finishTips = {
     1: 'Tape only, concealed areas',
     2: 'Tape + compound, wet areas',
-    3: 'Standard commercial, paint ready',
     4: 'High quality, most commercial work',
     5: 'Premium: skim coat, critical lighting'
   };
@@ -240,87 +306,104 @@ export default function RatesPage({ active }) {
         <div className="total-item"><div className="total-val green" id="t-tot">{fmt(totals.l + totals.m + totals.x)}</div><div className="total-lbl">Direct cost total</div></div>
       </div>
 
-      <div className="rgroup">
-        <div className="rgroup-hdr">
-          <div className="rgroup-icon icon-l">L</div>
-          <div><div className="rgroup-title">Labor rates</div><div className="rgroup-desc">All-in crew rate excluding burden</div></div>
-        </div>
-        <div className="rgrid g3" style={{ marginBottom: 12 }}>
-          <div className="rcard"><div className="rcard-lbl">Metal framing <span className="badge b-lf">per LF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-frame" className="ri L" path={['rates', 'framing']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/LF</span></div><div className="rhint">Standard height. Adders applied automatically.</div></div>
-          <div className="rcard"><div className="rcard-lbl">Drywall hanging <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-hang" className="ri L" path={['rates', 'hanging']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF/layer</span></div><div className="rhint">Multiplied by board layers per assembly.</div></div>
-          {/* Orphan fields — see file header comment. Plain uncontrolled inputs, matching current behavior exactly. */}
-          <div className="rcard"><div className="rcard-lbl">Plastering <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><input id="rate-plaster" className="ri L" type="number" placeholder="0.00" /><span className="isfx">/SF</span></div></div>
-          <div className="rcard"><div className="rcard-lbl">External wall <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><input id="rate-extwall" className="ri L" type="number" placeholder="0.00" /><span className="isfx">/SF</span></div></div>
-          <div className="rcard"><div className="rcard-lbl">Labor burden <span className="badge b-pct">%</span></div><div className="iw"><RateField id="rate-burden" className="ri L" path={['rates', 'burdenPct']} get={get} dispatch={dispatch} placeholder="32" /><span className="isfx">%</span></div><div className="rhint">Payroll tax, workers comp, benefits. 28–40%.</div></div>
-          <div className="rcard"><div className="rcard-lbl">Supervision <span className="badge b-pct">%</span></div><div className="iw"><RateField id="rate-super" className="ri L" path={['rates', 'superPct']} get={get} dispatch={dispatch} placeholder="8" /><span className="isfx">%</span></div><div className="rhint">Foreman as % of total labor. 6–12%.</div></div>
-        </div>
-        <div className="taping-adders-row">
-          <div className="taping-col">
+      <div className="tray">
+        <div className="tray-hdr">Labor Rates</div>
+        <div className="tray-cols">
+          <div className="tray-col">
+            <div className="sub-lbl">Base rates</div>
+            <RRRow name="Metal framing" tip="Standard height. Adders applied automatically." pfx="$" sfx="/LF"
+              valueEl={<RateField id="rate-frame" className="rr-val cur L" path={['rates', 'framing']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+            <RRRow name="Drywall hanging" tip="Multiplied by board layers per assembly." pfx="$" sfx="/SF"
+              valueEl={<RateField id="rate-hang" className="rr-val cur L" path={['rates', 'hanging']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+            {/* Orphan fields — see file header comment. Plain uncontrolled inputs, matching current behavior exactly. */}
+            <RRRow name="Plastering" pfx="$" sfx="/SF"
+              valueEl={<input id="rate-plaster" className="rr-val cur L" type="number" placeholder="0.00" />} />
+            <RRRow name="External wall" pfx="$" sfx="/SF"
+              valueEl={<input id="rate-extwall" className="rr-val cur L" type="number" placeholder="0.00" />} />
+            <RRRow name="Labor burden" tip="Payroll tax, workers comp, benefits. 28–40%." sfx="%"
+              valueEl={<RateField id="rate-burden" className="rr-val pct L" path={['rates', 'burdenPct']} get={get} dispatch={dispatch} placeholder="32" />} />
+            <RRRow name="Supervision" tip="Foreman as % of total labor. 6–12%." sfx="%"
+              valueEl={<RateField id="rate-super" className="rr-val pct L" path={['rates', 'superPct']} get={get} dispatch={dispatch} placeholder="8" />} />
+            <div className="sub-lbl" style={{ marginTop: 28 }}>Height adders, labor uplift %</div>
+            <RRRow name="Above 12 ft" tip="Requires lift. Applied to SF above 12 ft." sfx="%"
+              valueEl={<RateField id="rate-add12" className="rr-val pct L" path={['rates', 'adder12Pct']} get={get} dispatch={dispatch} placeholder="15" />} />
+            <RRRow name="Above 20 ft" tip="High-lift zone. Stacked on 12 ft adder." sfx="%"
+              valueEl={<RateField id="rate-add20" className="rr-val pct L" path={['rates', 'adder20Pct']} get={get} dispatch={dispatch} placeholder="30" />} />
+          </div>
+          <div className="tray-col">
             <div className="sub-lbl">Taping + finishing, by finish level ($/SF)</div>
-            <div className="ftable">
-              <div className="fth"><div>Level</div><div>Description</div><div>Rate ($/SF)</div></div>
-              {[1, 2, 3, 4, 5].map((lvl) => (
-                <div className="frow" key={lvl}>
-                  <div className="flvl"><span className="ldot" style={{ background: finishDots[lvl] }} />Level {lvl}</div>
-                  <div className="fdesc">{finishDesc[lvl]}</div>
-                  <div><div className="fiw"><span className="fpfx">$</span><RateField id={'rate-fin' + lvl} className="fi L" path={['rates', 'finish', lvl]} get={get} dispatch={dispatch} placeholder="0.00" /></div></div>
+            {[1, 2, 3, 4, 5].map((lvl) => (
+              <RRRow key={lvl} name={'Level ' + lvl} dot={finishDots[lvl]} tip={finishTips[lvl]} pfx="$"
+                valueEl={<RateField id={'rate-fin' + lvl} className="rr-val cur L" path={['rates', 'finish', lvl]} get={get} dispatch={dispatch} placeholder="0.00" />} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="tray">
+        <div className="tray-hdr" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Material Rates</span>
+          <label className="esc-toggle" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', color: 'var(--text3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input type="checkbox" checked={showEsc} onChange={toggleEsc} />
+            Show escalation fields
+          </label>
+        </div>
+        <div className="tray-cols">
+          <div className="tray-col">
+            <div className="sub-lbl">Stud + track by size ($/LF)</div>
+            {['1-5/8"', '2-1/2"', '3-5/8"', '4"', '6"'].map((sz) => {
+              const slug = sz.replace(/[^0-9]/g, '');
+              return (
+                <div key={sz}>
+                  <RRRow name={sz} sub="incl. track" pfx="$" sfx="/LF"
+                    valueEl={<RateField id={'rate-stud' + slug} className="rr-val cur M" path={['rates', 'stud', sz]} get={get} dispatch={dispatch} placeholder="0.00" />} />
+                  <EscRow show={showEsc} id={'esc-stud' + slug} path={['rateEscalation', 'stud', sz]} get={get} dispatch={dispatch} />
                 </div>
-              ))}
-            </div>
+              );
+            })}
+            <div className="sub-lbl" style={{ marginTop: 28 }}>Drywall board by type ($/SF)</div>
+            {[['Standard', 'std', 'Standard'], ['Type-X', 'typex', 'Type-X'], ['Moisture', 'moist', 'Moisture-resist.'], ['Impact', 'imp', 'Impact-resist.']].map(([boardType, slug, label]) => (
+              <div key={boardType}>
+                <RRRow name={label} pfx="$"
+                  valueEl={<RateField id={'rate-brd-' + slug} className="rr-val cur M" path={['rates', 'board', boardType]} get={get} dispatch={dispatch} placeholder="0.00" />} />
+                <EscRow show={showEsc} id={'esc-brd-' + slug} path={['rateEscalation', 'board', boardType]} get={get} dispatch={dispatch} />
+              </div>
+            ))}
           </div>
-          <div className="adders-col">
-            <div className="sub-lbl">Height adders, labor uplift %</div>
-            <div className="acard"><div><div className="albl">Above 12 ft</div><div className="asub">Requires lift. Applied to SF above 12 ft.</div></div><div className="aiw"><RateField id="rate-add12" className="ai L" path={['rates', 'adder12Pct']} get={get} dispatch={dispatch} placeholder="15" /><span className="apct">%</span></div></div>
-            <div className="acard"><div><div className="albl">Above 20 ft</div><div className="asub">High-lift zone. Stacked on 12 ft adder.</div></div><div className="aiw"><RateField id="rate-add20" className="ai L" path={['rates', 'adder20Pct']} get={get} dispatch={dispatch} placeholder="30" /><span className="apct">%</span></div></div>
+          <div className="tray-col">
+            <div className="sub-lbl">Finishing materials</div>
+            <div>
+              <RRRow name="Tape + compound" tip="Flat allowance across all finished SF." pfx="$" sfx="/SF"
+                valueEl={<RateField id="rate-tape" className="rr-val cur M" path={['rates', 'tape']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+              <EscRow show={showEsc} id="esc-tape" path={['rateEscalation', 'tape']} get={get} dispatch={dispatch} />
+            </div>
+            <div>
+              <RRRow name="Insulation" tip="Applied to assemblies with insulation flagged." pfx="$" sfx="/SF"
+                valueEl={<RateField id="rate-insul" className="rr-val cur M" path={['rates', 'insul']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+              <EscRow show={showEsc} id="esc-insul" path={['rateEscalation', 'insul']} get={get} dispatch={dispatch} />
+            </div>
+            <div>
+              <RRRow name="Fasteners + Adh." tip="Flat allowance. Typically $0.08–$0.15/SF." pfx="$" sfx="/SF"
+                valueEl={<RateField id="rate-fasten" className="rr-val cur M" path={['rates', 'fasten']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+              <EscRow show={showEsc} id="esc-fasten" path={['rateEscalation', 'fasten']} get={get} dispatch={dispatch} />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="rgroup">
-        <div className="rgroup-hdr">
-          <div className="rgroup-icon icon-m">M</div>
-          <div><div className="rgroup-title">Material rates</div><div className="rgroup-desc">Current supplier pricing; waste factor from conditions applied automatically</div></div>
-        </div>
-        <div className="sub-lbl">Stud + track by size ($/LF)</div>
-        <div className="rgrid mat-grid" style={{ marginBottom: 14 }}>
-          {['1-5/8"', '2-1/2"', '3-5/8"', '4"', '6"'].map((sz) => (
-            <div className="stud-card" key={sz}>
-              <div className="stud-sz">{sz}</div>
-              <div className="stud-sub">incl. track</div>
-              <div className="siw"><span className="spfx">$</span><RateField id={'rate-stud' + sz.replace(/[^0-9]/g, '')} className="si M" path={['rates', 'stud', sz]} get={get} dispatch={dispatch} placeholder="0.00" /></div>
-              <div className="esc-row"><span>Esc</span><EscField id={'esc-stud' + sz.replace(/[^0-9]/g, '')} path={['rateEscalation', 'stud', sz]} get={get} dispatch={dispatch} /><span>%</span></div>
-            </div>
-          ))}
-        </div>
-        <div className="sub-lbl" style={{ marginTop: 28 }}>Drywall board by type ($/SF)</div>
-        <div className="rgrid mat-grid" style={{ marginBottom: 14 }}>
-          {[
-            ['Standard', 'std'], ['Type-X', 'typex'], ['Moisture', 'moist'], ['Impact', 'imp']
-          ].map(([boardType, slug]) => (
-            <div className="rcard" key={boardType}>
-              <div className="rcard-lbl">{boardType === 'Moisture' ? 'Moisture-resistant' : boardType === 'Impact' ? 'Impact-resistant' : boardType} <span className="badge b-sf">$/SF</span></div>
-              <div className="iw"><span className="ipfx">$</span><RateField id={'rate-brd-' + slug} className="ri M" path={['rates', 'board', boardType]} get={get} dispatch={dispatch} placeholder="0.00" /></div>
-              <div className="esc-row"><span>Esc</span><EscField id={'esc-brd-' + slug} path={['rateEscalation', 'board', boardType]} get={get} dispatch={dispatch} /><span>%</span></div>
-            </div>
-          ))}
-        </div>
-        <div className="sub-lbl" style={{ marginTop: 28 }}>Finishing materials</div>
-        <div className="rgrid mat-grid">
-          <div className="rcard"><div className="rcard-lbl">Tape + compound <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-tape" className="ri M" path={['rates', 'tape']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Flat allowance across all finished SF.</div><div className="esc-row"><span>Esc</span><EscField id="esc-tape" path={['rateEscalation', 'tape']} get={get} dispatch={dispatch} /><span>%</span></div></div>
-          <div className="rcard"><div className="rcard-lbl">Insulation <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-insul" className="ri M" path={['rates', 'insul']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Applied to assemblies with insulation flagged.</div><div className="esc-row"><span>Esc</span><EscField id="esc-insul" path={['rateEscalation', 'insul']} get={get} dispatch={dispatch} /><span>%</span></div></div>
-          <div className="rcard"><div className="rcard-lbl">Fasteners + adhesives <span className="badge b-sf">per SF</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-fasten" className="ri M" path={['rates', 'fasten']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/SF</span></div><div className="rhint">Flat allowance. Typically $0.08–$0.15/SF.</div><div className="esc-row"><span>Esc</span><EscField id="esc-fasten" path={['rateEscalation', 'fasten']} get={get} dispatch={dispatch} /><span>%</span></div></div>
-        </div>
-      </div>
-
-      <div className="rgroup">
-        <div className="rgroup-hdr">
-          <div className="rgroup-icon icon-x">X</div>
-          <div><div className="rgroup-title">Logistics</div><div className="rgroup-desc">Per-trip and per-unit costs; quantities from conditions</div></div>
-        </div>
-        <div className="rgrid g3">
-          <div className="rcard"><div className="rcard-lbl">Delivery <span className="badge b-flat">per trip</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-delivery" className="ri X" path={['rates', 'delivery']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/trip</span></div><div className="rhint">Multiplied by estimated delivery trips.</div></div>
-          <div className="rcard"><div className="rcard-lbl">Waste disposal <span className="badge b-flat">per pull</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-disposal" className="ri X" path={['rates', 'disposal']} get={get} dispatch={dispatch} placeholder="0.00" /></div></div>
-          <div className="rcard"><div className="rcard-lbl">Lift rental <span className="badge b-flat">per week</span></div><div className="iw"><span className="ipfx">$</span><RateField id="rate-lift" className="ri X" path={['rates', 'lift']} get={get} dispatch={dispatch} placeholder="0.00" /><span className="isfx">/wk</span></div><div className="rhint">Only applied if SF above 12 ft &gt; 0.</div></div>
+      <div className="tray">
+        <div className="tray-hdr">Logistics</div>
+        <div className="tray-cols">
+          <div className="tray-col">
+            <RRRow name="Delivery" tip="Multiplied by estimated delivery trips." pfx="$" sfx="/trip"
+              valueEl={<RateField id="rate-delivery" className="rr-val cur X" path={['rates', 'delivery']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+            <RRRow name="Waste disposal" pfx="$"
+              valueEl={<RateField id="rate-disposal" className="rr-val cur X" path={['rates', 'disposal']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+          </div>
+          <div className="tray-col">
+            <RRRow name="Lift rental" tip="Only applied if SF above 12 ft > 0." pfx="$" sfx="/wk"
+              valueEl={<RateField id="rate-lift" className="rr-val cur X" path={['rates', 'lift']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+          </div>
         </div>
       </div>
     </div>
