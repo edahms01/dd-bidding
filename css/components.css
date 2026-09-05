@@ -445,4 +445,8 @@ body.devbar-hidden .dev-toolbar{display:none}
    them share the row evenly. Collapses to stacked below 768px (responsive.css). */
 .tray-row{display:flex;gap:20px;align-items:stretch;}
 .tray-row>.tray{flex:1;width:auto;margin-bottom:20px;}
+/* A standalone tray sized to one .tray-row column: (100% - 20px gap) / 2,
+   so it lines up under the left tray of a .tray-row above it. Goes
+   full-width on a phone (responsive.css). */
+.tray-half{width:calc(50% - 10px);}
 body.devbar-hidden #dev-toolbar-show{display:block}

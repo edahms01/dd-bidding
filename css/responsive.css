@@ -189,6 +189,9 @@
   .tray-cols { flex-direction: column; align-items: stretch; gap: 4px; }
   /* Side-by-side trays (Rates: Logistics + Markup) stack on a phone. */
   .tray-row { flex-direction: column; gap: 0; }
+  /* A column-width standalone tray (Market Read: Known competitors) goes
+     full-width too. */
+  .tray-half { width: 100%; }
   /* Real overflow found via measurement, not assumed from the collapse
      rule above: .rr/.rr-input/.rr-select/.rr-connected are all sized by
      --rr-width/--box-width, fixed pixel values measured from each field's

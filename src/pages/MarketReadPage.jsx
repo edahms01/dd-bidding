@@ -202,28 +202,24 @@ export default function MarketReadPage({ active }) {
         </div>
       </div>
 
-      {/* Known competitors — a free-text list, in its own tray aligned
-          under column 1 (the Market signals tray). A 2-row <textarea> so
-          multiple competitors can be entered; it stays a plain field, not
-          a uniform .rr-box row (design doc §15 — a numeric/select
-          playbook, not a fit for multiline free text). The empty flex
-          spacer holds the tray at column-1 width; its former .rhint
-          explanation is a tooltip on the tray header. */}
-      <div className="tray-row" style={{ marginTop: 20 }}>
-        <div className="tray">
-          <div className="tray-hdr" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            Known competitors
-            <span className="info" data-tip="Logged for Phase 5B win-rate pattern analysis; not used in current calculation">i</span>
-          </div>
-          <textarea
-            id="intel-competitors"
-            rows={2}
-            placeholder="e.g. ABC Drywall, Smith & Co."
-            value={get(['intelligence', 'knownCompetitors'])}
-            onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'intelligence', 'knownCompetitors'], value: e.target.value })}
-          />
+      {/* Known competitors — its own tray, left-aligned under column 1
+          (the Market signals tray) and sized to a .tray-row column's
+          width via .tray-half (calc(50% - 10px) = (100% - 20px gap) / 2;
+          full-width below 768px). A 2-row <textarea> so multiple names
+          can be entered; it stays a plain field, not a uniform .rr-box
+          row (design doc §15). Former .rhint is a header tooltip. */}
+      <div className="tray tray-half" style={{ marginTop: 20 }}>
+        <div className="tray-hdr" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          Known competitors
+          <span className="info" data-tip="Logged for Phase 5B win-rate pattern analysis; not used in current calculation">i</span>
         </div>
-        <div style={{ flex: 1 }} />
+        <textarea
+          id="intel-competitors"
+          rows={2}
+          placeholder="e.g. ABC Drywall, Smith & Co."
+          value={get(['intelligence', 'knownCompetitors'])}
+          onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'intelligence', 'knownCompetitors'], value: e.target.value })}
+        />
       </div>
     </div>
   );
