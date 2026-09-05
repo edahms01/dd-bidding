@@ -75,24 +75,32 @@ function fmtWhen(ts) {
   return d.toLocaleDateString();
 }
 
-// Header "Open Bid" combobox — lists saved drafts ("open" bids, i.e.
-// work-in-progress, not yet submitted) most-recently-changed first and
-// switches to the chosen one. Backend is the existing localStorage draft
-// store: window.getAllDrafts() + window.switchToDraft(), the same pair
-// BidsPage already uses for its Open buttons.
+// Shared source + sort for both "open bids" surfaces — the header's
+// OpenBidMenu combobox and the left-nav "Open bids" list. One
+// definition, not reimplemented per surface. "Open" = every draft in
+// dirigo_drafts (work-in-progress, not yet submitted); a finalized bid
+// is removed from that map (js/forms.js clearFinalizedDraft), so the
+// map is exactly the in-progress set — no further filtering. Sorted
+// most-recently-changed first. Backend is the existing localStorage
+// draft store: window.getAllDrafts() + window.switchToDraft(), the same
+// pair BidsPage already uses for its Open buttons.
+function sortedOpenDrafts() {
+  let map = {};
+  try { map = window.getAllDrafts ? window.getAllDrafts() : {}; } catch (e) { map = {}; }
+  return Object.values(map).sort(
+    (a, b) => new Date(b.lastModifiedAt || b.createdAt || 0) - new Date(a.lastModifiedAt || a.createdAt || 0)
+  );
+}
+
+// Header "Open Bid" combobox — lists the open drafts and switches to
+// the chosen one.
 function OpenBidMenu() {
   const [open, setOpen] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const ref = useRef(null);
 
   function refresh() {
-    let map = {};
-    try { map = window.getAllDrafts ? window.getAllDrafts() : {}; } catch (e) { map = {}; }
-    setDrafts(
-      Object.values(map).sort(
-        (a, b) => new Date(b.lastModifiedAt || b.createdAt || 0) - new Date(a.lastModifiedAt || a.createdAt || 0)
-      )
-    );
+    setDrafts(sortedOpenDrafts());
   }
 
   useEffect(() => {
@@ -146,6 +154,15 @@ export default function AppShell() {
   const [state, dispatch] = useStore();
   const { activeSection, activeTab, navCollapsed, navDrawerOpen } = state.ui;
   const closeDrawer = () => dispatch({ type: 'SET_NAV_DRAWER', value: false });
+
+  // The "Open bids" nav list re-reads the draft store on every render
+  // (cheap — one localStorage read + small JSON.parse; AppShell already
+  // re-renders on every dispatch), so a new/switched/renamed draft shows
+  // once autosave has flushed — same freshness model as OpenBidMenu.
+  const navLabelsVisible = !navCollapsed || navDrawerOpen;
+  const openDrafts = sortedOpenDrafts();
+  let activeDraftId = null;
+  try { activeDraftId = localStorage.getItem('dirigo_active_draft_id'); } catch (e) { /* private mode */ }
 
   // Phase C 2.2 — URL routing. stateRef gives the once-registered
   // hashchange listener the *current* section/tab without re-subscribing
@@ -358,42 +375,72 @@ export default function AppShell() {
             read getComputedStyle(nav).width, it never changed) before
             fixing. */}
         <nav className={'leftnav' + (navCollapsed ? ' collapsed' : '') + (navDrawerOpen ? ' drawer-open' : '')} id="app-leftnav">
-          {/* Collapse toggle at the top of the sidebar (standard sidebar
-              pattern — VS Code / Linear / Notion), right-aligned when
-              expanded, centred when collapsed. */}
-          <button
-            className="nav-toggle"
-            aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            onClick={() => {
-              const collapsed = !navCollapsed;
-              localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
-              dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
-            }}
-          >
-            <span id="nav-toggle-icon">
-              {navCollapsed ? (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
-              )}
-            </span>
-          </button>
+          {/* Top row of the sidebar: the "Open bids" section label fills
+              the space left of the collapse toggle (standard sidebar
+              pattern — VS Code / Linear / Notion). Toggle right-aligned
+              when expanded, centred (label hidden) when collapsed. */}
+          <div className="leftnav-top">
+            {navLabelsVisible && <div className="section-label leftnav-title">Open bids</div>}
+            <button
+              className="nav-toggle"
+              aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+              title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+              onClick={() => {
+                const collapsed = !navCollapsed;
+                localStorage.setItem('dirigo_nav_collapsed', collapsed ? '1' : '');
+                dispatch({ type: 'SET_NAV_COLLAPSED', value: collapsed });
+              }}
+            >
+              <span id="nav-toggle-icon">
+                {navCollapsed ? (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 3 11 8 6 13" /></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="10 3 5 8 10 13" /></svg>
+                )}
+              </span>
+            </button>
+          </div>
           <div className="nav-items">
-            {/* Phase C 2.5 — the workflow nav item is "the current bid"
-                now (labelled with the active draft's project name), not
-                a "New Bid" button; clicking it returns you to
-                work-in-progress on whatever step you left off. "New Bid"
-                moved to a header action. */}
-            <div className={'nav-item' + (activeSection === 'workflow' ? ' active' : '')} data-nav="workflow" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'workflow' }); closeDrawer(); }} title="Current bid">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6L9 2z" />
-                <path d="M9 2v4h4" />
-                <line x1="6" y1="9" x2="10" y2="9" />
-                <line x1="8" y1="7" x2="8" y2="11" />
-              </svg>
-              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">{state.bid.project.name?.trim() || 'Current bid'}</span>}
-            </div>
+            {/* Phase C 2.5 established a single "current bid" nav item;
+                this replaces it with one row per open draft (everything
+                in dirigo_drafts, newest first — same source/sort as the
+                header's OpenBidMenu). The active draft is one of these
+                rows, marked .active while the workflow is showing.
+                Clicking the active row returns you to work-in-progress
+                on whatever step you left off (GOTO_SECTION); clicking
+                any other row switches to that draft (switchToDraft,
+                which lands on its Project step). "New Bid" is a header
+                action. The "Open bids" label lives in .leftnav-top above,
+                hidden in the 48px collapsed rail same as .nav-label. */}
+            {openDrafts.map((d) => {
+              const isActiveDraft = d.id === activeDraftId;
+              // The active draft's name comes from live reducer state
+              // (same as the old single "current bid" item) so an
+              // in-progress rename shows before autosave has flushed to
+              // dirigo_drafts; every other row shows its stored name.
+              const label = (isActiveDraft ? state.bid.project.name : d.project?.name)?.trim() || 'Untitled bid';
+              return (
+                <div
+                  key={d.id}
+                  className={'nav-item' + (activeSection === 'workflow' && isActiveDraft ? ' active' : '')}
+                  data-nav="workflow"
+                  onClick={() => {
+                    if (isActiveDraft) dispatch({ type: 'GOTO_SECTION', section: 'workflow' });
+                    else window.switchToDraft?.(d.id);
+                    closeDrawer();
+                  }}
+                  title={label}
+                >
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6L9 2z" />
+                    <path d="M9 2v4h4" />
+                    <line x1="6" y1="9" x2="10" y2="9" />
+                    <line x1="8" y1="7" x2="8" y2="11" />
+                  </svg>
+                  {navLabelsVisible && <span className="nav-label">{label}</span>}
+                </div>
+              );
+            })}
 
             {/* Phase D — mobile-only. On a phone the 9-step workflow is
                 impractical; this drops straight to a read-only rollup of
