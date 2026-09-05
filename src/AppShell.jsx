@@ -31,6 +31,7 @@ import AgentPage from './pages/AgentPage.jsx';
 import BidsPage from './pages/BidsPage.jsx';
 import BidDecisionPage from './pages/BidDecisionPage.jsx';
 import BidSummaryPage from './pages/BidSummaryPage.jsx';
+import InsightsPage from './pages/InsightsPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
 import RowUndoToast from './components/RowUndoToast.jsx';
@@ -417,6 +418,20 @@ export default function AppShell() {
               </svg>
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid History</span>}
             </div>
+
+            {/* Phase F — read-only estimating intelligence. Its own
+                destination (unlike the bid/no-bid gate, which is reached
+                in-context from the Bids list): analytics you visit
+                deliberately. */}
+            <div className={'nav-item' + (activeSection === 'insights' ? ' active' : '')} data-nav="insights" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'insights' }); closeDrawer(); }} title="Insights">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="2" y1="14" x2="14" y2="14" />
+                <rect x="3" y="8" width="2.5" height="4" rx="0.5" />
+                <rect x="7" y="5" width="2.5" height="7" rx="0.5" />
+                <rect x="11" y="9" width="2.5" height="3" rx="0.5" />
+              </svg>
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Insights</span>}
+            </div>
           </div>
 
           {/* Settings pinned to the bottom of the nav (just above the demo
@@ -477,6 +492,7 @@ export default function AppShell() {
             <BidsPage active={activeSection === 'bids'} />
             <BidDecisionPage active={activeSection === 'biddecision'} />
             <BidSummaryPage active={activeSection === 'summary'} />
+            <InsightsPage active={activeSection === 'insights'} />
           </div>
         </div>
       </div>

@@ -44,6 +44,10 @@ export const ROUTES = [
   { slug: 'bid-strategy',    section: 'workflow', tab: 'agent' },
   { slug: 'bids',            section: 'bids',        tab: null },
   { slug: 'bid-decision',    section: 'biddecision', tab: null },
+  // Phase F — read-only estimating intelligence (margin curve,
+  // seasonality, competitor patterns, GC scorecard). Standalone screen,
+  // its own left-nav item; same section+route shape as 'biddecision'.
+  { slug: 'insights',        section: 'insights',    tab: null },
   // Phase D — mobile read-only rollup of the current bid, reached from
   // the mobile-only "Bid summary" drawer item.
   { slug: 'summary',         section: 'summary',     tab: null }
