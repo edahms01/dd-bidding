@@ -1,5 +1,13 @@
 /* ── PAGES — page-specific styling ─────────────────────────────────── */
 
+/* ── ASSEMBLIES (Assembly types page) ── */
+/* Board layers (1-3) and Finish level (1-5) are always a single digit —
+   trim the select's padding so the column can be ~38px instead of being
+   held open by the default input padding + native dropdown arrow. The
+   headers for these two also wrap (whiteSpace:normal in AssembliesPage
+   .jsx) so the label no longer sets the column's min width. */
+#page-assemblies td select.asm-narrow{padding-left:4px;padding-right:2px;text-align:center;}
+
 /* ── CONDITIONS FLAGS (Conditions page) ── */
 /* .flag-card is still used by Market Read's standalone "Known
    competitors" field (deliberately not migrated to .rr-* — see
