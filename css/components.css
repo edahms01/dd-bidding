@@ -375,11 +375,62 @@ body.devbar-hidden .dev-toolbar{display:none}
 .rr-connected{width:var(--rr-width, auto);}
 .rr-connected .rr{width:100%;border-radius:8px;transition:border-radius .18s ease;}
 .rr-connected.expanded .rr{border-radius:8px 8px 0 0;}
-.rr-connected .rr-child{width:100%;background:var(--surface2);border-radius:0 0 8px 8px;
+/* Child bar is half the width of the PARENT ROW (.rr — the whole
+   "Curved walls [Yes]" or "1-5/8" incl. track [$0.38/LF]" bar, label
+   and value box together), not full width, and not half of the inner
+   .rr-input value box alone. Originally built full-width (matching the
+   parent exactly); standardized to this half-width, right-anchored
+   shape for every .rr-connected consumer once Rates' escalation fields
+   needed it too (Eric's brief) — half of the row rather than half of
+   the box because "half the value box" didn't leave room for a label +
+   value + suffix together (needed ~106px, had ~63px, silently clipped
+   by this rule's own overflow:hidden) and, separately, wasn't actually
+   what "half of the parent" meant — confirmed by annotating the
+   candidate boxes in different outline colors after two earlier guesses
+   (half of .rr-input, both as the value box alone and as the whole
+   child bar) both landed on the wrong reference box. .rr-connected
+   shares --rr-width with .rr (same var, no padding of its own), so a
+   plain margin-left:auto lands the bar's right edge exactly on the
+   row's own right edge with no offset to compensate for. The inner
+   .rr-input is left alone — no width/margin override — so it keeps the
+   base .rr-input rule's own width:var(--box-width,auto) and
+   margin-left:auto, the exact same sizing and right-alignment the
+   parent row's own box/select uses. That's deliberate, not an
+   oversight: the data box itself should align with the parent's box
+   (same width, same left/right edges) — only the surrounding bar is
+   half-width — not shrink to fit a narrower bar. --box-width is smaller
+   than half of --rr-width on both pages (confirmed by measurement, not
+   assumed), so this fits with room on the left for "Esc" on Rates, or
+   sits alone flush-right on Site Conditions where there's no label. */
+.rr-connected .rr-child{width:calc(var(--rr-width) / 2);margin-left:auto;background:var(--surface2);border-radius:0 0 8px 8px;
       display:flex;align-items:center;gap:8px;max-height:0;opacity:0;overflow:hidden;
       padding:0 10px;transition:max-height .2s ease, opacity .15s ease, padding .2s ease;}
 .rr-connected.expanded .rr-child{max-height:44px;opacity:1;padding:9px 10px;}
 .rr-child-lbl{font-size:11.5px;color:var(--text3);margin-right:auto;}
+
+/* Rates > Material Rates escalation fields — a second, deliberately
+   different .rr-connected TOGGLE shape (the half-width child bar above
+   is now shared with Curved Walls/Phased Work; only the open/close
+   mechanism differs here). Curved Walls/Phased Work are one row, its
+   own state: a Yes/No select opens its own child (.expanded, above).
+   Escalation is the opposite: one global checkbox, twelve rows. Rather
+   than give each row its own open/closed state (trading one clean
+   toggle for twelve), the toggle state lives on the tray itself
+   (.tray.esc-open, set by the checkbox's onChange in RatesPage.jsx) and
+   cascades to every .rr-connected inside it at once — simpler than the
+   per-row mechanism above, not a harder version of it. */
+.tray.esc-open .rr-connected .rr-child{max-height:44px;opacity:1;padding:9px 10px;}
+.tray.esc-open .rr-connected .rr{border-radius:8px 8px 0 0;}
+/* Escalation's child has an "Esc" label the way Curved Walls/Phased
+   Work's child doesn't -- the base .rr-input rule (width:var(--box-
+   width,auto), matching the parent exactly, correct and left alone for
+   Site Conditions) doesn't leave room for that label here: --box-width
+   (125px) plus "Esc" + gap (~27px) exceeds the half-row bar's own
+   content width, and .rr-input's flex-shrink:0 means it doesn't yield —
+   confirmed by measurement, the box overflowed clean past the bar's own
+   right edge (781px box vs 768px bar). Resets to its own ~3ch natural
+   width instead, small enough to leave real room for the label. */
+#page-rates .rr-child .rr-input{width:auto;margin-left:auto;}
 
 /* Tray enclosure (design doc §3 — Option B, finalized). */
 .tray{border:1px solid var(--border);border-radius:var(--rl);

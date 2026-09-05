@@ -79,7 +79,7 @@ function EscField({ path, dispatch, get, id }) {
   return (
     <input
       id={id}
-      className="esc-input"
+      className="rr-val pct esc-input"
       type="number"
       placeholder="-"
       value={get(path)}
@@ -88,10 +88,23 @@ function EscField({ path, dispatch, get, id }) {
   );
 }
 
-function EscRow({ show, id, path, get, dispatch }) {
+// Escalation's .rr-connected shape (see components.css's ".tray.esc-open"
+// comment for why this isn't the same mechanism as Curved Walls/Phased
+// Work): always-mounted child, no per-row expand state — the tray's
+// `esc-open` class (driven by the one checkbox) does the showing/hiding
+// for every row via CSS. `rowEl` is the row's own <RRRow/> for the $
+// rate; this only owns the escalation child wrapped around it.
+function EscConnected({ rowEl, id, path, get, dispatch }) {
   return (
-    <div className="esc-row" style={{ display: show ? undefined : 'none' }}>
-      <span>Esc</span><EscField id={id} path={path} get={get} dispatch={dispatch} /><span>%</span>
+    <div className="rr-connected">
+      {rowEl}
+      <div className="rr-child">
+        <span className="rr-child-lbl">Esc</span>
+        <div className="rr-input">
+          <EscField id={id} path={path} get={get} dispatch={dispatch} />
+          <span className="rr-sfx">%</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -106,10 +119,13 @@ export default function RatesPage({ active }) {
   // Escalation fields sit behind a per-visit display toggle. Local state
   // only — never dispatched into the reducer, never exported, not bid
   // data. Default closed; the exception below opens it for a bid that
-  // already carries an escalation value. The .esc-row inputs stay
-  // mounted when closed (CSS display:none, not unmounted) — collectFormData()
-  // scans the DOM by id for esc-* fields, so unmounting them would drop
-  // every escalation value from autosave/export/calc. Visibility only.
+  // already carries an escalation value. Drives the Material tray's
+  // `esc-open` class (see the tray's className below and components.css's
+  // ".tray.esc-open" block) rather than a per-row `show` prop — the
+  // escalation inputs stay always-mounted (CSS-collapsed, not unmounted)
+  // regardless, same reasoning as before: collectFormData() scans the DOM
+  // by id for esc-* fields, so unmounting them would drop every
+  // escalation value from autosave/export/calc. Visibility only.
   const [showEsc, setShowEsc] = useState(false);
   const escUserSetRef = useRef(false);
 
@@ -340,7 +356,7 @@ export default function RatesPage({ active }) {
         </div>
       </div>
 
-      <div className="tray">
+      <div className={'tray' + (showEsc ? ' esc-open' : '')}>
         <div className="tray-hdr" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Material Rates</span>
           <label className="esc-toggle" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', color: 'var(--text3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -354,39 +370,29 @@ export default function RatesPage({ active }) {
             {['1-5/8"', '2-1/2"', '3-5/8"', '4"', '6"'].map((sz) => {
               const slug = sz.replace(/[^0-9]/g, '');
               return (
-                <div key={sz}>
-                  <RRRow name={sz} sub="incl. track" pfx="$" sfx="/LF"
-                    valueEl={<RateField id={'rate-stud' + slug} className="rr-val cur M" path={['rates', 'stud', sz]} get={get} dispatch={dispatch} placeholder="0.00" />} />
-                  <EscRow show={showEsc} id={'esc-stud' + slug} path={['rateEscalation', 'stud', sz]} get={get} dispatch={dispatch} />
-                </div>
+                <EscConnected key={sz} id={'esc-stud' + slug} path={['rateEscalation', 'stud', sz]} get={get} dispatch={dispatch}
+                  rowEl={<RRRow name={sz} sub="incl. track" pfx="$" sfx="/LF"
+                    valueEl={<RateField id={'rate-stud' + slug} className="rr-val cur M" path={['rates', 'stud', sz]} get={get} dispatch={dispatch} placeholder="0.00" />} />} />
               );
             })}
             <div className="sub-lbl" style={{ marginTop: 28 }}>Drywall board by type ($/SF)</div>
             {[['Standard', 'std', 'Standard'], ['Type-X', 'typex', 'Type-X'], ['Moisture', 'moist', 'Moisture-resist.'], ['Impact', 'imp', 'Impact-resist.']].map(([boardType, slug, label]) => (
-              <div key={boardType}>
-                <RRRow name={label} pfx="$"
-                  valueEl={<RateField id={'rate-brd-' + slug} className="rr-val cur M" path={['rates', 'board', boardType]} get={get} dispatch={dispatch} placeholder="0.00" />} />
-                <EscRow show={showEsc} id={'esc-brd-' + slug} path={['rateEscalation', 'board', boardType]} get={get} dispatch={dispatch} />
-              </div>
+              <EscConnected key={boardType} id={'esc-brd-' + slug} path={['rateEscalation', 'board', boardType]} get={get} dispatch={dispatch}
+                rowEl={<RRRow name={label} pfx="$"
+                  valueEl={<RateField id={'rate-brd-' + slug} className="rr-val cur M" path={['rates', 'board', boardType]} get={get} dispatch={dispatch} placeholder="0.00" />} />} />
             ))}
           </div>
           <div className="tray-col">
             <div className="sub-lbl">Finishing materials</div>
-            <div>
-              <RRRow name="Tape + compound" tip="Flat allowance across all finished SF." pfx="$" sfx="/SF"
-                valueEl={<RateField id="rate-tape" className="rr-val cur M" path={['rates', 'tape']} get={get} dispatch={dispatch} placeholder="0.00" />} />
-              <EscRow show={showEsc} id="esc-tape" path={['rateEscalation', 'tape']} get={get} dispatch={dispatch} />
-            </div>
-            <div>
-              <RRRow name="Insulation" tip="Applied to assemblies with insulation flagged." pfx="$" sfx="/SF"
-                valueEl={<RateField id="rate-insul" className="rr-val cur M" path={['rates', 'insul']} get={get} dispatch={dispatch} placeholder="0.00" />} />
-              <EscRow show={showEsc} id="esc-insul" path={['rateEscalation', 'insul']} get={get} dispatch={dispatch} />
-            </div>
-            <div>
-              <RRRow name="Fasteners + Adh." tip="Flat allowance. Typically $0.08–$0.15/SF." pfx="$" sfx="/SF"
-                valueEl={<RateField id="rate-fasten" className="rr-val cur M" path={['rates', 'fasten']} get={get} dispatch={dispatch} placeholder="0.00" />} />
-              <EscRow show={showEsc} id="esc-fasten" path={['rateEscalation', 'fasten']} get={get} dispatch={dispatch} />
-            </div>
+            <EscConnected id="esc-tape" path={['rateEscalation', 'tape']} get={get} dispatch={dispatch}
+              rowEl={<RRRow name="Tape + compound" tip="Flat allowance across all finished SF." pfx="$" sfx="/SF"
+                valueEl={<RateField id="rate-tape" className="rr-val cur M" path={['rates', 'tape']} get={get} dispatch={dispatch} placeholder="0.00" />} />} />
+            <EscConnected id="esc-insul" path={['rateEscalation', 'insul']} get={get} dispatch={dispatch}
+              rowEl={<RRRow name="Insulation" tip="Applied to assemblies with insulation flagged." pfx="$" sfx="/SF"
+                valueEl={<RateField id="rate-insul" className="rr-val cur M" path={['rates', 'insul']} get={get} dispatch={dispatch} placeholder="0.00" />} />} />
+            <EscConnected id="esc-fasten" path={['rateEscalation', 'fasten']} get={get} dispatch={dispatch}
+              rowEl={<RRRow name="Fasteners + Adh." tip="Flat allowance. Typically $0.08–$0.15/SF." pfx="$" sfx="/SF"
+                valueEl={<RateField id="rate-fasten" className="rr-val cur M" path={['rates', 'fasten']} get={get} dispatch={dispatch} placeholder="0.00" />} />} />
           </div>
         </div>
       </div>

@@ -235,6 +235,32 @@
      components.css) -- full-width stacking should mean no realistic
      value ever needs it now. */
   .rr-select { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+  /* Every .rr-connected child bar (Curved Walls/Phased Work, Rates
+     escalation) stays half-width of the PARENT ROW (.rr, forced to
+     width:100% of its column at this breakpoint by the general rule
+     above -- so "half the row" is just 50% here, same concept as
+     desktop's calc(--rr-width/2), no --rr-width reference needed since
+     the row's own 100% already stands in for it) and right-edge-aligned
+     even at this breakpoint -- the general rule three lines up would
+     otherwise blow both away (found via measurement: the bar came out
+     full-width, and margin-left:0 dropped the right-edge alignment
+     ~27px off, not assumed fine just because the row stopped
+     overflowing). This rule's higher specificity beats the general one
+     even with both sides !important. Not page-scoped — this is the
+     shared .rr-connected shape now, not a Rates-only deviation. */
+  .rr-connected .rr-child { width: 50% !important; margin-left: auto !important; }
+  /* The inner .rr-input is deliberately left alone here (desktop's exact
+     same split, same reasoning -- see components.css's .rr-connected
+     .rr-child rule) so it falls through to the general
+     ".rr-input, .rr-select{width:100%!important}" rule above, filling
+     its own (now half-width) bar the same way the parent row's own box
+     fills its own (full-width) row -- verified aligned with Curved
+     Walls' parent select via getBoundingClientRect, both cases sizing
+     to 100% of their own container. Rates' escalation child needs a
+     narrower box instead (the "Esc" label shares the bar with it, and
+     .rr-child is a non-wrapping flex row -- 100% would overflow past
+     the label), so it alone gets sized back down, same as desktop. */
+  #page-rates .rr-connected .rr-child .rr-input { width: auto !important; max-width: none !important; margin-left: auto !important; flex-basis: auto !important; }
   /* #page-rates .taping-adders-row/.taping-col dropped from this rule —
      cleanup pass, dead since the finish-level table + height adders
      moved into the .tray/.rr system (a .tray-cols column split now,

@@ -33,11 +33,13 @@
    OS picker and shows full option text regardless of column width. */
 .col-typeid{width:182px}
 .col-studsize{width:98px}
-/* Optional per-line rate escalation (Tier 5, Part 2) — a compact
-   secondary row under a .rr row (see RatesPage.jsx), not a parallel row
-   of new fields; this field is optional and rarely used, so it stays
-   visually subordinate to the primary $ rate above it. */
-.esc-row{display:flex;align-items:center;gap:5px;margin-top:7px;font-size:12px;color:var(--text3)}
+/* Optional per-line rate escalation (Tier 5, Part 2). Now an
+   .rr-connected/.rr-child pair (RatesPage.jsx's EscConnected,
+   css/components.css's ".tray.esc-open" block) — .esc-row is gone
+   (confirmed zero remaining references before deleting), .esc-input
+   stays as the actual <input>'s styling hook, just nested differently;
+   its own properties mostly lose to the higher-specificity
+   `.rr-input .rr-val` rule now, on purpose. */
 .esc-input{width:42px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 5px;font-size:11px;color:var(--text);font-variant-numeric:tabular-nums;text-align:center}
 .esc-input:focus{outline:none;border-color:var(--action)}
 .esc-input::placeholder{color:var(--text3)}
