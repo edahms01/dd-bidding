@@ -40,7 +40,7 @@ import BidsToolbar from './components/BidsToolbar.jsx';
 // the decision record, not project/conditions/rates (which either
 // precede any takeoff data existing at all, or already have their own
 // totals display — RatesPage.jsx's own crude tile).
-const RAIL_TABS = ['assemblies', 'walls', 'ceilings', 'output', 'market', 'agent'];
+const RAIL_TABS = [];
 
 // Phase C 2.1 — 9 steps in cost-then-price order. Internal keys are
 // unchanged from the pre-C set (conditions/output/agent kept on purpose —
