@@ -51,6 +51,10 @@
 .esc-input{width:42px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 5px;font-size:11px;color:var(--text);font-variant-numeric:tabular-nums;text-align:center}
 .esc-input:focus{outline:none;border-color:var(--action)}
 .esc-input::placeholder{color:var(--text3)}
+/* "Show escalation fields" toggle in the Material Rates tray header —
+   plain inline label + a .switch (components.css), overriding .tray-hdr's
+   uppercase/bold/letter-spacing. */
+.esc-toggle{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:400;text-transform:none;letter-spacing:normal;color:var(--text3);cursor:pointer;white-space:nowrap}
 
 /* Cost Summary: Category subtotals + Top cost drivers side by side; the
    Pricing breakdown box narrowed to match and centred on the page. */

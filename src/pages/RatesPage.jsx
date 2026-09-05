@@ -100,7 +100,7 @@ function EscField({ path, dispatch, get, id }) {
 // Escalation's .rr-connected shape (see components.css's ".tray.esc-open"
 // comment for why this isn't the same mechanism as Curved Walls/Phased
 // Work): always-mounted child, no per-row expand state — the tray's
-// `esc-open` class (driven by the one checkbox) does the showing/hiding
+// `esc-open` class (driven by the one toggle switch) does the showing/hiding
 // for every row via CSS. `rowEl` is the row's own <RRRow/> for the $
 // rate; this only owns the escalation child wrapped around it.
 function EscConnected({ rowEl, id, path, get, dispatch }) {
@@ -373,9 +373,9 @@ export default function RatesPage({ active }) {
       <div className={'tray' + (showEsc ? ' esc-open' : '')}>
         <div className="tray-hdr" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Material Rates</span>
-          <label className="esc-toggle" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', color: 'var(--text3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            <input type="checkbox" checked={showEsc} onChange={toggleEsc} />
-            Show escalation fields
+          <label className="esc-toggle">
+            <span>Show escalation fields</span>
+            <input type="checkbox" className="switch" checked={showEsc} onChange={toggleEsc} />
           </label>
         </div>
         <div className="tray-cols">
