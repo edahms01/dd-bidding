@@ -440,4 +440,9 @@ body.devbar-hidden .dev-toolbar{display:none}
           border-bottom:1px solid var(--border);}
 .tray-cols{display:flex;gap:64px;justify-content:center;align-items:flex-start;}
 .tray-col{display:flex;flex-direction:column;gap:8px;}
+/* Two trays side by side, each keeping its own header (Rates: Logistics +
+   Markup). The trays are width:100% on their own, so reset that and let
+   them share the row evenly. Collapses to stacked below 768px (responsive.css). */
+.tray-row{display:flex;gap:20px;align-items:stretch;}
+.tray-row>.tray{flex:1;width:auto;margin-bottom:20px;}
 body.devbar-hidden #dev-toolbar-show{display:block}

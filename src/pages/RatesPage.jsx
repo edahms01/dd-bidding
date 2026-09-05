@@ -22,6 +22,15 @@
 // the --box-width/--sfx-width/--rr-width measurement mechanism this
 // relies on. Field ids/classes (rate-*/esc-*, the L/M/X totals-bar
 // classing) are unchanged — only the surrounding markup moved.
+//
+// 2026-09-05: the "Markup" tray (Company overhead / Risk-contingency /
+// Profit margin %s) moved here from OutputPage.jsx (Cost Summary). It
+// sits at the bottom of the page in a `.tray-row` beside the Logistics
+// tray — Logistics as column 1, Markup as column 2. The inputs stay React-
+// controlled off state.bid.markupInputs — collectFormData() still reads
+// #markup-* by id, and runCalculation()'s contingency-from-confidence
+// pre-fill (js/ui.js) still writes #markup-contingency + dispatches
+// __hydrateMarkup — none of that cares which page renders the fields.
 // ─────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '../state/store.jsx';
@@ -276,6 +285,11 @@ export default function RatesPage({ active }) {
   // 1/2/4/5's tooltip text is byte-identical to this app's pre-existing
   // finish-level descriptions (moved into a tooltip per design doc §5,
   // not new copy).
+  // Markup %s — moved here from OutputPage.jsx as-is (see file header).
+  // Same shape OutputPage used: read state.bid.markupInputs, SET_FIELD on change.
+  const mu = state.bid.markupInputs;
+  const setMarkup = (field, value) => dispatch({ type: 'SET_FIELD', path: ['bid', 'markupInputs', field], value });
+
   const finishDots = { 1: '#8a93a6', 2: '#4a8fe8', 3: '#4fbf6a', 4: '#e8a33d', 5: '#4fbf6a' };
   const finishTips = {
     1: 'Tape only, concealed areas',
@@ -397,18 +411,42 @@ export default function RatesPage({ active }) {
         </div>
       </div>
 
-      <div className="tray">
-        <div className="tray-hdr">Logistics</div>
-        <div className="tray-cols">
-          <div className="tray-col">
-            <RRRow name="Delivery" tip="Multiplied by estimated delivery trips." pfx="$" sfx="/trip"
-              valueEl={<RateField id="rate-delivery" className="rr-val cur X" path={['rates', 'delivery']} get={get} dispatch={dispatch} placeholder="0.00" />} />
-            <RRRow name="Waste disposal" pfx="$"
-              valueEl={<RateField id="rate-disposal" className="rr-val cur X" path={['rates', 'disposal']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+      {/* Logistics (col 1) + Markup (col 2) side by side — see .tray-row in components.css. */}
+      <div className="tray-row">
+        <div className="tray">
+          <div className="tray-hdr">Logistics</div>
+          <div className="tray-cols">
+            <div className="tray-col">
+              <RRRow name="Delivery" tip="Multiplied by estimated delivery trips." pfx="$" sfx="/trip"
+                valueEl={<RateField id="rate-delivery" className="rr-val cur X" path={['rates', 'delivery']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+              <RRRow name="Waste disposal" pfx="$"
+                valueEl={<RateField id="rate-disposal" className="rr-val cur X" path={['rates', 'disposal']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+              <RRRow name="Lift rental" tip="Only applied if SF above 12 ft > 0." pfx="$" sfx="/wk"
+                valueEl={<RateField id="rate-lift" className="rr-val cur X" path={['rates', 'lift']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+            </div>
           </div>
-          <div className="tray-col">
-            <RRRow name="Lift rental" tip="Only applied if SF above 12 ft > 0." pfx="$" sfx="/wk"
-              valueEl={<RateField id="rate-lift" className="rr-val cur X" path={['rates', 'lift']} get={get} dispatch={dispatch} placeholder="0.00" />} />
+        </div>
+
+        <div className="tray">
+          <div className="tray-hdr">Markup</div>
+          <div className="tray-cols">
+            <div className="tray-col">
+              <RRRow name="Company overhead" sfx="%" tip="Office, insurance, fleet, as % of direct costs"
+                valueEl={
+                  <input id="markup-overhead" className="rr-val pct" type="number" min="0" step="0.1" placeholder="10.0"
+                    value={mu.overheadPct} onChange={(e) => setMarkup('overheadPct', e.target.value)} />
+                } />
+              <RRRow name="Risk / contingency" sfx="%" tip="Pre-filled from confidence level; editable"
+                valueEl={
+                  <input id="markup-contingency" className="rr-val pct" type="number" min="0" step="0.1" placeholder="-"
+                    value={mu.contingencyPct} onChange={(e) => setMarkup('contingencyPct', e.target.value)} />
+                } />
+              <RRRow name="Profit margin" sfx="%" tip="Target profit on direct costs"
+                valueEl={
+                  <input id="markup-profit" className="rr-val pct" type="number" min="0" step="0.1" placeholder="8.0"
+                    value={mu.profitPct} onChange={(e) => setMarkup('profitPct', e.target.value)} />
+                } />
+            </div>
           </div>
         </div>
       </div>
