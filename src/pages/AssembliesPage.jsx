@@ -110,7 +110,7 @@ function AssemblyRow({ row, index, dispatch }) {
         </select>
       </td>
       <td>
-        <select defaultValue={row.layers}>
+        <select className="asm-narrow" defaultValue={row.layers}>
           {LAYERS_OPTS.map((o) => <option key={o}>{o}</option>)}
         </select>
       </td>
@@ -130,7 +130,7 @@ function AssemblyRow({ row, index, dispatch }) {
         </select>
       </td>
       <td>
-        <select defaultValue={row.finishLevel}>
+        <select className="asm-narrow" defaultValue={row.finishLevel}>
           {FINISH_LEVEL_OPTS.map((o) => <option key={o}>{o}</option>)}
         </select>
       </td>
@@ -157,14 +157,14 @@ export default function AssembliesPage({ active }) {
         <table>
           <colgroup>
             <col style={{ width: 58 }} /><col style={{ width: 60 }} /><col style={{ width: 84 }} /><col className="col-studsize" />
-            <col style={{ width: 68 }} /><col style={{ width: 44 }} /><col style={{ width: 108 }} />
-            <col style={{ width: 74 }} /><col style={{ width: 62 }} /><col style={{ width: 44 }} />
+            <col style={{ width: 68 }} /><col style={{ width: 38 }} /><col style={{ width: 108 }} />
+            <col style={{ width: 74 }} /><col style={{ width: 62 }} /><col style={{ width: 38 }} />
             <col style={{ width: 62 }} /><col />
           </colgroup>
           <thead><tr>
             <th></th><th style={{ whiteSpace: 'normal' }}>Assembly<br />Type ID</th><th>Category</th><th>Stud size</th><th>Spacing</th>
-            <th>Board layers</th><th>Board type</th><th>Fire rating</th>
-            <th>Acoustic</th><th>Finish level</th><th>Waste %</th><th>Notes</th>
+            <th style={{ whiteSpace: 'normal' }}>Board layers</th><th>Board type</th><th>Fire rating</th>
+            <th>Acoustic</th><th style={{ whiteSpace: 'normal' }}>Finish level</th><th>Waste %</th><th>Notes</th>
           </tr></thead>
           <tbody id="asm-body">
             {rows.map((row, i) => <AssemblyRow key={row._key} row={row} index={i} dispatch={dispatch} />)}
