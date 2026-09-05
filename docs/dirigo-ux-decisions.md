@@ -263,8 +263,27 @@ _Phase D Step 3 (2026-09-02) — shipped:_ **Log outcome** needed no new logic �
 **8.1 Surface the analytics that already exist — APPROVED. Cheapest high-value item in the report.**
 `history-analytics.js` already computes and tests the margin-outcome curve, competitor patterns, seasonality and cost variances. The History page shows four numbers. Build an Insights view rendering them, honouring the existing "not enough data" states (`MIN_BIDS_FOR_MARGIN_CURVE = 15` decided bids; `MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2`). The hard part is done and tested; only the UI is missing.
 
-**8.2 Contingency from measured cost variance — APPROVED.**
-Contingency currently comes from a confidence button (4 / 8 / 15%). With labor and material variance captured per bid, propose a number from measured bias instead of gut. Must degrade honestly on thin data, same pattern as 8.1.
+**8.2 Contingency from measured cost variance — APPROVED in principle, DEFERRED (2026-09-05), not built.**
+Contingency is a purely manual field — the estimator types a buffer % for the
+specific job. It used to be auto-filled from the Estimator confidence button
+(High → 4 / Medium → 8 / Low → 15%) the first time a calculation ran; that
+silent link was removed 2026-09-05 (the three numbers were uncalibrated guesses,
+and "is my takeoff right" and "how much buffer does this job need" are different
+questions). The intent of 8.2 stands — with labor/material variance captured per
+bid, propose a number from measured bias instead of gut, degrading honestly on
+thin data like 8.1 — but it is **deferred, not in any near-term phase**:
+`history-analytics.js`'s `computeCostVariances()` only produces a per-bid dollar
+variance on one completed job; there is no aggregation across bids into a %
+suggestion, and with ~5 seed bids there isn't enough history to make one
+meaningful. Revisit once real bid volume exists.
+
+*Deferred candidate, noted 2026-09-05 (not scoped now):* with the auto-fill gone,
+a bid where nobody sets contingency now prices at 0% buffer instead of a
+guaranteed non-zero one — "estimator forgot to set it" becomes a real way to
+under-price. A soft, non-blocking reminder at finalize time ("no contingency set
+— is that intentional?") would close that gap without re-coupling the two fields.
+Separate from 8.2's variance suggestion; revisit alongside it or sooner if it
+bites.
 
 **8.3 GC scorecard — APPROVED.**
 Win rate, average margin, and cost variance by GC.
