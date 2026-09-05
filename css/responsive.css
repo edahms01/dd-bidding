@@ -185,6 +185,9 @@
      shrink-wrapped .tray-col (367.9px inside a ~302px tray in a 390px
      viewport) before this rule, so removing it is not an option. */
   .tray-cols { grid-template-columns: 1fr; gap: 4px; }
+  /* Phase F Insights bar rows — tighten the label gutter on a phone so
+     the track keeps a usable width at 390px. */
+  .insight-bar { grid-template-columns: 88px 1fr auto; gap: 10px; }
   /* Side-by-side trays (Rates: Logistics + Markup) stack on a phone. */
   .tray-row { flex-direction: column; gap: 0; }
   /* A column-width standalone tray (Market Read: Known competitors) goes

@@ -84,11 +84,12 @@ function blankCeilRow() {
 
 export const initialState = {
   ui: {
-    // 'workflow' | 'bids' | 'biddecision' | 'summary' (Phase C: 'history'/
-    // 'dashboard' collapsed into 'bids' in 2.5; 'biddecision' is 8.4's
-    // standalone gate, reached only from the Bids list; 'summary' is
-    // Phase D's read-only mobile rollup, reached only from the
-    // mobile-only drawer item — see BidSummaryPage.jsx).
+    // 'workflow' | 'bids' | 'biddecision' | 'summary' | 'insights' (Phase
+    // C: 'history'/'dashboard' collapsed into 'bids' in 2.5; 'biddecision'
+    // is 8.4's standalone gate, reached only from the Bids list; 'summary'
+    // is Phase D's read-only mobile rollup, reached only from the
+    // mobile-only drawer item — see BidSummaryPage.jsx; 'insights' is
+    // Phase F's estimating-intelligence screen — see InsightsPage.jsx).
     activeSection: 'workflow',
     // which of the 8 workflow tabs, only meaningful when
     // activeSection === 'workflow'.
