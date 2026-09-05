@@ -127,7 +127,7 @@
   /* ── Inputs to 16px — stops iOS auto-zoom on focus ───────────────── */
   input[type=text], input[type=number], input[type=date], select, textarea,
   td input, td select,
-  .ri, .fi, .si, .esc-input, .ai,
+  .rr-val, .esc-input,
   .bids-toolbar .ht-input {
     font-size: 16px;
   }
@@ -153,22 +153,92 @@
   select, td select { min-height: 44px; }
   /* Inside a 3px-padded pill: 40 + 3 + 3 clears 44. */
   .mode-toggle-btn { min-height: 40px; padding: 8px 16px; }
-  /* Row action buttons (⧉ duplicate / × delete) — real boxes, real gap. */
+  /* Row action buttons (⧉ duplicate / × delete) — real boxes, real gap.
+     .row-actions is display:table-cell (components.css), not flex, so
+     the gap is margin on the first button, not a flex `gap`. */
   .del-btn, .dup-btn { min-width: 44px; min-height: 44px; }
-  .row-actions { gap: 6px; }
+  .row-actions .dup-btn { margin-right: 6px; }
   /* Phase E 5.5 — override-reason chips in the finalize modal. */
   .reason-chip { min-height: 44px; padding: 8px 14px; }
 
   /* ═══ Step 2 — layout stacking, totals wrap, sticky columns ═══════ */
 
   /* ── Multi-column grids collapse to one column ───────────────────
-     Each selector is .grid.gN / .rgrid.gN (0,0,2,0) so it beats the
-     .gN column rule in components.css; .g2 stays two-up nowhere below
-     768 — a phone is one column throughout. */
-  .grid.g2, .grid.g3, .grid.g4, .grid.g5, .grid.g6,
-  .rgrid.g3, .rgrid.g4, .rgrid.g5,
-  .adder-row { grid-template-columns: 1fr; }
-  .flag-grid { grid-template-columns: 1fr; }
+     Each selector is .grid.gN (0,0,2,0) so it beats the .gN column
+     rule in components.css; .g2 stays two-up nowhere below 768 — a
+     phone is one column throughout. (.rgrid.gN/.adder-row/.flag-grid
+     dropped from this rule — cleanup pass, dead since Rates/Site
+     Conditions/Market Read moved to the .rr / .tray system, confirmed
+     zero remaining references before removing.) */
+  .grid.g2, .grid.g3, .grid.g4, .grid.g5, .grid.g6 { grid-template-columns: 1fr; }
+  /* .rr-* / .tray system (css/components.css) — 2 columns -> 1 below
+     768px. Neither source mockup (rates-standardized-layout-v4.html /
+     site-conditions-redesign-v2.html) has any @media rules at all — this
+     is new production CSS, not ported from either. */
+  /* align-items:flex-start (components.css's desktop rule) means
+     "don't stretch, size to content" -- harmless in row-direction
+     (it's only about vertical top-alignment between columns of
+     different height there), but once flex-direction flips to column
+     here the cross-axis becomes horizontal, and the same "don't
+     stretch" behavior lets .tray-col shrink-wrap to its own content's
+     preferred width instead of filling the available space. That's
+     what actually made the max-width caps below meaningless -- found
+     by tracing an overflowing row back through .tray-col (was 367.9px
+     inside a ~302px-wide tray, itself inside a 390px viewport) to this
+     one inherited property, not assumed from reading the collapse rule. */
+  .tray-cols { flex-direction: column; align-items: stretch; gap: 4px; }
+  /* Real overflow found via measurement, not assumed from the collapse
+     rule above: .rr/.rr-input/.rr-select/.rr-connected are all sized by
+     --rr-width/--box-width, fixed pixel values measured from each field's
+     natural content width -- content-driven, not viewport-driven, so a
+     genuinely long value (Market Read's select options, e.g. "Weak,
+     others better positioned") needs the same wide box regardless of
+     viewport. That's fine at desktop; at 390px it forced a row 64px
+     wider than the viewport, silently clipped (not scrolled) by an
+     ancestor's overflow:hidden -- confirmed with getBoundingClientRect,
+     since document.body.scrollWidth reports clean even when a clipped
+     descendant overflows. Site Conditions/Rates/Cost Summary never hit
+     this (their widest natural content -- "Restricted", currency/percent
+     values -- already fits at 390px), but the cap below is harmless
+     there too: max-width only ever shrinks a box that was already wider
+     than the cap, never widens one that wasn't. */
+  .rr, .rr-connected { width: 100% !important; }
+  /* Superseded the first version of this fix (percentage max-width +
+     ellipsis) after review: it stopped the overflow but did so by
+     silently truncating genuinely long select text ("Strong, we're
+     best..."), which is a real content loss, not an acceptable
+     trade-off -- worth fixing properly rather than left as "good
+     enough". Real fix: stack label above value below 768px instead of
+     keeping them side-by-side. .field/.lbl (css/components.css) already
+     establishes label-above-value as this app's own idiom for a field
+     that doesn't fit one line, so this isn't a new pattern, just this
+     system's version of it. Once stacked, the value box can be
+     width:100% of the full row -- no percentage split with the label to
+     fight over, so nothing needs to truncate. Applies to every .rr row
+     uniformly (including .rr-connected's own select row), not just the
+     ones actually long enough to have needed it, matching how
+     --box-width is applied uniformly at desktop regardless of which
+     field is the one that set it. */
+  /* flex-wrap, not flex-direction:column -- .info sits as a sibling of
+     .rr-l now (the tooltip-clipping fix above), and column-direction
+     would give it its own isolated line between the label and the box
+     instead of staying next to the label text where it reads naturally.
+     flex-basis:100% on just the value box is what actually forces the
+     wrap -- .rr-l + .info stay together on line one (both narrow, fit
+     side by side with room to spare), the box can't fit next to them at
+     100% width so it wraps to its own line two. Found by looking at the
+     render, not assumed from the CSS. */
+  .rr, .rr-connected .rr { flex-wrap: wrap; row-gap: 6px; }
+  .rr-input, .rr-select { flex-basis: 100%; width: 100% !important; max-width: none; margin-left: 0; }
+  /* Kept as a defensive safety net only (matches .rr-l's own "ellipsis
+     is a safety net, not the primary mechanism" comment in
+     components.css) -- full-width stacking should mean no realistic
+     value ever needs it now. */
+  .rr-select { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+  /* #page-rates .taping-adders-row/.taping-col dropped from this rule —
+     cleanup pass, dead since the finish-level table + height adders
+     moved into the .tray/.rr system (a .tray-cols column split now,
+     not a CSS grid), confirmed zero remaining references. */
   .conf-row { flex-wrap: wrap; }
   .conf-row .conf-btn { flex: 1 1 100%; }
 

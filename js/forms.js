@@ -25,6 +25,7 @@ function addAsm() {
   const id  = 'W' + num;
   const tr  = document.createElement('tr');
   tr.innerHTML = `
+    <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>
     <td><input type="text" value="${id}" data-auto="${id}" class="asm-id" style="width:52px"></td>
     <td><select style="width:78px" onchange="updateAsmId(this,${num})"><option>Wall</option><option>Ceiling</option></select></td>
     <td><select style="width:76px"><option>1-5/8"</option><option>2-1/2"</option><option>3-5/8"</option><option>4"</option><option>6"</option></select></td>
@@ -34,9 +35,8 @@ function addAsm() {
     <td><select style="width:68px"><option>None</option><option>1-hr</option><option>2-hr</option></select></td>
     <td><select style="width:58px"><option>No</option><option>Yes</option></select></td>
     <td><select style="width:54px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></td>
-    <td><input type="text" placeholder="notes" style="width:110px"></td>
-    <td><input type="number" min="0" class="asm-waste" placeholder="def." style="width:56px"></td>
-    <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
+    <td><input type="number" min="0" class="asm-waste" style="width:56px"></td>
+    <td><input type="text" style="width:110px"></td>`;
   document.getElementById('asm-body').appendChild(tr);
 }
 
@@ -150,12 +150,28 @@ function populateForm(state) {
   const badge = document.querySelector('.proj-badge span');
   if (badge && p.name) badge.textContent = p.name;
 
-  // Curved-walls-LF/phase-count visibility is native React conditional
-  // rendering on ConditionsPage now (curvedWalls === 'yes' / phasedWork
-  // === 'yes') rather than driven by the style.display toggling below —
-  // that code stays for the synchronous-read reason above (and for the
-  // non-browser fallback), it just no longer has sole responsibility for
-  // what's visible on screen once the dispatch below lands.
+  // Curved-walls-LF/phase-count visibility is CSS now (.rr-connected's
+  // `expanded` class, css/components.css, toggled by React off
+  // curvedWalls/phasedWork state) — NOT the style.display toggle this
+  // block used to also set as a belt-and-suspenders measure.
+  //
+  // UI-fixes batch (2026-09-05): removed that display toggle outright,
+  // not just left as "redundant." It was harmless back when the field
+  // was conditionally MOUNTED — an unmount wipes any inline style for
+  // free, so a stale one could never survive to the next render. Now
+  // that the field is always mounted (required for the new expand/
+  // collapse animation to have something to animate open from), the
+  // same inline style persists indefinitely instead. Reproduced
+  // directly, not assumed: load seed (phasedWork starts 'no', collapsed)
+  // then flip the Phased-work select to 'yes' live in the browser — the
+  // row visually expands via the CSS class, but #f-phase-n stays
+  // display:none from this line's earlier seed-load write, permanently
+  // uninteractable until the next full hydration happens to set it back
+  // to 'block'. React's reconciler never touches this attribute either,
+  // since no JSX here ever declared a `style` prop for React to own.
+  // Value-only writes below are still required (checklist item 4 — a
+  // synchronous DOM read right after this function returns needs the
+  // correct value before React's own dispatch has flushed).
   const c = state.conditions || {};
   set('cond-maxht', c.maxHt);
   set('cond-sf12',  c.sfAbove12);
@@ -165,10 +181,7 @@ function populateForm(state) {
   const curvedLF = document.getElementById('f-curved-lf');
   if (curvedEl && c.curvedWalls) {
     curvedEl.value = c.curvedWalls;
-    if (curvedLF) {
-      curvedLF.style.display = c.curvedWalls === 'yes' ? 'block' : 'none';
-      if (c.curvedWallsLF) curvedLF.value = c.curvedWallsLF;
-    }
+    if (curvedLF && c.curvedWallsLF) curvedLF.value = c.curvedWallsLF;
   }
 
   set('f-exterior', c.exteriorExposure);
@@ -177,10 +190,7 @@ function populateForm(state) {
   const phaseN  = document.getElementById('f-phase-n');
   if (phaseEl && c.phasedWork) {
     phaseEl.value = c.phasedWork;
-    if (phaseN) {
-      phaseN.style.display = c.phasedWork === 'yes' ? 'block' : 'none';
-      if (c.phaseCount) phaseN.value = c.phaseCount;
-    }
+    if (phaseN && c.phaseCount) phaseN.value = c.phaseCount;
   }
 
   set('f-access',    c.accessDifficulty);
@@ -318,12 +328,15 @@ function populateForm(state) {
         if (sels[5]) sels[5].value = asm.fireRating  || 'None';
         if (sels[6]) sels[6].value = asm.acoustic    || 'No';
         if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
-        if (inps[1]) inps[1].value = asm.notes       || '';
         // ?? not || — an explicit 0% override must render as "0", not
         // fall back to a blank input (which collectFormData() would
         // then re-read as "not set" on the next pass, silently
-        // reverting it).
-        if (inps[2]) inps[2].value = String(asm.wastePctOverride ?? '');
+        // reverting it). UI-fixes batch (2026-09-04): Waste % now sits
+        // ahead of Notes in the row (inps[1] is Waste %, inps[2] Notes)
+        // — matches addAsm()'s reordered markup and collectFormData()'s
+        // updated positional read.
+        if (inps[1]) inps[1].value = String(asm.wastePctOverride ?? '');
+        if (inps[2]) inps[2].value = asm.notes       || '';
       });
     }
   }
@@ -613,12 +626,10 @@ function resetFormFields() {
    'cond-waste', 'cond-trips', 'cond-notes'].forEach(clear);
 
   clear('f-curved');
-  const curvedLF = document.getElementById('f-curved-lf');
-  if (curvedLF) { curvedLF.style.display = 'none'; curvedLF.value = ''; }
+  clear('f-curved-lf');
 
   clear('f-phase');
-  const phaseN = document.getElementById('f-phase-n');
-  if (phaseN) { phaseN.style.display = 'none'; phaseN.value = ''; }
+  clear('f-phase-n');
 
   setConf('');
 

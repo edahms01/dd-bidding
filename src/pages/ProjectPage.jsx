@@ -37,12 +37,10 @@ export default function ProjectPage({ active }) {
         <div><div className="page-title">Project</div><div className="page-sub">Basic info and scope for this bid</div></div>
         <div className="page-actions"><button className="btn btn-primary" onClick={() => window.goto('conditions')}>Next: Site Conditions →</button></div>
       </div>
+      <div className="section-label">Project Info</div>
+      <div className="divider" />
       <div className="grid g3">
         <div className="field"><span className="lbl">Project name</span><Field id="proj-name" path={['project', 'name']} get={get} dispatch={dispatch} placeholder="e.g. 400 Main St Office Tower" /></div>
-        <div className="field"><span className="lbl">General contractor</span><Field id="proj-gc" path={['project', 'gc']} get={get} dispatch={dispatch} placeholder="GC company name" /></div>
-        <div className="field"><span className="lbl">Bid due date</span><DateField id="proj-bid" value={get(['project', 'bidDate'])} onChange={(v) => dispatch({ type: 'SET_FIELD', path: ['bid', 'project', 'bidDate'], value: v })} /></div>
-      </div>
-      <div className="grid g3">
         <div className="field"><span className="lbl">Project address</span><Field id="proj-addr" path={['project', 'address']} get={get} dispatch={dispatch} placeholder="Street, city, state" /></div>
         <div className="field"><span className="lbl">Building type</span>
           <select id="proj-type" value={get(['project', 'buildingType'])} onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'project', 'buildingType'], value: e.target.value })}>
@@ -51,14 +49,17 @@ export default function ProjectPage({ active }) {
             <option>Education</option><option>Hospitality</option><option>Mixed use</option><option>Other</option>
           </select>
         </div>
+      </div>
+      <div className="grid g3">
+        <div className="field"><span className="lbl">Number of floors</span><Field id="proj-floors" type="number" path={['project', 'floors']} get={get} dispatch={dispatch} placeholder="e.g. 8" /></div>
+        <div className="field"><span className="lbl">General contractor</span><Field id="proj-gc" path={['project', 'gc']} get={get} dispatch={dispatch} placeholder="GC company name" /></div>
         <div className="field"><span className="lbl">Drawing set ref</span><Field id="proj-drawings" path={['project', 'drawingsRef']} get={get} dispatch={dispatch} placeholder="e.g. Rev B, 2024-03-15" /></div>
       </div>
       <div className="grid g3">
-        <div className="field"><span className="lbl">Est. start date</span><DateField id="proj-start" value={get(['project', 'startDate'])} onChange={(v) => dispatch({ type: 'SET_FIELD', path: ['bid', 'project', 'startDate'], value: v })} /></div>
         <div className="field"><span className="lbl">Duration (weeks)</span><Field id="proj-dur" type="number" path={['project', 'durationWeeks']} get={get} dispatch={dispatch} placeholder="e.g. 12" /></div>
-        <div className="field"><span className="lbl">Number of floors</span><Field id="proj-floors" type="number" path={['project', 'floors']} get={get} dispatch={dispatch} placeholder="e.g. 8" /></div>
+        <div className="field"><span className="lbl">Bid due date</span><DateField id="proj-bid" value={get(['project', 'bidDate'])} onChange={(v) => dispatch({ type: 'SET_FIELD', path: ['bid', 'project', 'bidDate'], value: v })} /></div>
+        <div className="field"><span className="lbl">Est. start date</span><DateField id="proj-start" value={get(['project', 'startDate'])} onChange={(v) => dispatch({ type: 'SET_FIELD', path: ['bid', 'project', 'startDate'], value: v })} /></div>
       </div>
-      <div className="divider" />
       <div className="section-label">Scope inclusions</div>
       <div className="pills" style={{ marginBottom: 20 }}>
         {SCOPE_PILLS.map((label) => (
