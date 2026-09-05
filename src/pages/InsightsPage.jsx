@@ -25,11 +25,12 @@
 // Insights-specific responsive code.
 //
 // Standalone screen: activeSection 'insights' + #/insights route, its
-// own left-nav item — same shape as 'biddecision'. 8.3's GC scorecard
-// lands here as one more section.
+// own left-nav item — same shape as 'biddecision'. 8.3's GC scorecard is
+// one more section below the three above (GcScorecard.jsx).
 // ─────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store.jsx';
+import GcScorecard from '../components/GcScorecard.jsx';
 
 // Proportional-width bar row: label | track | value. `pct` drives the
 // fill width (clamped 0–100); `value` is the text to its right.
@@ -101,7 +102,7 @@ function CompetitorPatterns({ bids }) {
   const anyGated = rows.some((r) => r.avgUndercutPct == null);
   return (
     <div className="tbl-wrap">
-      <table>
+      <table className="insight-tbl">
         <thead>
           <tr><th>Competitor</th><th>Losses to them</th><th>Avg undercut</th></tr>
         </thead>
@@ -160,20 +161,27 @@ export default function InsightsPage({ active }) {
       )}
 
       {status === 'ready' && (
-        <div className="tray-cols" style={{ '--col-min': '340px', gap: 24, justifyContent: 'start' }}>
-          <div className="tray">
-            <div className="tray-hdr">Win rate by margin band</div>
-            <MarginCurve bids={bids} />
+        <>
+          <div className="tray-cols" style={{ '--col-min': '340px', gap: 24, justifyContent: 'start' }}>
+            <div className="tray">
+              <div className="tray-hdr">Win rate by margin band</div>
+              <MarginCurve bids={bids} />
+            </div>
+            <div className="tray">
+              <div className="tray-hdr">Win rate by quarter</div>
+              <Seasonality bids={bids} />
+            </div>
+            <div className="tray">
+              <div className="tray-hdr">Competitor loss patterns</div>
+              <CompetitorPatterns bids={bids} />
+            </div>
           </div>
+
           <div className="tray">
-            <div className="tray-hdr">Win rate by quarter</div>
-            <Seasonality bids={bids} />
+            <div className="tray-hdr">Scorecard by general contractor</div>
+            <GcScorecard bids={bids} />
           </div>
-          <div className="tray">
-            <div className="tray-hdr">Competitor loss patterns</div>
-            <CompetitorPatterns bids={bids} />
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

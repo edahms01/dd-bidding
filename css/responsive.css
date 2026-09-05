@@ -185,9 +185,18 @@
      shrink-wrapped .tray-col (367.9px inside a ~302px tray in a 390px
      viewport) before this rule, so removing it is not an option. */
   .tray-cols { grid-template-columns: 1fr; gap: 4px; }
-  /* Phase F Insights bar rows — tighten the label gutter on a phone so
-     the track keeps a usable width at 390px. */
-  .insight-bar { grid-template-columns: 88px 1fr auto; gap: 10px; }
+  /* Phase F Insights — the shared .tray-cols mobile rule is `1fr`
+     (= minmax(auto,1fr)), which on Rates/Site Conditions only ever holds
+     fixed-width .rr rows. Insights puts a .tbl-wrap table in there, and
+     `auto` won't shrink a grid item below its content's min-content — the
+     nowrap table headers then force the whole column (and every sibling
+     tray) wider than the viewport. Scope minmax(0,1fr) + min-width:0 to
+     Insights so the .tbl-wrap's own overflow-x can take over. */
+  #page-insights .tray-cols { grid-template-columns: minmax(0, 1fr); }
+  #page-insights .tray-cols > .tray { min-width: 0; }
+  /* Bar rows — tighten the label gutter so the track keeps a usable
+     width at 390px. */
+  .insight-bar { grid-template-columns: 84px minmax(0, 1fr) auto; gap: 10px; }
   /* Side-by-side trays (Rates: Logistics + Markup) stack on a phone. */
   .tray-row { flex-direction: column; gap: 0; }
   /* A column-width standalone tray (Market Read: Known competitors) goes
