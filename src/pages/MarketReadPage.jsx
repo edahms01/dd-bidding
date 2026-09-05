@@ -27,9 +27,11 @@
 // field playbook, not a forced fit for free text):
 //   - Estimator confidence (button group) and Estimator notes (textarea)
 //     stay exactly as they were, above the trays.
-//   - Known competitors (free-text) stays a plain .flag-card below the
-//     trays — an unbounded competitor-name list doesn't belong in a
-//     uniform-box row built for short numeric/select values.
+//   - Known competitors (free-text) now has its OWN tray below the row,
+//     aligned to column-1 width via an empty flex spacer, with a 2-row
+//     <textarea> for multiple names — but stays a plain field inside that
+//     tray, not a uniform .rr-box row (multiline free text doesn't fit
+//     the short numeric/select box).
 // Pipeline pressure keeps a small `.rhint` line under its row (not a
 // tooltip like every other field here) because #pipeline-count-hint is
 // live DOM content injected by js/ui.js's _renderPipelineHint() — that
@@ -41,18 +43,6 @@ import { useStore } from '../state/store.jsx';
 import { registerConfidenceReader } from '../state/bridges.js';
 import { SelectRow } from '../components/RRRow.jsx';
 import { useUniformRowWidths } from '../state/useUniformRowWidths.js';
-
-function Field({ path, dispatch, get, id, type = 'text', placeholder }) {
-  return (
-    <input
-      id={id}
-      type={type}
-      placeholder={placeholder}
-      value={get(path)}
-      onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', ...path], value: e.target.value })}
-    />
-  );
-}
 
 export default function MarketReadPage({ active }) {
   const [state, dispatch] = useStore();
@@ -212,16 +202,28 @@ export default function MarketReadPage({ active }) {
         </div>
       </div>
 
-      {/* Known competitors — free text, deliberately NOT migrated into
-          the tray (design doc §15: this is a numeric/select playbook, an
-          unbounded competitor-name list doesn't fit a uniform-box row).
-          Its former .rhint explanation is now a tooltip on the label. */}
-      <div className="flag-card" style={{ marginTop: 20, maxWidth: 500 }}>
-        <span className="lbl" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          Known competitors
-          <span className="info" data-tip="Logged for Phase 5B win-rate pattern analysis; not used in current calculation">i</span>
-        </span>
-        <Field id="intel-competitors" path={['intelligence', 'knownCompetitors']} get={get} dispatch={dispatch} placeholder="e.g. ABC Drywall, Smith & Co." />
+      {/* Known competitors — a free-text list, in its own tray aligned
+          under column 1 (the Market signals tray). A 2-row <textarea> so
+          multiple competitors can be entered; it stays a plain field, not
+          a uniform .rr-box row (design doc §15 — a numeric/select
+          playbook, not a fit for multiline free text). The empty flex
+          spacer holds the tray at column-1 width; its former .rhint
+          explanation is a tooltip on the tray header. */}
+      <div className="tray-row" style={{ marginTop: 20 }}>
+        <div className="tray">
+          <div className="tray-hdr" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Known competitors
+            <span className="info" data-tip="Logged for Phase 5B win-rate pattern analysis; not used in current calculation">i</span>
+          </div>
+          <textarea
+            id="intel-competitors"
+            rows={2}
+            placeholder="e.g. ABC Drywall, Smith & Co."
+            value={get(['intelligence', 'knownCompetitors'])}
+            onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'intelligence', 'knownCompetitors'], value: e.target.value })}
+          />
+        </div>
+        <div style={{ flex: 1 }} />
       </div>
     </div>
   );
