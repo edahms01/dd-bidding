@@ -458,7 +458,17 @@ body.devbar-hidden .dev-toolbar{display:none}
       padding:22px 28px;margin-bottom:20px;width:100%;}
 .tray-hdr{font-weight:700;font-size:14.5px;margin-bottom:16px;padding-bottom:11px;
           border-bottom:1px solid var(--border);}
-.tray-cols{display:flex;gap:64px;justify-content:center;align-items:flex-start;}
+/* Columns wrap 3 -> 2 -> 1 as the tray runs out of room — plain CSS Grid
+   auto-fit, no JS, no breakpoints. --col-min is each page's own measured row
+   width (--rr-width, set per-page by useUniformRowWidths.js before first
+   paint); min(...,100%) guards a very narrow container. max-content (not 1fr)
+   on the upper bound keeps the 2-column trays (Logistics/Markup, Market
+   signals/Competitive signals) at their natural centered width instead of
+   stretching. gap is tuned so 3-up holds at a maximized laptop window. */
+.tray-cols{display:grid;
+           grid-template-columns:repeat(auto-fit, minmax(min(var(--col-min, 200px), 100%), max-content));
+           --col-min:var(--rr-width, 200px);
+           gap:40px;justify-content:center;align-items:start;}
 .tray-col{display:flex;flex-direction:column;gap:8px;}
 /* Two trays side by side, each keeping its own header (Rates: Logistics +
    Markup). The trays are width:100% on their own, so reset that and let
