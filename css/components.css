@@ -381,6 +381,31 @@ body.devbar-hidden .dev-toolbar{display:none}
 .rr-connected.expanded .rr-child{max-height:44px;opacity:1;padding:9px 10px;}
 .rr-child-lbl{font-size:11.5px;color:var(--text3);margin-right:auto;}
 
+/* Rates > Material Rates escalation fields — a second, deliberately
+   different .rr-connected shape (Eric's brief). Curved Walls/Phased
+   Work (above) are one row, its own state: a Yes/No select opens its
+   own child. Escalation is the opposite: one global checkbox, twelve
+   rows. Rather than give each row its own open/closed state (trading
+   one clean toggle for twelve), the toggle state lives on the tray
+   itself (.tray.esc-open, set by the checkbox's onChange in
+   RatesPage.jsx) and cascades to every .rr-connected inside it at
+   once — simpler than the per-row mechanism above, not a harder
+   version of it. */
+.tray.esc-open .rr-connected .rr-child{max-height:44px;opacity:1;padding:9px 10px;}
+.tray.esc-open .rr-connected .rr{border-radius:8px 8px 0 0;}
+/* Half-width child box — a deliberate deviation from Curved Walls/
+   Phased Work's full-width child (per the brief): escalation is a
+   modifier ON the number above it, not an independent fact, so it
+   should read as an extension of that value, not a second equal-weight
+   one. margin-left:auto (already on .rr-input) keeps it hugging the
+   same right edge with no extra positioning rule needed.
+   #page-rates-scoped, not a bare .rr-child .rr-input rule as the brief
+   first sketched it -- that would also halve Site Conditions' Curved-
+   walls-LF/Phase-count child boxes, which are supposed to stay full
+   width. Found by checking both .rr-connected consumers before
+   shipping a shared selector, not assumed safe from one page alone. */
+#page-rates .rr-child .rr-input{width:calc(var(--box-width) / 2);}
+
 /* Tray enclosure (design doc §3 — Option B, finalized). */
 .tray{border:1px solid var(--border);border-radius:var(--rl);
       background:color-mix(in srgb, var(--surface) 30%, var(--bg));

@@ -235,6 +235,16 @@
      components.css) -- full-width stacking should mean no realistic
      value ever needs it now. */
   .rr-select { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+  /* Rates escalation child stays half-width (of its own row, not the
+     desktop --box-width var, which is no longer what the parent uses
+     once it's forced to 100% here) and right-edge-aligned even at this
+     breakpoint -- the general rule two lines up would otherwise blow
+     both away (found via measurement: child came out full-width, and
+     margin-left:0 dropped the right-edge alignment ~27px off, not
+     assumed fine just because the row stopped overflowing). #page-rates
+     .rr-child .rr-input's higher specificity beats the general
+     .rr-input rule even with both sides !important. */
+  #page-rates .rr-child .rr-input { width: 50% !important; max-width: none !important; margin-left: auto !important; flex-basis: auto !important; }
   /* #page-rates .taping-adders-row/.taping-col dropped from this rule —
      cleanup pass, dead since the finish-level table + height adders
      moved into the .tray/.rr system (a .tray-cols column split now,
