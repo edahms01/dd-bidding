@@ -18,14 +18,17 @@
 //
 // UI-fixes batch (2026-09-05): migrated the Market signals / Competitive
 // signals selects to the shared .rr-*/.tray system (see RatesPage.jsx's
-// migration note) — one tray, two columns (Market signals fuller, so it
-// leads, per design doc §11's newspaper-column rule). Two deliberate
-// exceptions, not migrated, per design doc §15's own scope limit (a
-// numeric/select-field playbook, not a forced fit for free text):
+// migration note). Market signals and Competitive signals are each their
+// OWN tray (own .tray-hdr) sitting side by side in a .tray-row — same
+// pattern as Rates' Logistics + Markup pair. The old .divider between
+// Estimator notes and this block is gone; every former inline hint is a
+// tooltip now, Known competitors' included. Two deliberate exceptions,
+// not migrated, per design doc §15's own scope limit (a numeric/select-
+// field playbook, not a forced fit for free text):
 //   - Estimator confidence (button group) and Estimator notes (textarea)
-//     stay exactly as they were, above the tray.
+//     stay exactly as they were, above the trays.
 //   - Known competitors (free-text) stays a plain .flag-card below the
-//     tray — an unbounded competitor-name list doesn't belong in a
+//     trays — an unbounded competitor-name list doesn't belong in a
 //     uniform-box row built for short numeric/select values.
 // Pipeline pressure keeps a small `.rhint` line under its row (not a
 // tooltip like every other field here) because #pipeline-count-hint is
@@ -118,93 +121,107 @@ export default function MarketReadPage({ active }) {
         />
       </div>
 
-      <div className="divider" style={{ marginTop: 24 }} />
-      <div className="section-label">Market + competitive intelligence</div>
+      <div className="section-label" style={{ marginTop: 24 }}>Market + competitive intelligence</div>
 
-      <div className="tray">
-        <div className="tray-cols">
-          <div className="tray-col">
-            <div className="sub-lbl" style={{ marginTop: 0 }}>Market signals</div>
-            <SelectRow id="intel-crew" name="Crew availability" tip="Tight crews = higher margin target; agent uses this to set pricing floor" path={['intelligence', 'crewAvailability']} get={get} dispatch={dispatch}
-              options={[
-                { value: '', label: 'Select…' },
-                { value: 'full', label: 'Fully available' },
-                { value: 'partial', label: 'Partially booked' },
-                { value: 'tight', label: 'Nearly full' }
-              ]} />
-            {/* Pipeline pressure: no .info tooltip like its siblings — the
-                live #pipeline-count-hint span (js/ui.js's
-                _renderPipelineHint(), see file header) has to stay a real,
-                visible DOM node, not text inside a data-tip attribute. The
-                static explanation still becomes a tooltip; only the
-                dynamic count keeps the old .rhint line. */}
-            <div>
-              <div className="rr">
-                <div className="rr-l">
-                  <span className="rr-name">Pipeline pressure</span>
-                  <span className="info" data-tip="Direct signal on aggressiveness; weighed heavily against the final bid.">i</span>
+      {/* Market signals + Competitive signals are each their own tray
+          (own .tray-hdr), sitting side by side in a .tray-row — same
+          pattern as Rates' Logistics + Markup pair. Competitive signals
+          only has two rows, so its box reads sparse next to the taller
+          Market signals tray; that's expected. */}
+      <div className="tray-row">
+        <div className="tray">
+          <div className="tray-hdr">Market signals</div>
+          <div className="tray-cols">
+            <div className="tray-col">
+              <SelectRow id="intel-crew" name="Crew availability" tip="Tight crews = higher margin target; agent uses this to set pricing floor" path={['intelligence', 'crewAvailability']} get={get} dispatch={dispatch}
+                options={[
+                  { value: '', label: 'Select…' },
+                  { value: 'full', label: 'Fully available' },
+                  { value: 'partial', label: 'Partially booked' },
+                  { value: 'tight', label: 'Nearly full' }
+                ]} />
+              {/* Pipeline pressure: no .info tooltip like its siblings — the
+                  live #pipeline-count-hint span (js/ui.js's
+                  _renderPipelineHint(), see file header) has to stay a real,
+                  visible DOM node, not text inside a data-tip attribute. The
+                  static explanation still becomes a tooltip; only the
+                  dynamic count keeps the old .rhint line. */}
+              <div>
+                <div className="rr">
+                  <div className="rr-l">
+                    <span className="rr-name">Pipeline pressure</span>
+                    <span className="info" data-tip="Direct signal on aggressiveness; weighed heavily against the final bid.">i</span>
+                  </div>
+                  <select id="intel-pipeline" className="rr-select" value={get(['intelligence', 'pipelinePressure'])}
+                    onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'intelligence', 'pipelinePressure'], value: e.target.value })}>
+                    <option value="">Select…</option>
+                    <option value="need">Need this job</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="pass">Can afford to pass</option>
+                  </select>
                 </div>
-                <select id="intel-pipeline" className="rr-select" value={get(['intelligence', 'pipelinePressure'])}
-                  onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'intelligence', 'pipelinePressure'], value: e.target.value })}>
-                  <option value="">Select…</option>
-                  <option value="need">Need this job</option>
-                  <option value="neutral">Neutral</option>
-                  <option value="pass">Can afford to pass</option>
-                </select>
+                <div className="rhint" style={{ marginTop: -2, marginBottom: 8 }}><span id="pipeline-count-hint" /></div>
               </div>
-              <div className="rhint" style={{ marginTop: -2, marginBottom: 8 }}><span id="pipeline-count-hint" /></div>
+              <SelectRow id="intel-material-trend" name="Material price trend" tip="Rising trend may warrant per-line rate escalation or higher contingency" path={['intelligence', 'materialTrend']} get={get} dispatch={dispatch}
+                options={[
+                  { value: '', label: 'Select…' },
+                  { value: 'stable', label: 'Stable' },
+                  { value: 'rising', label: 'Rising' },
+                  { value: 'falling', label: 'Falling' }
+                ]} />
+              <SelectRow id="intel-gc-rel" name="GC relationship" tip="Strong relationships reduce payment risk and may justify tighter margin" path={['intelligence', 'gcRelationship']} get={get} dispatch={dispatch}
+                options={[
+                  { value: '', label: 'Select…' },
+                  { value: 'strong', label: 'Strong' },
+                  { value: 'neutral', label: 'Neutral' },
+                  { value: 'new', label: 'New' },
+                  { value: 'difficult', label: 'Difficult' }
+                ]} />
+              <SelectRow id="intel-gc-price" name="GC price sensitivity" tip="Quality-focused GCs allow more margin; lowest-price GCs require sharp bids" path={['intelligence', 'gcPriceSensitivity']} get={get} dispatch={dispatch}
+                options={[
+                  { value: '', label: 'Select…' },
+                  { value: 'lowest', label: 'Always lowest price' },
+                  { value: 'balanced', label: 'Balanced' },
+                  { value: 'quality', label: 'Values quality' }
+                ]} />
             </div>
-            <SelectRow id="intel-material-trend" name="Material price trend" tip="Rising trend may warrant per-line rate escalation or higher contingency" path={['intelligence', 'materialTrend']} get={get} dispatch={dispatch}
-              options={[
-                { value: '', label: 'Select…' },
-                { value: 'stable', label: 'Stable' },
-                { value: 'rising', label: 'Rising' },
-                { value: 'falling', label: 'Falling' }
-              ]} />
-            <SelectRow id="intel-gc-rel" name="GC relationship" tip="Strong relationships reduce payment risk and may justify tighter margin" path={['intelligence', 'gcRelationship']} get={get} dispatch={dispatch}
-              options={[
-                { value: '', label: 'Select…' },
-                { value: 'strong', label: 'Strong' },
-                { value: 'neutral', label: 'Neutral' },
-                { value: 'new', label: 'New' },
-                { value: 'difficult', label: 'Difficult' }
-              ]} />
-            <SelectRow id="intel-gc-price" name="GC price sensitivity" tip="Quality-focused GCs allow more margin; lowest-price GCs require sharp bids" path={['intelligence', 'gcPriceSensitivity']} get={get} dispatch={dispatch}
-              options={[
-                { value: '', label: 'Select…' },
-                { value: 'lowest', label: 'Always lowest price' },
-                { value: 'balanced', label: 'Balanced' },
-                { value: 'quality', label: 'Values quality' }
-              ]} />
           </div>
-          <div className="tray-col">
-            <div className="sub-lbl" style={{ marginTop: 0 }}>Competitive signals</div>
-            <SelectRow id="intel-competition" name="Competition level" tip="More competition = tighter spread; agent adjusts recommended price accordingly" path={['intelligence', 'competitionLevel']} get={get} dispatch={dispatch}
-              options={[
-                { value: '', label: 'Select…' },
-                { value: 'light', label: 'Light (1–2 bidders)' },
-                { value: 'moderate', label: 'Moderate (3–4)' },
-                { value: 'heavy', label: 'Heavy (5+)' },
-                { value: 'unknown', label: 'Unknown' }
-              ]} />
-            <SelectRow id="intel-edge" name="Dirigo's edge" tip="Self-assessed fit; strong edge supports premium pricing over competitors" path={['intelligence', 'dirigoEdge']} get={get} dispatch={dispatch}
-              options={[
-                { value: '', label: 'Select…' },
-                { value: 'strong', label: "Strong, we're best fit" },
-                { value: 'neutral', label: 'Neutral' },
-                { value: 'weak', label: 'Weak, others better positioned' }
-              ]} />
+        </div>
+
+        <div className="tray">
+          <div className="tray-hdr">Competitive signals</div>
+          <div className="tray-cols">
+            <div className="tray-col">
+              <SelectRow id="intel-competition" name="Competition level" tip="More competition = tighter spread; agent adjusts recommended price accordingly" path={['intelligence', 'competitionLevel']} get={get} dispatch={dispatch}
+                options={[
+                  { value: '', label: 'Select…' },
+                  { value: 'light', label: 'Light (1–2 bidders)' },
+                  { value: 'moderate', label: 'Moderate (3–4)' },
+                  { value: 'heavy', label: 'Heavy (5+)' },
+                  { value: 'unknown', label: 'Unknown' }
+                ]} />
+              <SelectRow id="intel-edge" name="Dirigo's edge" tip="Self-assessed fit; strong edge supports premium pricing over competitors" path={['intelligence', 'dirigoEdge']} get={get} dispatch={dispatch}
+                options={[
+                  { value: '', label: 'Select…' },
+                  { value: 'strong', label: "Strong, we're best fit" },
+                  { value: 'neutral', label: 'Neutral' },
+                  { value: 'weak', label: 'Weak, others better positioned' }
+                ]} />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Known competitors — free text, deliberately NOT migrated into
           the tray (design doc §15: this is a numeric/select playbook, an
-          unbounded competitor-name list doesn't fit a uniform-box row). */}
+          unbounded competitor-name list doesn't fit a uniform-box row).
+          Its former .rhint explanation is now a tooltip on the label. */}
       <div className="flag-card" style={{ marginTop: 20, maxWidth: 500 }}>
-        <span className="lbl">Known competitors</span>
+        <span className="lbl" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          Known competitors
+          <span className="info" data-tip="Logged for Phase 5B win-rate pattern analysis; not used in current calculation">i</span>
+        </span>
         <Field id="intel-competitors" path={['intelligence', 'knownCompetitors']} get={get} dispatch={dispatch} placeholder="e.g. ABC Drywall, Smith & Co." />
-        <div className="rhint">Logged for Phase 5B win-rate pattern analysis; not used in current calculation</div>
       </div>
     </div>
   );
