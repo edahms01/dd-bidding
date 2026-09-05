@@ -237,11 +237,11 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .insight-bar-sub{color:var(--text3)}
 .insight-note{font-size:11px;color:var(--text3);margin-top:12px;line-height:1.5}
 /* Insights tables (competitor patterns, GC scorecard) carry few, narrow
-   columns — the shared 4px td padding lets adjacent values run together.
-   Extra right-gutter keeps the columns legibly apart without right-
-   aligning numerics (which the rest of the app doesn't do). */
-.insight-tbl th, .insight-tbl td{padding-right:26px}
-.insight-tbl th:last-child, .insight-tbl td:last-child{padding-right:4px}
+   columns. The first column is the row label (GC / competitor name) and
+   stays left-aligned with a right gutter so it doesn't touch the next
+   value; every data column and its header are centered. */
+.insight-tbl th:first-child, .insight-tbl td:first-child{padding-right:26px}
+.insight-tbl th:not(:first-child), .insight-tbl td:not(:first-child){text-align:center;padding-left:14px;padding-right:14px}
 
 /* ── APP LAYOUT ── */
 .app-layout{display:flex;flex-direction:row;flex:1;min-height:0;overflow:hidden}
