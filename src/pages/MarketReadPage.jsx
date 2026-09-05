@@ -121,7 +121,7 @@ export default function MarketReadPage({ active }) {
         />
       </div>
 
-      <div className="section-label" style={{ marginTop: 24 }}>Market + competitive intelligence</div>
+      <div className="section-label" style={{ marginTop: 24 }}>Market Intelligence</div>
 
       {/* Market signals + Competitive signals are each their own tray
           (own .tray-hdr), sitting side by side in a .tray-row — same
