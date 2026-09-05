@@ -187,6 +187,8 @@
      inside a ~302px-wide tray, itself inside a 390px viewport) to this
      one inherited property, not assumed from reading the collapse rule. */
   .tray-cols { flex-direction: column; align-items: stretch; gap: 4px; }
+  /* Side-by-side trays (Rates: Logistics + Markup) stack on a phone. */
+  .tray-row { flex-direction: column; gap: 0; }
   /* Real overflow found via measurement, not assumed from the collapse
      rule above: .rr/.rr-input/.rr-select/.rr-connected are all sized by
      --rr-width/--box-width, fixed pixel values measured from each field's
