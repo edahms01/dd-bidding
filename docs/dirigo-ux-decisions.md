@@ -77,7 +77,7 @@ No backend or data-model change — same store the header combobox and the Bids 
 
 The header "Open Bid ▾" combobox is now largely redundant with this list (same data, same switch action, minus the relative timestamps) — left in place, not removed.
 
-Layout: the collapse toggle moved into a new `.leftnav-top` flex row so the "OPEN BIDS" `.section-label` fills the space to its left (standard sidebar pattern); the label is hidden and the toggle centres when the 48px rail is collapsed.
+Layout: the "OPEN BIDS" header sits at the top of `.nav-items`, below the collapse toggle (an earlier build put it on the toggle's row; reverted at Eric's review — it read wrong shifted up). It reuses `.section-label` but drops that class's `border-bottom` — it's a nav-column header, not a page-section divider — and is hidden in the 48px collapsed rail, same as `.nav-label`.
 
 Test note: `mobile-layout.spec.js`'s drawer "tap-through" check asserted that a `force`-click on a drawer-covered step-bar chip (`#tab-conditions`) *also closed the drawer*. That only ever passed incidentally — the old "Current bid" nav item happened to sit under that coordinate and closed the drawer via its own handler. The tap lands on the 260px-wide drawer body, not the dimmed backdrop beside it, so it legitimately does not close; the block was rewritten to close the drawer explicitly via the backdrop afterward. The assertion that actually matters (the covered chip's handler never fires — Site Conditions does not activate) is unchanged.
 
