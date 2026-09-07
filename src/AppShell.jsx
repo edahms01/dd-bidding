@@ -15,10 +15,11 @@
 // behavior regression, not a refactor.
 // ─────────────────────────────────────────────────────────────────────
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useStore } from './state/store.jsx';
-import { registerBridges } from './state/bridges.js';
+import { registerBridges, registerTabConfirmationsReader, registerDemoConfirmAllTabs } from './state/bridges.js';
 import { parseHash, canonicalHash } from './state/router.js';
-import { stepStatus } from './state/stepStatus.js';
+import { stepStatus, GATED_TABS, tabEligible, ownedSliceJSON } from './state/stepStatus.js';
 import ProjectPage from './pages/ProjectPage.jsx';
 import ConditionsPage from './pages/ConditionsPage.jsx';
 import RatesPage from './pages/RatesPage.jsx';
@@ -171,11 +172,32 @@ export default function AppShell() {
   // so "app booted" isn't its own Back target. See src/state/router.js.
   const stateRef = useRef({ activeSection, activeTab });
   stateRef.current = { activeSection, activeTab };
+  // Full live state for the tab-confirmation read accessor + demo bridge
+  // (both need the whole reducer state, not just section/tab).
+  const liveStateRef = useRef(state);
+  liveStateRef.current = state;
   const urlSyncedOnce = useRef(false);
-  const steps = stepStatus(state.bid, state.ui);
+  const steps = stepStatus(state);
 
   useEffect(() => {
     registerBridges(dispatch);
+    // Tab-confirmation read accessor (collectFormData() -> draft save) and
+    // the demo "confirm every eligible tab" bridge (data/seed.js). Both
+    // close over liveStateRef so they always see current reducer state.
+    registerTabConfirmationsReader(() => liveStateRef.current.bid.tabConfirmations);
+    registerDemoConfirmAllTabs(() => {
+      flushSync(() => {
+        for (const tab of GATED_TABS) {
+          if (tabEligible(tab, liveStateRef.current)) {
+            dispatch({
+              type: 'SET_TAB_CONFIRMATION', tab, confirmed: true,
+              snapshot: ownedSliceJSON(tab, liveStateRef.current)
+            });
+          }
+        }
+      });
+      window._autosave?.();
+    });
     // A2 spike finding: forms.js's INIT section (addAsm()/addWall()/
     // addCeil() default rows, the .workflow-area input/change delegation
     // that drives autosave, and _initDraftsAndResume()'s draft restore)
@@ -460,15 +482,6 @@ export default function AppShell() {
             {/* Separates the current-bid group above from Bid History below. */}
             <div className="nav-divider" role="separator" />
 
-            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bid History">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="3" width="12" height="3" rx="1" />
-                <rect x="2" y="8" width="12" height="3" rx="1" />
-                <line x1="4.5" y1="13" x2="11.5" y2="13" />
-              </svg>
-              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid History</span>}
-            </div>
-
             {/* Phase F — read-only estimating intelligence. Its own
                 destination (unlike the bid/no-bid gate, which is reached
                 in-context from the Bids list): analytics you visit
@@ -481,6 +494,15 @@ export default function AppShell() {
                 <rect x="11" y="9" width="2.5" height="3" rx="0.5" />
               </svg>
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Insights</span>}
+            </div>
+
+            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bid History">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="12" height="3" rx="1" />
+                <rect x="2" y="8" width="12" height="3" rx="1" />
+                <line x1="4.5" y1="13" x2="11.5" y2="13" />
+              </svg>
+              {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid History</span>}
             </div>
           </div>
 

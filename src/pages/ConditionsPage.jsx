@@ -26,6 +26,7 @@
 // safe swap — no value is lost when a row collapses.
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 import { useUniformRowWidths } from '../state/useUniformRowWidths.js';
 import { useRef } from 'react';
 import { RRRow, SelectRow, ConnectedRow } from '../components/RRRow.jsx';
@@ -47,6 +48,7 @@ export default function ConditionsPage({ active }) {
       <div className="page-hdr">
         <div><div className="page-title">Site Conditions</div><div className="page-sub">Site facts that drive labor rates, equipment needs, and waste</div></div>
         <div className="page-actions">
+          <TabConfirmButton tab="conditions" />
           <button className="btn btn-ghost" onClick={() => window.goto('project')}>← Back</button>
           <button className="btn btn-primary" onClick={() => window.goto('assemblies')}>Next: Assemblies →</button>
         </div>

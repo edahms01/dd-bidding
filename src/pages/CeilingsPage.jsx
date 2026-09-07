@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store.jsx';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 import TypeIdSelect from '../components/TypeIdSelect.jsx';
 import { isOrphanTypeId } from '../state/validation.js';
 import { registerCeilingsModeReader } from '../state/bridges.js';
@@ -168,6 +169,7 @@ export default function CeilingsPage({ active }) {
       <div className="page-hdr">
         <div><div className="page-title">Ceiling + soffit quantities</div><div className="page-sub">One row per area. Net SF calculates automatically.</div></div>
         <div className="page-actions">
+          <TabConfirmButton tab="ceilings" />
           <button className="btn btn-ghost" onClick={() => window.goto('walls')}>← Back</button>
           <button className="btn btn-primary" onClick={() => window.goto('rates')}>Next: Rates →</button>
         </div>

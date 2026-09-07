@@ -1,68 +1,119 @@
 // ─────────────────────────────────────────────────────────────────────
-// stepStatus.js — Phase C 2.2. Per-step completion state for the tab
-// bar's empty / partial / complete indicators (.tab / .tab.partial /
-// .tab.done — the .done style was pre-built in css/components.css since
-// A1; this is the wiring the decision record called for).
+// stepStatus.js — per-tab empty / partial / complete indicators for the
+// workflow tab bar (.tab / .tab.partial / .tab.done, rendered in
+// AppShell).
 //
-// Deliberately lightweight and built ONLY on signals that already
-// exist — no new "is this step done" validation was invented:
-//   - Rates       -> ui.rateTotals {l,m,x}, the same L/M/X class-sum the
-//                    Rates totals bar shows (RatesPage.jsx's
-//                    recomputeTotals(), the calc() port). NOT a second
-//                    "enough rates entered" check.
-//   - Walls/Ceil  -> isOrphanTypeId() from validation.js. A table with
-//                    an orphaned Type ID reference must never show a
-//                    green checkmark — same misleading-completion family
-//                    as the contingency-default / orphan-Rates-input
-//                    findings from earlier phases.
-//   - Cost Summary -> ui.output (a calc has run) AND no unresolved
-//                    references — a total computed against an orphaned
-//                    row is wrong, so it shows 'partial', matching the
-//                    amber Walls/Ceilings step feeding it.
-//   - Bid Strategy -> ui.agent.cachedResult AND no unresolved
-//                    references, same reasoning.
-//   - Project / Site Conditions -> presence of their few key inputs.
-//   - Market Read -> confidence + the two market fields the agent
-//                    weighs most (competition level, GC relationship).
-//   - Assemblies  -> whether the estimator has actually engaged with the
-//                    table (see below) — a self-contained signal, no
-//                    reference to downstream steps.
+// MANUAL CONFIRMATION MODEL (replaces the earlier field-presence
+// heuristic, which produced a false-green Cost Summary on a blank bid).
+// A tab is 'complete' (green) only when the estimator has explicitly
+// clicked "Finished with this tab" AND the data hasn't changed since:
 //
-// Navigation stays unrestricted (decision record 2.2: show completion,
-// don't gate — the only hard block is final submit, which
-// hasUnresolvedReferences() already owns). This function is pure and
-// display-only.
+//   status = tabStatus(ownedSliceJSON(tab, state),
+//                      state.bid.tabConfirmations[tab],
+//                      tabEligible(tab, state))
 //
-// Returns { [tabKey]: 'empty' | 'partial' | 'complete' } for all nine
-// workflow tabs (project, conditions, assemblies, walls, ceilings,
-// rates, output, market, agent).
+//   - 'complete' : confirmed && stored snapshot === live slice
+//   - 'partial'  : eligible but not confirmed, OR confirmed-then-edited
+//   - 'empty'    : the "Finished" button isn't even clickable yet
+//
+// Editing a confirmed tab reverts it to amber for free — nothing watches
+// for the edit, the snapshot just stops matching on the next render.
+//
+// Bid Strategy ('agent') has no button: agentTabStatus() derives it from
+// request state + agentStaleness() (loading -> amber, cached+fresh ->
+// green, cached+drifted -> amber, nothing sent -> gray).
+//
+// Owned slice per tab:
+//   project      -> bid.project
+//   conditions   -> bid.conditions minus confidence/notes
+//   assemblies   -> (ui.output.state ?? bid).assemblies
+//   walls        -> (ui.output.state ?? bid).walls
+//   ceilings     -> (ui.output.state ?? bid).ceilings
+//   rates        -> { rates, rateEscalation, markupInputs }
+//   market       -> { confidence, notes, intelligence }
+//   output       -> ui.output.summary
+//
+// Row tabs read ui.output.state (the live collectFormData() snapshot the
+// reactive calc keeps ~500ms fresh) rather than bid.{...}, because those
+// row fields are uncontrolled and never hit bid state on a keystroke —
+// only ui.output.state moves when a row cell is edited. Before the first
+// calc ui.output is null and row tabs are 'empty'.
+//
+// Snapshots are normalize()d (keys sorted, leaves String()-coerced)
+// before stringify so a "12" -> 12 change across a save/reload round-trip
+// (collectFormData()'s num() coercion) doesn't spuriously break green.
 // ─────────────────────────────────────────────────────────────────────
-import { isOrphanTypeId, hasUnresolvedReferences } from './validation.js';
+import { agentStaleness } from './agentStaleness.js';
+
+export const GATED_TABS = [
+  'project', 'conditions', 'assemblies', 'walls', 'ceilings', 'rates', 'output', 'market'
+];
+
+// Site Conditions owns everything in bid.conditions EXCEPT these two,
+// which are the price-driving half rendered on Market Read.
+const CONDITIONS_EXCLUDE = ['confidence', 'notes'];
+
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+function omitKeys(obj, keys) {
+  const out = {};
+  for (const k of Object.keys(obj || {})) if (!keys.includes(k)) out[k] = obj[k];
+  return out;
+}
+
+// A field counts as "filled" if it has been given ANY value. Blank =
+// undefined, '' / whitespace, or an empty array. An explicit 0, false,
+// or null (a deliberate "not applicable") all count as filled — this is
+// the rule most likely to get miscoded as "truthy" instead of "not
+// blank", so it's a named predicate, distinct from `filled` below.
+export function fieldFilled(v) {
+  if (v === null) return true;
+  if (v === undefined) return false;
+  if (typeof v === 'string') return v.trim() !== '';
+  if (Array.isArray(v)) return v.length > 0;
+  return true; // number (incl. 0), boolean, object
+}
+
+// Every leaf of a (possibly nested) plain object is filled. Recurses
+// into rates.finish / .stud / .board etc.; arrays are treated as leaves.
+export function allLeavesFilled(obj) {
+  if (!isPlainObject(obj)) return fieldFilled(obj);
+  return Object.values(obj).every((v) => (isPlainObject(v) ? allLeavesFilled(v) : fieldFilled(v)));
+}
+
+// Canonical serialization: sort object keys, String()-coerce every leaf,
+// so the snapshot is stable across the string<->number drift a
+// save/reload round-trip introduces.
+export function normalize(v) {
+  if (v === null || v === undefined) return null;
+  if (Array.isArray(v)) return v.map(normalize);
+  if (isPlainObject(v)) {
+    const out = {};
+    for (const k of Object.keys(v).sort()) out[k] = normalize(v[k]);
+    return out;
+  }
+  return String(v);
+}
+
+// ── Row "engaged with" predicates (unchanged from the old heuristic,
+// just pointed at ui.output.state now) ──
 
 function filled(v) {
   return v != null && String(v).trim() !== '';
 }
 
-// 'complete' when every key field is filled, 'partial' when some are,
-// 'empty' when none are.
-function byKeyFields(obj, keys) {
-  const n = keys.reduce((acc, k) => acc + (filled(obj?.[k]) ? 1 : 0), 0);
-  if (n === 0) return 'empty';
-  return n === keys.length ? 'complete' : 'partial';
-}
-
-// A walls/ceilings row counts as "real" once it carries a Type ID (the
-// bound dropdown). Assemblies are judged differently — see stepStatus().
+// A walls/ceilings row counts as "real" once it carries a Type ID.
 function realRows(rows) {
   return (rows || []).filter((r) => filled(r.typeId));
 }
 
 // The default starter assembly row (blankAssemblyRow(1) in store.jsx):
-// every field except `notes`/`wastePctOverride` carries a real
+// every field except notes/wastePctOverride carries a real
 // "first-listed-option" default, so a single untouched row is a valid
-// but un-engaged-with assembly. These are the values that mean "the
-// estimator hasn't touched this row yet". Keep in sync with
-// blankAssemblyRow() if its defaults ever change.
+// but un-engaged-with assembly. Keep in sync with blankAssemblyRow() if
+// its defaults ever change (store.jsx carries the reciprocal note).
 const ASM_DEFAULTS = {
   category: 'Wall', studSize: '1-5/8"', spacing: '16"', layers: 1,
   boardType: 'Standard', fireRating: 'None', acoustic: 'No', finishLevel: 1
@@ -74,66 +125,87 @@ function asmRowIsCustomized(r) {
   return Object.keys(ASM_DEFAULTS).some((k) => String(r[k]) !== String(ASM_DEFAULTS[k]));
 }
 
-export function stepStatus(bid, ui) {
-  const b = bid || {};
-  const u = ui || {};
-  const assemblies = b.assemblies || [];
-  const orphaned = hasUnresolvedReferences(b);
+// ── Owned slice + serialization ──
 
-  // Project — the three fields every downstream view and the bid record
-  // actually key on.
-  const project = byKeyFields(b.project, ['name', 'gc', 'buildingType']);
-
-  // Site Conditions — the cost-driving numeric inputs. Flags
-  // (curvedWalls/exteriorExposure/phasedWork/access/parking) always
-  // carry a value, so they carry no signal; confidence/notes render on
-  // Market Read now and count there, not here.
-  const conditions = byKeyFields(b.conditions, ['maxHt', 'wastePct', 'trips']);
-
-  // Market Read — the price-driving judgement. `confidence` (drives
-  // contingency) plus the two intelligence fields the agent leans on
-  // most. Spans two slices, so computed inline rather than byKeyFields.
-  const marketVals = [b.conditions?.confidence, b.intelligence?.competitionLevel, b.intelligence?.gcRelationship];
-  const marketN = marketVals.filter(filled).length;
-  const market = marketN === 0 ? 'empty' : marketN === marketVals.length ? 'complete' : 'partial';
-
-  // Rates — the L/M/X totals the Rates bar already computes.
-  const rt = u.rateTotals || { l: 0, m: 0, x: 0 };
-  const rateBuckets = [rt.l, rt.m, rt.x].filter((v) => v > 0).length;
-  const rates = rateBuckets === 0 ? 'empty' : rateBuckets === 3 ? 'complete' : 'partial';
-
-  // Walls / Ceilings — real rows, and none of them orphaned. Orphan =>
-  // 'partial', never 'complete', even with many valid rows alongside.
-  function takeoffStatus(rows) {
-    const real = realRows(rows);
-    if (real.length === 0) return 'empty';
-    const anyOrphan = real.some((r) => isOrphanTypeId(r.typeId, assemblies));
-    return anyOrphan ? 'partial' : 'complete';
+export function rawOwnedSlice(tab, state) {
+  const b = (state && state.bid) || {};
+  const out = state && state.ui && state.ui.output;
+  const rowSrc = (out && out.state) || b;
+  switch (tab) {
+    case 'project':    return b.project;
+    case 'conditions': return omitKeys(b.conditions, CONDITIONS_EXCLUDE);
+    case 'assemblies': return rowSrc.assemblies || [];
+    case 'walls':      return rowSrc.walls || [];
+    case 'ceilings':   return rowSrc.ceilings || [];
+    case 'rates':      return { rates: b.rates, rateEscalation: b.rateEscalation, markupInputs: b.markupInputs };
+    case 'market':     return { confidence: b.conditions ? b.conditions.confidence : undefined, notes: b.conditions ? b.conditions.notes : undefined, intelligence: b.intelligence };
+    case 'output':     return (out && out.summary) || null;
+    default:           return null;
   }
-  const walls = takeoffStatus(b.walls);
-  const ceilings = takeoffStatus(b.ceilings);
+}
 
-  // Assemblies — a self-contained signal, local to this step: has the
-  // estimator engaged with the table at all? Every fresh draft has one
-  // row pre-filled with valid "first option" defaults, so row presence
-  // alone means nothing — but a second row, or any field moved off its
-  // default (or a note / waste override), is a real edit. A single
-  // untouched default row stays neutral 'empty' rather than claiming a
-  // green it can't justify.
-  const assembliesStatus = (assemblies.length > 1 || assemblies.some(asmRowIsCustomized))
-    ? 'complete'
-    : 'empty';
+export function ownedSliceJSON(tab, state) {
+  return JSON.stringify(normalize(rawOwnedSlice(tab, state)));
+}
 
-  // Cost Summary — a calculation has produced a result, and it wasn't
-  // computed against an unresolved reference (which would make the total
-  // wrong). Orphan => 'partial', consistent with the Walls/Ceilings step
-  // that feeds it.
-  const output = u.output == null ? 'empty' : orphaned ? 'partial' : 'complete';
+// ── Eligibility (when the "Finished" button becomes clickable) ──
 
-  // Bid Strategy — same shape: the agent returned something, and it
-  // wasn't a recommendation built on an unresolved reference.
-  const agentDone = u.agent && u.agent.cachedResult != null;
-  const agent = !agentDone ? 'empty' : orphaned ? 'partial' : 'complete';
+export function tabEligible(tab, state) {
+  const b = (state && state.bid) || {};
+  const out = state && state.ui && state.ui.output;
+  const rowSrc = (out && out.state) || b;
+  switch (tab) {
+    case 'project':
+      return allLeavesFilled(b.project);
+    case 'conditions':
+      return allLeavesFilled(omitKeys(b.conditions, CONDITIONS_EXCLUDE));
+    case 'rates':
+      return allLeavesFilled(b.rates) && allLeavesFilled(b.markupInputs);
+    case 'market':
+      return fieldFilled(b.conditions ? b.conditions.confidence : undefined)
+        && fieldFilled(b.conditions ? b.conditions.notes : undefined)
+        && allLeavesFilled(b.intelligence);
+    case 'assemblies': {
+      if (!out) return false;
+      const rows = rowSrc.assemblies || [];
+      return rows.length > 1 || rows.some(asmRowIsCustomized);
+    }
+    case 'walls':
+      return !!out && realRows(rowSrc.walls).length > 0;
+    case 'ceilings':
+      return !!out && realRows(rowSrc.ceilings).length > 0;
+    case 'output':
+      return !!out;
+    default:
+      return false;
+  }
+}
 
-  return { project, conditions, rates, assemblies: assembliesStatus, walls, ceilings, output, market, agent };
+// ── Status derivation ──
+
+export function tabStatus(liveSliceJSON, confirmation, eligible) {
+  const c = confirmation || { confirmed: false, snapshot: null };
+  if (c.confirmed && c.snapshot === liveSliceJSON) return 'complete';
+  return eligible ? 'partial' : 'empty';
+}
+
+export function agentTabStatus(state) {
+  const a = (state && state.ui && state.ui.agent) || {};
+  if (a.loading) return 'partial';
+  if (!a.cachedResult) return 'empty';
+  return agentStaleness(state).stale ? 'partial' : 'complete';
+}
+
+// Returns { [tabKey]: 'empty' | 'partial' | 'complete' } for all nine
+// workflow tabs. Only caller: AppShell's tab bar (+ MarketReadPage's
+// Send-to-Agent gate, which reads GATED_TABS off this map).
+export function stepStatus(state) {
+  const s = state || {};
+  const confs = (s.bid && s.bid.tabConfirmations) || {};
+  const map = {};
+  for (const tab of GATED_TABS) {
+    map[tab] = tabStatus(ownedSliceJSON(tab, s), confs[tab], tabEligible(tab, s));
+  }
+  map.agent = agentTabStatus(s);
+  return map;
 }

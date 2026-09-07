@@ -73,6 +73,31 @@ export function registerBridges(dispatch) {
   window.__hydrateIntelligence = (intelligence) => _dispatch({ type: 'LOAD_SECTION', key: 'intelligence', value: intelligence });
   window.__hydrateMarkup = (markupInputs) => _dispatch({ type: 'LOAD_SECTION', key: 'markupInputs', value: markupInputs });
 
+  // ── Tab-confirmation hydration — populateForm() dispatches the loaded
+  // draft's tabConfirmations here. When the loaded draft/import carries no
+  // such key (pre-feature draft, or any import — exports strip it), fall
+  // back to an explicit all-unconfirmed map rather than a no-op: a live
+  // draft switch does NOT reset the reducer first (switchToDraft ->
+  // populateForm with no resetFormFields), so a plain LOAD_SECTION no-op
+  // would leave the PREVIOUS draft's confirmations lingering on the new
+  // one. mergeDeep replaces each tab wholesale with the default, which is
+  // what "this draft has no confirmations" should mean.
+  window.__hydrateTabConfirmations = (tabConfirmations) =>
+    _dispatch({
+      type: 'LOAD_SECTION',
+      key: 'tabConfirmations',
+      value: tabConfirmations || {
+        project:    { confirmed: false, snapshot: null },
+        conditions: { confirmed: false, snapshot: null },
+        assemblies: { confirmed: false, snapshot: null },
+        walls:      { confirmed: false, snapshot: null },
+        ceilings:   { confirmed: false, snapshot: null },
+        rates:      { confirmed: false, snapshot: null },
+        output:     { confirmed: false, snapshot: null },
+        market:     { confirmed: false, snapshot: null }
+      }
+    });
+
   // ── Bid reset — replaces js/forms.js's resetFormFields() direct
   // el.value = '' writes for every React-owned bid section (project/
   // conditions/intelligence/rates/rateEscalation/assemblies/walls/
@@ -210,4 +235,23 @@ export function registerWallsModeReader(getMode) {
 }
 export function registerCeilingsModeReader(getMode) {
   window.__getCeilingsMode = getMode;
+}
+
+// ── Tab-confirmation read accessor ──
+// collectFormData() (js/state.js) reads state.bid.tabConfirmations through
+// this so a draft save carries the confirmation map. Registered from
+// AppShell (needs live reducer state, not just a dispatch), same shape as
+// registerConfidenceReader() above.
+export function registerTabConfirmationsReader(getConfirmations) {
+  window.__getTabConfirmations = getConfirmations;
+}
+
+// ── Demo: confirm every eligible input tab at once ──
+// data/seed.js's _loadDemo() calls this after the demo data + first calc
+// have loaded, so the tab bar reads all-green for a sales demo instead of
+// all-amber. Reuses the real SET_TAB_CONFIRMATION path (no demo-only
+// branch in the derivation logic); AppShell supplies the implementation
+// since it needs live state + ownedSliceJSON().
+export function registerDemoConfirmAllTabs(fn) {
+  window.__confirmAllTabsForDemo = fn;
 }

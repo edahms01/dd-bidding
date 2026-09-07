@@ -224,7 +224,14 @@ function collectFormData() {
   const wallsMode = (typeof window !== 'undefined' && window.__getWallsMode) ? window.__getWallsMode() : 'dimensions';
   const ceilingsMode = (typeof window !== 'undefined' && window.__getCeilingsMode) ? window.__getCeilingsMode() : 'dimensions';
 
-  return { assemblies, walls, ceilings, conditions, rates, rateEscalation, markupInputs, intelligence, project, wallsMode, ceilingsMode };
+  // Manual tab-confirmation map — no DOM representation, read straight
+  // from the reducer via a bridge (same shape as wallsMode/confidence
+  // above). undefined pre-mount / in Node; buildExportPayload() strips it
+  // from exports, buildDraftRecord() keeps it on the draft record.
+  const tabConfirmations = (typeof window !== 'undefined' && window.__getTabConfirmations)
+    ? window.__getTabConfirmations() : undefined;
+
+  return { assemblies, walls, ceilings, conditions, rates, rateEscalation, markupInputs, intelligence, project, wallsMode, ceilingsMode, tabConfirmations };
 }
 
 // Assembles a bid record ready for saveBid(). bid_id and date_submitted are

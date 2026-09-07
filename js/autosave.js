@@ -31,9 +31,15 @@ function debounce(fn, wait) {
 // and export share this same builder so there's only one payload shape.
 
 function buildExportPayload(state) {
+  // tabConfirmations is per-estimator review state, not part of the bid
+  // itself — kept on the draft record (buildDraftRecord, js/drafts.js) but
+  // stripped from exports/imports, so sharing a bid doesn't carry someone
+  // else's "I reviewed this" marks, and the golden-export fixture is
+  // unaffected by the feature.
+  const { tabConfirmations, ...rest } = state || {};
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    ...state
+    ...rest
   };
 }
 

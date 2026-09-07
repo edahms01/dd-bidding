@@ -34,6 +34,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '../state/store.jsx';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 import { useUniformRowWidths } from '../state/useUniformRowWidths.js';
 import { RRRow } from '../components/RRRow.jsx';
 
@@ -321,6 +322,7 @@ export default function RatesPage({ active }) {
           </div>
         </div>
         <div className="page-actions">
+          <TabConfirmButton tab="rates" />
           <button className="btn btn-ghost" onClick={() => window.goto('ceilings')}>← Back</button>
           <button className="btn btn-primary" onClick={() => window.goto('output')}>Next: Cost Summary →</button>
         </div>

@@ -38,6 +38,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useRef } from 'react';
 import { useStore } from '../state/store.jsx';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 
 const CATEGORY_OPTS    = ['Wall', 'Ceiling'];
 const STUD_SIZE_OPTS   = ['1-5/8"', '2-1/2"', '3-5/8"', '4"', '6"'];
@@ -149,6 +150,7 @@ export default function AssembliesPage({ active }) {
       <div className="page-hdr">
         <div><div className="page-title">Assembly types</div><div className="page-sub">Define each wall and ceiling system. Each type ID is referenced in walls and ceilings.</div></div>
         <div className="page-actions">
+          <TabConfirmButton tab="assemblies" />
           <button className="btn btn-ghost" onClick={() => window.goto('conditions')}>← Back</button>
           <button className="btn btn-primary" onClick={() => window.goto('walls')}>Next: Walls →</button>
         </div>
