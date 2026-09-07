@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clearAll } from './helpers.js';
+import { clearAll, loadSeed } from './helpers.js';
 
 // Criterion 13: a confirmed tab survives a real browser reload if nothing
 // changed — the snapshot persists with the draft record (buildDraftRecord,
@@ -39,4 +39,25 @@ test('a confirmed tab is still green after a full browser reload', async ({ page
   await page.click('#tab-project');
   await page.fill('#proj-gc', 'Reload GC changed');
   await expect(page.locator('#tab-project')).not.toHaveClass(/\bdone\b/);
+});
+
+test('all eight seeded-confirmed tabs stay green through a reload (no computed-field drift)', async ({ page }) => {
+  await page.goto('/');
+  await clearAll(page);
+  await loadSeed(page);
+  await page.waitForTimeout(1600); // seed: calc + confirm-all + autosave
+
+  for (const id of ['project', 'conditions', 'assemblies', 'walls', 'ceilings', 'rates', 'output', 'market']) {
+    await expect(page.locator('#tab-' + id), 'pre-reload ' + id).toHaveClass(/\bdone\b/);
+  }
+
+  await page.reload();
+  await page.waitForTimeout(1600); // row tabs re-derive from ui.output after the recalc
+
+  // Every one must come back green — a snapshot that shifts because
+  // collectFormData() injected a computed field (intelligence.openDraftCount,
+  // conditions.durationWeeks) on the autosave would false-revert here.
+  for (const id of ['project', 'conditions', 'assemblies', 'walls', 'ceilings', 'rates', 'output', 'market']) {
+    await expect(page.locator('#tab-' + id), 'post-reload ' + id).toHaveClass(/\bdone\b/);
+  }
 });

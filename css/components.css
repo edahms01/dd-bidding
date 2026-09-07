@@ -81,13 +81,16 @@
 .btn-primary{background:var(--action-solid);color:#fff}
 .btn-primary:hover{opacity:.88}
 .btn-sm{padding:5px 12px;font-size:11px}
+/* Disabled state for every .btn — the gated "Send to Agent" and the
+   Finalize button both rely on `disabled` + a title tooltip; without this
+   they stayed full-strength and didn't read as unavailable. */
+.btn:disabled{opacity:.5;cursor:not-allowed}
 
 /* Manual tab-confirmation button ("Finished with this tab" / "Reviewed"),
    first child of every input page's .page-actions. Outline while
    unconfirmed, filled green once confirmed-and-matching. */
 .tab-confirm-btn{background:transparent;border-color:var(--border2);color:var(--text2)}
 .tab-confirm-btn:not(:disabled):hover{background:var(--surface2);color:var(--text)}
-.tab-confirm-btn:disabled{opacity:.45;cursor:not-allowed}
 .tab-confirm-btn.confirmed,.tab-confirm-btn.confirmed:not(:disabled):hover{background:var(--green);border-color:var(--green);color:#fff}
 
 .autosave-indicator{font-size:11px;color:var(--text3);min-width:80px}

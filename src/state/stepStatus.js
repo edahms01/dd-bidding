@@ -49,9 +49,18 @@ export const GATED_TABS = [
   'project', 'conditions', 'assemblies', 'walls', 'ceilings', 'rates', 'output', 'market'
 ];
 
-// Site Conditions owns everything in bid.conditions EXCEPT these two,
-// which are the price-driving half rendered on Market Read.
-const CONDITIONS_EXCLUDE = ['confidence', 'notes'];
+// Site Conditions owns everything in bid.conditions EXCEPT:
+//  - confidence / notes: the price-driving half, rendered on Market Read.
+//  - durationWeeks: not a Site Conditions input at all — collectFormData()
+//    copies the Project page's #proj-dur into conditions too, and once an
+//    autosave round-trips that copy back into bid.conditions it would
+//    spuriously break a confirmed snapshot on the next reload.
+const CONDITIONS_EXCLUDE = ['confidence', 'notes', 'durationWeeks'];
+
+// Market Read owns confidence + notes + bid.intelligence, minus the one
+// computed field collectFormData() injects there (a live count of *other*
+// open drafts) — same reload-stability reason as durationWeeks above.
+const INTELLIGENCE_EXCLUDE = ['openDraftCount'];
 
 function isPlainObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -138,7 +147,11 @@ export function rawOwnedSlice(tab, state) {
     case 'walls':      return rowSrc.walls || [];
     case 'ceilings':   return rowSrc.ceilings || [];
     case 'rates':      return { rates: b.rates, rateEscalation: b.rateEscalation, markupInputs: b.markupInputs };
-    case 'market':     return { confidence: b.conditions ? b.conditions.confidence : undefined, notes: b.conditions ? b.conditions.notes : undefined, intelligence: b.intelligence };
+    case 'market':     return {
+      confidence: b.conditions ? b.conditions.confidence : undefined,
+      notes: b.conditions ? b.conditions.notes : undefined,
+      intelligence: omitKeys(b.intelligence, INTELLIGENCE_EXCLUDE)
+    };
     case 'output':     return (out && out.summary) || null;
     default:           return null;
   }
@@ -164,7 +177,7 @@ export function tabEligible(tab, state) {
     case 'market':
       return fieldFilled(b.conditions ? b.conditions.confidence : undefined)
         && fieldFilled(b.conditions ? b.conditions.notes : undefined)
-        && allLeavesFilled(b.intelligence);
+        && allLeavesFilled(omitKeys(b.intelligence, INTELLIGENCE_EXCLUDE));
     case 'assemblies': {
       if (!out) return false;
       const rows = rowSrc.assemblies || [];
@@ -175,7 +188,10 @@ export function tabEligible(tab, state) {
     case 'ceilings':
       return !!out && realRows(rowSrc.ceilings).length > 0;
     case 'output':
-      return !!out;
+      // Not merely "a calc object exists" — the reactive calc produces one
+      // (with a $0 summary) the instant a blank bid loads, which would
+      // false-amber Cost Summary on a fresh board. Require a real number.
+      return !!(out && out.summary && out.summary.directCostTotal > 0);
     default:
       return false;
   }

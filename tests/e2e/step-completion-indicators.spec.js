@@ -28,9 +28,11 @@ async function fillProject(page) {
 test('a fresh bid shows every tab gray, Cost Summary included', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
+  // Wait past the reactive calc — it produces a $0 ui.output on a blank
+  // board, and Cost Summary must still read gray (not amber) after it.
+  await page.waitForTimeout(900);
   await expect(page.locator('#app-tabs .tab.done')).toHaveCount(0);
   await expect(page.locator('#app-tabs .tab.partial')).toHaveCount(0);
-  // The old heuristic false-greened this one on a blank bid.
   await expect(page.locator('#tab-output')).not.toHaveClass(/\b(done|partial)\b/);
 });
 
