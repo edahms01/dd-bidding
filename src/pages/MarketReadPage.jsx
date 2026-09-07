@@ -41,8 +41,17 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../state/store.jsx';
 import { registerConfidenceReader } from '../state/bridges.js';
+import { stepStatus, GATED_TABS } from '../state/stepStatus.js';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 import { SelectRow } from '../components/RRRow.jsx';
 import { useUniformRowWidths } from '../state/useUniformRowWidths.js';
+
+// Human labels for the Send-to-Agent gate tooltip (internal keys elsewhere).
+const TAB_LABEL = {
+  project: 'Project', conditions: 'Site Conditions', assemblies: 'Assemblies',
+  walls: 'Walls', ceilings: 'Ceilings', rates: 'Rates', output: 'Cost Summary',
+  market: 'Market Read'
+};
 
 export default function MarketReadPage({ active }) {
   const [state, dispatch] = useStore();
@@ -68,18 +77,34 @@ export default function MarketReadPage({ active }) {
     return v ?? '';
   };
 
+  // Send-to-Agent gate: every input tab must read green (manual
+  // confirmation model) before the one deliberate agent hand-off is
+  // allowed — cuts accidental / expensive agent calls. Recomputed every
+  // render, so it re-enables live as the last tab turns green and
+  // re-locks the instant any confirmed tab is edited.
+  const steps = stepStatus(state);
+  const outstanding = GATED_TABS.filter((t) => steps[t] !== 'complete');
+  const gateBlocked = outstanding.length > 0;
+
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-market" ref={rootRef}>
       <div className="page-hdr">
         <div><div className="page-title">Market Read</div><div className="page-sub">Price-driving judgement: read the market now that the job's scope and cost are known</div></div>
         <div className="page-actions">
+          <TabConfirmButton tab="market" />
           <button className="btn btn-ghost" onClick={() => window.goto('output')}>← Back</button>
           {/* Deliberate send: this is the one conscious hand-off of the bid
               to the AI agent. It runs the calculation + launches the agent
               (window.runCalculation), then opens Bid Strategy to show the
               result. Navigating to Bid Strategy any other way no longer
-              pushes anything to the agent. */}
-          <button className="btn btn-primary" onClick={() => { window.runCalculation?.(); window.goto('agent'); }}>Send to Agent →</button>
+              pushes anything to the agent. Gated on every input tab being
+              confirmed green. */}
+          <button
+            className="btn btn-primary"
+            disabled={gateBlocked}
+            title={gateBlocked ? 'Confirm these tabs first: ' + outstanding.map((t) => TAB_LABEL[t]).join(', ') : undefined}
+            onClick={() => { window.runCalculation?.(); window.goto('agent'); }}
+          >Send to Agent →</button>
         </div>
       </div>
 

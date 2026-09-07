@@ -1,82 +1,129 @@
 import { test, expect } from '@playwright/test';
 import { clearAll, loadSeed } from './helpers.js';
 
-// Phase C 2.2 — per-step empty / partial / complete indicators
-// (src/state/stepStatus.js, rendered as .tab / .tab.partial / .tab.done
-// in AppShell). Built only on signals that already exist; navigation
-// stays unrestricted (this is display, not a gate).
+// Manual tab-confirmation model (src/state/stepStatus.js + TabConfirmButton).
+// A tab is green (.tab.done) only after the estimator clicks "Finished with
+// this tab" / "Reviewed" AND the data still matches the snapshot taken at
+// click time; it silently drops to amber (.tab.partial) on any later edit.
+// The old field-presence heuristic — and its assertions — are retired.
 
-test('a fresh board shows no step as complete', async ({ page }) => {
+// Fills every field in the Project tab's owned slice so its "Finished"
+// button becomes eligible (scope pills default to 2-on, already non-blank).
+async function fillProject(page) {
+  await page.fill('#proj-name', 'Completion Check');
+  await page.fill('#proj-addr', '1 Main St, Portland, ME');
+  await page.selectOption('#proj-type', 'Office');
+  await page.fill('#proj-floors', '3');
+  await page.fill('#proj-gc', 'Acme GC');
+  await page.fill('#proj-drawings', 'Rev B');
+  await page.fill('#proj-dur', '12');
+  // Bid due date / Est. start date render as visible .datefield-input text
+  // boxes (the #proj-bid / #proj-start inputs are hidden ISO carriers).
+  const dates = page.locator('#page-project .datefield-input');
+  await dates.nth(0).fill('01/15/2026');
+  await dates.nth(1).fill('02/01/2026');
+  await page.fill('#proj-exclusions', 'Excludes ACT grid.');
+}
+
+test('a fresh bid shows every tab gray, Cost Summary included', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
+  // Wait past the reactive calc — it produces a $0 ui.output on a blank
+  // board, and Cost Summary must still read gray (not amber) after it.
+  await page.waitForTimeout(900);
   await expect(page.locator('#app-tabs .tab.done')).toHaveCount(0);
+  await expect(page.locator('#app-tabs .tab.partial')).toHaveCount(0);
+  await expect(page.locator('#tab-output')).not.toHaveClass(/\b(done|partial)\b/);
 });
 
-test('Project fills empty -> partial -> complete as its key fields are entered', async ({ page }) => {
+test('a row tab: Finished disabled until the first real row, then click turns it green', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
+  await page.click('#tab-assemblies');
 
-  const projectTab = page.locator('#tab-project');
-  await expect(projectTab).not.toHaveClass(/\bdone\b/);
-  await expect(projectTab).not.toHaveClass(/\bpartial\b/);
+  const btn = page.locator('#page-assemblies .tab-confirm-btn');
+  await expect(btn).toBeDisabled();
 
-  await page.fill('#proj-name', 'Completion Check');
-  await expect(projectTab).toHaveClass(/\bpartial\b/);
-  await expect(projectTab).not.toHaveClass(/\bdone\b/);
+  await page.click('button:has-text("+ Add assembly type")');
+  await page.waitForTimeout(800); // reactive recalc refreshes ui.output.state
+  await expect(btn).toBeEnabled();
+
+  await btn.click();
+  await expect(page.locator('#tab-assemblies')).toHaveClass(/\bdone\b/);
+});
+
+test('a field tab: Finished stays disabled at partial entry, enables only when every field is filled', async ({ page }) => {
+  await page.goto('/');
+  await clearAll(page);
+  await page.click('#tab-project');
+
+  const btn = page.locator('#page-project .tab-confirm-btn');
+  await expect(btn).toBeDisabled();
+
+  await page.fill('#proj-name', 'Only the name');
+  await expect(btn).toBeDisabled(); // partial entry is not enough
+
+  await fillProject(page);
+  await expect(btn).toBeEnabled();
+
+  await btn.click();
+  await expect(page.locator('#tab-project')).toHaveClass(/\bdone\b/);
+  await expect(btn).toHaveText(/✓/);
+});
+
+test('editing a confirmed tab reverts it to amber; restoring the value returns it to green', async ({ page }) => {
+  await page.goto('/');
+  await clearAll(page);
+  await page.click('#tab-project');
+  await fillProject(page);
+  await page.click('#page-project .tab-confirm-btn');
+  await expect(page.locator('#tab-project')).toHaveClass(/\bdone\b/);
+
+  await page.fill('#proj-gc', 'Acme GC — updated');
+  await expect(page.locator('#tab-project')).toHaveClass(/\bpartial\b/);
+  await expect(page.locator('#tab-project')).not.toHaveClass(/\bdone\b/);
 
   await page.fill('#proj-gc', 'Acme GC');
-  await page.selectOption('#proj-type', 'Office');
-  await expect(projectTab).toHaveClass(/\bdone\b/);
+  await expect(page.locator('#tab-project')).toHaveClass(/\bdone\b/);
 });
 
-test('Assemblies completion is self-contained — a second row marks it done, no Walls data needed', async ({ page }) => {
+test('a confirmed tab stays green across a tab switch (snapshot held in state)', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
+  await page.click('#tab-project');
+  await fillProject(page);
+  await page.click('#page-project .tab-confirm-btn');
+  await expect(page.locator('#tab-project')).toHaveClass(/\bdone\b/);
 
-  // Fresh board: one untouched default assembly row — neutral, not done.
-  await expect(page.locator('#tab-assemblies')).not.toHaveClass(/\b(done|partial)\b/);
-
-  await page.click('#tab-assemblies');
-  await page.click('button:has-text("+ Add assembly type")');
-  await expect(page.locator('#tab-assemblies')).toHaveClass(/\bdone\b/);
-
-  // Walls untouched throughout — Assemblies' status never depended on it.
-  await expect(page.locator('#tab-walls')).not.toHaveClass(/\b(done|partial)\b/);
+  await page.click('#tab-conditions');
+  await page.click('#tab-project');
+  await expect(page.locator('#tab-project')).toHaveClass(/\bdone\b/);
 });
 
-test('seed data marks the input steps complete', async ({ page }) => {
+test('seed data reads all nine tabs green', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
   await loadSeed(page);
-  await page.waitForTimeout(1400); // seed runs the calc + pre-runs the agent (500ms)
+  await page.waitForTimeout(1600); // seed: calc + agent pre-run (500ms) + confirm-all
 
-  for (const id of ['tab-project', 'tab-conditions', 'tab-assemblies', 'tab-walls', 'tab-ceilings', 'tab-rates', 'tab-output', 'tab-market', 'tab-agent']) {
+  for (const id of ['tab-project', 'tab-conditions', 'tab-assemblies', 'tab-walls',
+    'tab-ceilings', 'tab-rates', 'tab-output', 'tab-market', 'tab-agent']) {
     await expect(page.locator('#' + id), id).toHaveClass(/\bdone\b/);
   }
 });
 
-test('an orphaned Type ID keeps Walls — and the steps it feeds — at partial, never complete', async ({ page }) => {
+test("Finalize's orphan-reference block is unaffected by the confirmation model", async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
   await loadSeed(page);
-  await page.waitForTimeout(1400); // calc + agent pre-run (500ms)
+  await page.waitForTimeout(1600);
 
-  for (const id of ['tab-walls', 'tab-output', 'tab-agent']) {
-    await expect(page.locator('#' + id), id).toHaveClass(/\bdone\b/);
-  }
-
-  // Seed walls reference W1/W2/W3 — delete W1 from Assemblies so those
-  // rows go orphaned.
+  // Orphan the seed's wall rows by deleting an assembly they reference.
   await page.click('#tab-assemblies');
   const w1Row = page.locator('#asm-body tr').filter({ has: page.locator('.asm-id[value="W1"]') });
   await w1Row.locator('.del-btn').click();
-  await page.waitForTimeout(800); // reactive recalc debounce (500ms)
+  await page.waitForTimeout(800);
 
-  // Walls goes amber, and so do Cost Summary and Bid Strategy — a total
-  // and a recommendation computed against an unresolved reference must
-  // not read as green next to an amber Walls step.
-  for (const id of ['tab-walls', 'tab-output', 'tab-agent']) {
-    await expect(page.locator('#' + id), id).toHaveClass(/\bpartial\b/);
-    await expect(page.locator('#' + id), id).not.toHaveClass(/\bdone\b/);
-  }
+  await page.click('#tab-agent');
+  await expect(page.locator('#agent-finalize-btn')).toBeDisabled();
 });

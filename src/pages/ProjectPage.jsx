@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
 import DateField from '../components/DateField.jsx';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 
 const SCOPE_PILLS = ['Metal framing', 'Drywall', 'Plastering', 'External wall', 'Subcontractors'];
 
@@ -35,7 +36,7 @@ export default function ProjectPage({ active }) {
     <div className={'page' + (active ? ' active' : '')} id="page-project">
       <div className="page-hdr">
         <div><div className="page-title">Project</div><div className="page-sub">Basic info and scope for this bid</div></div>
-        <div className="page-actions"><button className="btn btn-primary" onClick={() => window.goto('conditions')}>Next: Site Conditions →</button></div>
+        <div className="page-actions"><TabConfirmButton tab="project" /><button className="btn btn-primary" onClick={() => window.goto('conditions')}>Next: Site Conditions →</button></div>
       </div>
       <div className="section-label">Project Info</div>
       <div className="divider" />

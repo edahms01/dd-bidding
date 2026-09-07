@@ -29,7 +29,12 @@ function buildDraftRecord(state, id, createdAt, lastModifiedAt) {
     id,
     createdAt,
     lastModifiedAt,
-    ...buildExportPayload(state)
+    ...buildExportPayload(state),
+    // buildExportPayload() strips tabConfirmations (it's review state, not
+    // bid data); a draft record keeps it so a confirmed tab survives a
+    // reload / draft switch. undefined on the legacy-migration path (no
+    // such field pre-feature) — JSON.stringify drops it, harmless.
+    tabConfirmations: state && state.tabConfirmations
   };
 }
 

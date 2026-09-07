@@ -255,7 +255,27 @@ export const initialState = {
     // contingencyPct is purely manual — starts '' and stays '' until the
     // estimator types a value; nothing auto-fills it from confidence (that
     // link was removed 2026-09-05).
-    markupInputs: { overheadPct: '', contingencyPct: '', profitPct: '' }
+    markupInputs: { overheadPct: '', contingencyPct: '', profitPct: '' },
+    // Manual tab-confirmation model (replaces stepStatus.js's old
+    // field-presence heuristic). Each input tab is confirmed explicitly by
+    // the estimator via a "Finished with this tab" button; `snapshot` is
+    // JSON.stringify(normalize(<that tab's owned bid slice>)) captured at
+    // click time, so editing a confirmed tab silently reverts it to amber
+    // (live slice != snapshot). No `agent` entry — Bid Strategy has no
+    // button, its indicator is derived from request state + agentStaleness().
+    // Persisted on the draft record (js/drafts.js), NOT the export payload
+    // (js/autosave.js strips it). Hydrated via LOAD_SECTION (mergeDeep
+    // no-ops on a missing key, so a pre-feature draft loads all-unconfirmed).
+    tabConfirmations: {
+      project:    { confirmed: false, snapshot: null },
+      conditions: { confirmed: false, snapshot: null },
+      assemblies: { confirmed: false, snapshot: null },
+      walls:      { confirmed: false, snapshot: null },
+      ceilings:   { confirmed: false, snapshot: null },
+      rates:      { confirmed: false, snapshot: null },
+      output:     { confirmed: false, snapshot: null },
+      market:     { confirmed: false, snapshot: null }
+    }
   }
 };
 
@@ -551,6 +571,25 @@ export function reducer(state, action) {
         : [...scope, action.label];
       return { ...state, bid: { ...state.bid, project: { ...state.bid.project, scope: next } } };
     }
+    case 'SET_TAB_CONFIRMATION':
+      // Manual tab-confirmation model. The button (src/components/
+      // TabConfirmButton.jsx) dispatches confirmed:!current with a fresh
+      // snapshot on confirm, and confirmed:false/snapshot:null on
+      // un-confirm. Status derivation (stepStatus.js's tabStatus()) compares
+      // the stored snapshot to the live slice every render, so a later edit
+      // reverts the tab to amber with no extra action.
+      return {
+        ...state,
+        bid: {
+          ...state.bid,
+          tabConfirmations: {
+            ...state.bid.tabConfirmations,
+            [action.tab]: action.confirmed
+              ? { confirmed: true, snapshot: action.snapshot }
+              : { confirmed: false, snapshot: null }
+          }
+        }
+      };
     case 'GOTO_TAB':
       return { ...state, ui: { ...state.ui, activeSection: 'workflow', activeTab: action.id } };
     case 'GOTO_SECTION':

@@ -42,6 +42,7 @@
 // overwrote whatever #output-bid held, submit panel included).
 // ─────────────────────────────────────────────────────────────────────
 import { useStore } from '../state/store.jsx';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 import SubmitResultPanel from '../components/SubmitResultPanel.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
@@ -235,6 +236,7 @@ export default function OutputPage({ active }) {
       <div className="page-hdr">
         <div><div className="page-title">Cost Summary</div><div className="page-sub">Direct cost breakdown and pricing</div></div>
         <div className="page-actions">
+          <TabConfirmButton tab="output" />
           <button className="btn btn-ghost" onClick={() => window.goto('rates')}>← Back</button>
           {/* 4.2: manual Recalculate removed — calculation is reactive now
               (window.scheduleRecalc, js/ui.js), wired from js/forms.js's

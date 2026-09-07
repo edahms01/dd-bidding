@@ -52,6 +52,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store.jsx';
+import TabConfirmButton from '../components/TabConfirmButton.jsx';
 import TypeIdSelect from '../components/TypeIdSelect.jsx';
 import { isOrphanTypeId } from '../state/validation.js';
 import { registerWallsModeReader } from '../state/bridges.js';
@@ -231,6 +232,7 @@ export default function WallsPage({ active }) {
       <div className="page-hdr">
         <div><div className="page-title">Wall quantities</div><div className="page-sub">One row per floor or zone. Net SF calculates automatically.</div></div>
         <div className="page-actions">
+          <TabConfirmButton tab="walls" />
           <button className="btn btn-ghost" onClick={() => window.goto('assemblies')}>← Back</button>
           <button className="btn btn-primary" onClick={() => window.goto('ceilings')}>Next: Ceilings →</button>
         </div>

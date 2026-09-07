@@ -95,6 +95,13 @@ async function _loadDemo({ live }) {
 
   // Pre-run agent — Tab 8 ready without clicking through Tab 7.
   setTimeout(() => {
+    // Mark every input tab confirmed (reuses the real SET_TAB_CONFIRMATION
+    // path — no demo-only branch in the derivation) so the step bar reads
+    // all-green for a demo instead of all-amber. Runs here, after the
+    // first calc has flushed state.ui.output (the row tabs snapshot from
+    // it). Bid Strategy greens on its own once the agent result lands.
+    window.__confirmAllTabsForDemo?.();
+
     Promise.resolve(runAgentIfNeeded()).then(result => {
       if (!live) { _demoToolbarNote('Demo loaded ✓', 'ok'); return; }
       if (result && result._liveError) {

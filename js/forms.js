@@ -287,6 +287,11 @@ function populateForm(state) {
   set('markup-profit',      mu.profitPct);
   window.__hydrateMarkup?.(mu);
 
+  // ── Tab confirmations ── reducer-only (no DOM). A pre-feature draft
+  // has no such key; LOAD_SECTION's mergeDeep no-ops on undefined, so the
+  // reducer keeps its default all-unconfirmed map.
+  window.__hydrateTabConfirmations?.(state.tabConfirmations);
+
   // ── Assemblies (AssembliesPage is now React-owned) ──
   // window.__hydrateAssemblies dispatches into the reducer instead of
   // rebuilding #asm-body's children directly — that rebuild is what
