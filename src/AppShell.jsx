@@ -36,7 +36,6 @@ import InsightsPage from './pages/InsightsPage.jsx';
 import FinalizeModal from './pages/FinalizeModal.jsx';
 import BidTotalRail from './components/BidTotalRail.jsx';
 import RowUndoToast from './components/RowUndoToast.jsx';
-import { ConfirmHost } from './components/ConfirmDialog.jsx';
 import BidsToolbar from './components/BidsToolbar.jsx';
 
 // 4.1: tabs where the rail shows — "visible from Assemblies onward" per
@@ -572,7 +571,6 @@ export default function AppShell() {
     </div>
     <FinalizeModal />
     <RowUndoToast />
-    <ConfirmHost />
     </Fragment>
   );
 }

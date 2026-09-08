@@ -3,9 +3,8 @@
 // All Anthropic API interaction lives here — single swap point for
 // future model changes or proxy migration.
 //
-// Live path (DEMO_MODE false — i.e. running on the production host — or
-// the dual-demo "Load Demo — live agent" button): POSTs the business-data
-// payload to the background
+// Live path (DEMO_MODE false — i.e. running on the production host):
+// POSTs the business-data payload to the background
 // function /.netlify/functions/bid-agent-background and then polls
 // /.netlify/functions/bid-agent-result for the outcome. The server holds
 // ANTHROPIC_API_KEY, the system prompt, and the forced-tool schema
@@ -21,23 +20,6 @@
 // below). If the production host ever changes, update the hostname here.
 const DEMO_MODE =
   typeof location === 'undefined' || location.hostname !== 'bid-iq.netlify.app';
-
-// Dual demo mode — a load-time, session-only override of DEMO_MODE for the
-// "Load Demo — live agent" dev-toolbar button. When true, runBidAgent()
-// takes the live /.netlify/functions/bid-agent path even when DEMO_MODE
-// resolved true (any non-production host). Deliberately NOT persisted (not on the bid record, not in
-// drafts) and reset to false by every offline "Load Demo" load — it exists
-// only so the real Anthropic connection can be exercised from the running
-// app. Session-sticky by design: once on, later recalcs / Tab 7-8 visits
-// in that session also call live (the confirm() gate is on the button, not
-// on every downstream call). See data/seed.js's _loadDemo().
-let liveAgentMode = false;
-if (typeof window !== 'undefined') {
-  // Guarded per CLAUDE.md checklist item 9 — tests/unit/*.test.js import
-  // sibling classic scripts under Vitest's node env, no window.
-  window.__setLiveAgentMode = function (on) { liveAgentMode = !!on; };
-  window.__getLiveAgentMode = function () { return liveAgentMode; };
-}
 
 const AGENT_FALLBACK = {
   options: [
@@ -238,7 +220,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
 }
 
 async function runBidAgent(state, summary, markupResult, bidHistory) {
-  if (DEMO_MODE && !liveAgentMode) {
+  if (DEMO_MODE) {
     await new Promise(r => setTimeout(r, 900));
     return _demoResponse(state, summary, markupResult, bidHistory);
   }

@@ -247,21 +247,11 @@ export function registerTabConfirmationsReader(getConfirmations) {
 }
 
 // ── Demo: confirm every eligible input tab at once ──
-// data/seed.js's _loadDemo() calls this after the demo data + first calc
+// data/seed.js's loadSeedData() calls this after the demo data + first calc
 // have loaded, so the tab bar reads all-green for a sales demo instead of
 // all-amber. Reuses the real SET_TAB_CONFIRMATION path (no demo-only
 // branch in the derivation logic); AppShell supplies the implementation
 // since it needs live state + ownedSliceJSON().
 export function registerDemoConfirmAllTabs(fn) {
   window.__confirmAllTabsForDemo = fn;
-}
-
-// ── Classic-script confirm() replacement (DOM modal) ──
-// data/seed.js's loadDemoLive() awaits window.__confirm(title, message)
-// before the billable live-agent call, instead of a native confirm() a
-// CDP-based browser-automation tool can't see or dismiss. Returns a
-// Promise<boolean>. Implemented by ConfirmHost (src/components/
-// ConfirmDialog.jsx) — it stashes the resolver and renders the modal.
-export function registerConfirmBridge(fn) {
-  window.__confirm = fn;
 }
