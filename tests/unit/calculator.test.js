@@ -3,6 +3,7 @@ import {
   calculateWallCosts,
   calculateCeilingCosts,
   calculateLogistics,
+  disposalMonthsFor,
   buildCostSummary,
   applyMarkup,
   computeWeightedWastePct,
@@ -338,5 +339,55 @@ describe('golden-bid regression — Harborview Plaza (data/seed.json), current s
     // No waste override on any seed assembly -> weighted average must
     // equal the job-wide conditions.wastePct exactly (float noise aside).
     expect(summary.weightedWastePct).toBeCloseTo(seed.conditions.wastePct, 6);
+  });
+});
+
+describe('calculateLogistics — waste disposal costed per month (2026-09-08)', () => {
+  const rates = { delivery: 0, lift: 0, disposal: 420 }; // isolate disposal
+
+  it('floors at 1 month for 0-4 weeks', () => {
+    for (const wk of [0, 1, 2, 3, 4]) {
+      const r = calculateLogistics({ trips: 0, sfAbove12: 0, durationWeeks: wk }, rates);
+      expect(r.disposalMonths).toBe(1);
+      expect(r.disposalCost).toBe(420);
+    }
+  });
+
+  it('rounds up to whole months at 4 weeks/month', () => {
+    const cases = [[5, 2], [8, 2], [9, 3], [12, 3], [13, 4], [14, 4], [52, 13]];
+    for (const [wk, months] of cases) {
+      const r = calculateLogistics({ trips: 0, sfAbove12: 0, durationWeeks: wk }, rates);
+      expect(r.disposalMonths, `${wk}wk`).toBe(months);
+      expect(r.disposalCost).toBe(months * 420);
+    }
+  });
+
+  it('disposalCost is included in total alongside delivery and lift', () => {
+    const r = calculateLogistics(
+      { trips: 2, sfAbove12: 1, durationWeeks: 14 },
+      { delivery: 100, lift: 50, disposal: 420 }
+    );
+    // delivery 2*100=200, lift 14*50=700, disposal 4*420=1680
+    expect(r.total).toBe(200 + 700 + 1680);
+  });
+
+  it('unconditional — applies even when sfAbove12 is 0 (no lift-style gate)', () => {
+    const r = calculateLogistics({ trips: 0, sfAbove12: 0, durationWeeks: 6 }, rates);
+    expect(r.liftWeeks).toBe(0);
+    expect(r.disposalCost).toBe(2 * 420);
+  });
+
+  it('disposalMonthsFor matches OutputPage.jsx\'s inline copy for every week value 0..60', () => {
+    // OutputPage.jsx recomputes the month count inline (classic-script /
+    // ESM boundary — it cannot import js/calculator.js). This pins the two
+    // formulas together so a change to disposalMonthsFor that isn't
+    // mirrored in OutputPage is caught here.
+    const outputPageInline = (weeks) => Math.max(1, Math.ceil((weeks || 0) / 4));
+    for (let wk = 0; wk <= 60; wk++) {
+      expect(disposalMonthsFor(wk), `${wk}wk`).toBe(outputPageInline(wk));
+    }
+    // and the degenerate inputs both guard
+    expect(disposalMonthsFor(undefined)).toBe(outputPageInline(undefined));
+    expect(disposalMonthsFor(null)).toBe(outputPageInline(null));
   });
 });
