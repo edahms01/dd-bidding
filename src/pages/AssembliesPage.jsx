@@ -42,7 +42,6 @@ import TabConfirmButton from '../components/TabConfirmButton.jsx';
 
 const CATEGORY_OPTS    = ['Wall', 'Ceiling'];
 const STUD_SIZE_OPTS   = ['1-5/8"', '2-1/2"', '3-5/8"', '4"', '6"'];
-const SPACING_OPTS     = ['16"', '24"', '12"'];
 const LAYERS_OPTS      = [1, 2, 3];
 const BOARD_TYPE_OPTS  = ['Standard', 'Type-X', 'Moisture', 'Impact'];
 const FIRE_RATING_OPTS = ['None', '1-hr', '2-hr'];
@@ -110,11 +109,6 @@ function AssemblyRow({ row, index, dispatch }) {
         </select>
       </td>
       <td>
-        <select defaultValue={row.spacing}>
-          {SPACING_OPTS.map((o) => <option key={o}>{o}</option>)}
-        </select>
-      </td>
-      <td>
         <select className="asm-narrow" defaultValue={row.layers}>
           {LAYERS_OPTS.map((o) => <option key={o}>{o}</option>)}
         </select>
@@ -141,9 +135,10 @@ function AssemblyRow({ row, index, dispatch }) {
       </td>
       {/* Exterior — Wall assemblies only, and deliberately LAST in this
           row's <select> sequence so collectFormData()'s positional reads
-          (sel[0]..sel[7]) are untouched; this is sel[8]. A Ceiling row
-          renders a plain "-" cell (no <select>), so sel[8] is undefined
-          there and collectFormData() falls back to 'No'. Like every other
+          (sel[0]..sel[6]) are untouched; this is sel[7] (was sel[8] before
+          the spacing column was removed). A Ceiling row renders a plain
+          "-" cell (no <select>), so sel[7] is undefined there and
+          collectFormData() falls back to 'No'. Like every other
           field in this row it's uncontrolled and does not re-render on a
           category change — consistent with the rest of the row. */}
       <td>
@@ -179,12 +174,12 @@ export default function AssembliesPage({ active }) {
         <table>
           <colgroup>
             <col style={{ width: 58 }} /><col style={{ width: 60 }} /><col style={{ width: 84 }} /><col className="col-studsize" />
-            <col style={{ width: 68 }} /><col style={{ width: 38 }} /><col style={{ width: 108 }} />
+            <col style={{ width: 38 }} /><col style={{ width: 108 }} />
             <col style={{ width: 74 }} /><col style={{ width: 62 }} /><col style={{ width: 38 }} />
             <col style={{ width: 52 }} /><col style={{ width: 62 }} /><col />
           </colgroup>
           <thead><tr>
-            <th></th><th style={{ whiteSpace: 'normal' }}>Assembly<br />Type ID</th><th>Category</th><th>Stud size</th><th>Spacing</th>
+            <th></th><th style={{ whiteSpace: 'normal' }}>Assembly<br />Type ID</th><th>Category</th><th>Stud size</th>
             <th style={{ whiteSpace: 'normal' }}>Board layers</th><th>Board type</th><th>Fire rating</th>
             <th>Acoustic</th><th style={{ whiteSpace: 'normal' }}>Finish level</th><th>Exterior</th><th>Waste %</th><th>Notes</th>
           </tr></thead>

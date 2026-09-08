@@ -17,7 +17,7 @@ function sampleRates(overrides = {}) {
     stud: { '3-5/8"': 0.52 },
     board: { Standard: 0.48 },
     tape: 0.14, insul: 0.32, fasten: 0.11,
-    delivery: 380, lift: 650,
+    delivery: 380, lift: 650, disposal: 420,
     ...overrides
   };
 }
@@ -327,8 +327,12 @@ describe('golden-bid regression — Harborview Plaza (data/seed.json), current s
 
     expect(summary.laborTotal).toBeCloseTo(76956, 3);
     expect(summary.materialTotal).toBeCloseTo(21490.6168, 3);
-    expect(summary.directCostTotal).toBeCloseTo(109826.6168, 3);
-    expect(markup.finalBidPrice).toBeCloseTo(142774.60184, 3);
+    // directCostTotal / finalBidPrice re-pinned 2026-09-08: waste disposal
+    // is now costed per month (disposalMonths = ceil(14 wk / 4) = 4,
+    // × $420 = $1,680 into logistics.total, hence directCost). laborTotal /
+    // materialTotal / effectiveMargin are unchanged by it.
+    expect(summary.directCostTotal).toBeCloseTo(111506.6168, 3);
+    expect(markup.finalBidPrice).toBeCloseTo(144958.60184, 3);
     expect(markup.effectiveMargin).toBeCloseTo(23.076923076923084, 6);
 
     // No waste override on any seed assembly -> weighted average must
