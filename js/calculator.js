@@ -25,8 +25,13 @@ function calculateWallCosts(walls, assemblies, rates, conditions) {
     const effectiveWaste = asm.wastePctOverride ?? conditions.wastePct;
     const wasteMult       = 1 + effectiveWaste / 100;
 
+    // An assembly flagged Exterior (Assemblies tab) uses the External wall
+    // rate in place of the standard drywall-hanging rate — a straight
+    // swap, not stacked, and it touches nothing else in the wall formula.
+    // Wall-category only; calculateCeilingCosts() never reads this flag.
+    const hangingRate       = asm.exteriorWall === 'Yes' ? rates.extwall : rates.hanging;
     const framingLabor      = w.lf    * rates.framing;
-    const hangingLabor      = w.netSF * asm.layers * rates.hanging;
+    const hangingLabor      = w.netSF * asm.layers * hangingRate;
     const finishingLabor    = w.netSF * (rates.finish[asm.finishLevel] || 0);
     const studMaterial      = w.lf    * (rates.stud[asm.studSize] || 0);
     const boardMaterialBase = w.netSF * asm.layers * (rates.board[asm.boardType] || 0);

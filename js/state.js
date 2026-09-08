@@ -60,6 +60,10 @@ function collectFormData() {
     // UI-fixes batch (2026-09-04): AssembliesPage.jsx moved Waste %
     // ahead of Notes in the row (inp[1] is now Waste %, inp[2] Notes) --
     // positional indices below updated to match, not left stale.
+    // exteriorWall (sel[8]) is deliberately last in the row's <select>
+    // sequence so sel[0]..sel[7] stay put; a Ceiling-category row renders
+    // no such <select> (plain "-" cell), so sel[8] is undefined there and
+    // falls back to 'No'. See AssembliesPage.jsx's colgroup note.
     const wasteVal = parseFloat(inp[1]?.value);
     assemblies.push({
       id:          inp[0].value.trim(),
@@ -71,6 +75,7 @@ function collectFormData() {
       fireRating:  sel[5]?.value || 'None',
       acoustic:    sel[6]?.value || 'No',
       finishLevel: parseInt(sel[7]?.value) || 3,
+      exteriorWall: sel[8]?.value || 'No',
       notes:       inp[2]?.value || '',
       wastePctOverride: Number.isNaN(wasteVal) ? null : wasteVal
     });
@@ -146,6 +151,7 @@ function collectFormData() {
   const rates = {
     framing:   num('rate-frame'),
     hanging:   num('rate-hang'),
+    extwall:   num('rate-extwall'),
     burdenPct: num('rate-burden', 32),
     superPct:  num('rate-super', 8),
     finish: {

@@ -48,6 +48,10 @@ const BOARD_TYPE_OPTS  = ['Standard', 'Type-X', 'Moisture', 'Impact'];
 const FIRE_RATING_OPTS = ['None', '1-hr', '2-hr'];
 const ACOUSTIC_OPTS    = ['No', 'Yes'];
 const FINISH_LEVEL_OPTS = [1, 2, 3, 4, 5];
+// Wall assemblies only. 'Yes' makes calculateWallCosts() (js/calculator.js)
+// use rates.extwall in place of rates.hanging for that assembly. Kept
+// separate from ACOUSTIC_OPTS (identical today) for readability.
+const EXTERIOR_OPTS    = ['No', 'Yes'];
 
 function AssemblyRow({ row, index, dispatch }) {
   const idRef = useRef(null);
@@ -135,6 +139,22 @@ function AssemblyRow({ row, index, dispatch }) {
           {FINISH_LEVEL_OPTS.map((o) => <option key={o}>{o}</option>)}
         </select>
       </td>
+      {/* Exterior — Wall assemblies only, and deliberately LAST in this
+          row's <select> sequence so collectFormData()'s positional reads
+          (sel[0]..sel[7]) are untouched; this is sel[8]. A Ceiling row
+          renders a plain "-" cell (no <select>), so sel[8] is undefined
+          there and collectFormData() falls back to 'No'. Like every other
+          field in this row it's uncontrolled and does not re-render on a
+          category change — consistent with the rest of the row. */}
+      <td>
+        {row.category === 'Ceiling' ? (
+          <span className="asm-ext-na">-</span>
+        ) : (
+          <select defaultValue={row.exteriorWall}>
+            {EXTERIOR_OPTS.map((o) => <option key={o}>{o}</option>)}
+          </select>
+        )}
+      </td>
       <td><input type="number" min="0" className="asm-waste" defaultValue={row.wastePctOverride ?? ''} /></td>
       <td><input type="text" defaultValue={row.notes} /></td>
     </tr>
@@ -161,12 +181,12 @@ export default function AssembliesPage({ active }) {
             <col style={{ width: 58 }} /><col style={{ width: 60 }} /><col style={{ width: 84 }} /><col className="col-studsize" />
             <col style={{ width: 68 }} /><col style={{ width: 38 }} /><col style={{ width: 108 }} />
             <col style={{ width: 74 }} /><col style={{ width: 62 }} /><col style={{ width: 38 }} />
-            <col style={{ width: 62 }} /><col />
+            <col style={{ width: 52 }} /><col style={{ width: 62 }} /><col />
           </colgroup>
           <thead><tr>
             <th></th><th style={{ whiteSpace: 'normal' }}>Assembly<br />Type ID</th><th>Category</th><th>Stud size</th><th>Spacing</th>
             <th style={{ whiteSpace: 'normal' }}>Board layers</th><th>Board type</th><th>Fire rating</th>
-            <th>Acoustic</th><th style={{ whiteSpace: 'normal' }}>Finish level</th><th>Waste %</th><th>Notes</th>
+            <th>Acoustic</th><th style={{ whiteSpace: 'normal' }}>Finish level</th><th>Exterior</th><th>Waste %</th><th>Notes</th>
           </tr></thead>
           <tbody id="asm-body">
             {rows.map((row, i) => <AssemblyRow key={row._key} row={row} index={i} dispatch={dispatch} />)}

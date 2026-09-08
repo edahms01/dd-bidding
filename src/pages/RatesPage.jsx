@@ -6,14 +6,14 @@
 // calc(), NOT the real calculator.js engine — see the spike report/plan
 // for why these are different things).
 //
-// Two fields (Plastering, External wall) are genuine orphans in the
-// original app: they're real inputs with real oninput="calc()" handlers,
-// but collectFormData() never reads them and nothing persists them —
-// verified directly (grep for "plaster"/"extwall" across js/ turns up
-// nothing outside index.html and this file). Preserved as-is: plain
-// uncontrolled inputs, not wired to reducer state, exactly matching
-// current behavior (they contribute to the displayed totals bar but
-// nowhere else, same as today).
+// Two fields (Plastering, External wall) used to be genuine orphans in
+// the original app: real inputs with real oninput="calc()" handlers, but
+// collectFormData() never read them and nothing persisted them. Both are
+// resolved now (exterior-wall-assembly-property branch): Plastering is
+// removed outright (not a Dirigo service), and External wall is a real
+// controlled rate field (rates.extwall) that replaces the drywall-hanging
+// rate for wall assemblies flagged Exterior on the Assemblies tab. Every
+// priced field on this page now reaches a bid total.
 //
 // UI-fixes batch (2026-09-04): migrated from the old per-field
 // .rcard/.iw/.fiw/.siw/.aiw "dialects" to the shared .rr-*/.tray system
@@ -178,8 +178,7 @@ export default function RatesPage({ active }) {
   // Mirrors calc() being called explicitly at the end of populateForm()/
   // applyRateTemplate() — recompute whenever rates hydrate from a draft
   // or a template. The onInput delegation below (mirroring every
-  // oninput="calc()" attribute in the original markup) handles typing,
-  // including the two orphan fields which aren't reducer-tracked at all.
+  // oninput="calc()" attribute in the original markup) handles typing.
   useEffect(() => {
     recomputeTotals();
   }, [state.bid.rates, state.bid.rateEscalation, recomputeTotals]);
@@ -347,11 +346,8 @@ export default function RatesPage({ active }) {
               valueEl={<RateField id="rate-frame" className="rr-val cur L" path={['rates', 'framing']} get={get} dispatch={dispatch} placeholder="0.00" />} />
             <RRRow name="Drywall hanging" tip="Multiplied by board layers per assembly." pfx="$" sfx="/SF"
               valueEl={<RateField id="rate-hang" className="rr-val cur L" path={['rates', 'hanging']} get={get} dispatch={dispatch} placeholder="0.00" />} />
-            {/* Orphan fields — see file header comment. Plain uncontrolled inputs, matching current behavior exactly. */}
-            <RRRow name="Plastering" pfx="$" sfx="/SF"
-              valueEl={<input id="rate-plaster" className="rr-val cur L" type="number" placeholder="0.00" />} />
-            <RRRow name="External wall" pfx="$" sfx="/SF"
-              valueEl={<input id="rate-extwall" className="rr-val cur L" type="number" placeholder="0.00" />} />
+            <RRRow name="External wall" tip="Replaces drywall hanging for wall assemblies flagged Exterior on the Assemblies tab." pfx="$" sfx="/SF"
+              valueEl={<RateField id="rate-extwall" className="rr-val cur L" path={['rates', 'extwall']} get={get} dispatch={dispatch} placeholder="0.00" />} />
             <RRRow name="Labor burden" tip="Payroll tax, workers comp, benefits. 28–40%." sfx="%"
               valueEl={<RateField id="rate-burden" className="rr-val pct L" path={['rates', 'burdenPct']} get={get} dispatch={dispatch} placeholder="32" />} />
             <RRRow name="Supervision" tip="Foreman as % of total labor. 6–12%." sfx="%"
