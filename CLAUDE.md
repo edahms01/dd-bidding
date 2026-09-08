@@ -158,11 +158,13 @@ print.css       empty stub — Phase G
 
 The dev toolbar has **two** demo-load buttons (was one "Load seed data"):
 - **"Load Demo"** → `loadSeedData()` → `_loadDemo({ live: false })`. Offline canned response (`DEMO_MODE`), byte-identical to the old single button (`runCalculation()` + a +500ms `runAgentIfNeeded()` pre-run; golden-export unchanged).
-- **"Load Demo — live agent"** (`.btn-live`, caution-styled) → `loadDemoLive()` → `confirm()` gate → `_loadDemo({ live: true })`. Same seed data; the agent call goes to Anthropic for real. Uses `calculateOnly()` + a *single* `runAgentIfNeeded()`.
+- **"Load Demo (live agent)"** (`.btn-live`, caution-styled) → `loadDemoLive()` → **DOM confirm modal** gate → `_loadDemo({ live: true })`. Same seed data; the agent call goes to Anthropic for real. Uses `calculateOnly()` + a *single* `runAgentIfNeeded()`.
+
+**Confirm-gate mechanism (2026-09-08):** `loadDemoLive()` awaits `window.__confirm(title, message)` — a promise-returning bridge (`registerConfirmBridge`, `src/state/bridges.js`) implemented by `ConfirmHost` in `src/components/ConfirmDialog.jsx` (a single always-mounted instance next to `<FinalizeModal>`, reusing its `.modal-overlay`/`.modal` CSS + a new `.modal-message` body class). Replaced the native `confirm()`, which blocks the JS thread where CDP-based browser automation can't dismiss it — the live-agent path was untestable by automation until this. Native `confirm()` stays only as a pre-React-mount fallback. `data/seed.js` is still a classic script; `loadDemoLive()` was already `async`, so `const ok = await window.__confirm(...)` is a drop-in.
 
 **Show/hide toggle (2026-09-03):** the toolbar's old "Hide" (inline `style.display='none'`, one-way) is replaced by `toggleDevBar()` (small `<script>` in `index.html`) — toggles `body.devbar-hidden`, persisted to `localStorage['dirigo_devbar_hidden']`. A floating `#dev-toolbar-show` ("Demo ▴", bottom-left) is CSS-shown only while hidden and brings it back. Both are `display:none` on phones (`css/responsive.css`, the `#dev-toolbar-show` rule needs `!important` to beat `body.devbar-hidden`'s `display:block`). No spec toggles it, so no cross-test localStorage pollution.
 
-`js/agent.js` gains `let liveAgentMode` + `window.__setLiveAgentMode` / `__getLiveAgentMode`. `runBidAgent()`'s guard is `if (DEMO_MODE && !liveAgentMode)`. **Session-only, never persisted**; every offline "Load Demo" resets it to `false`. **Session-sticky** — once on, later recalcs also call live; the `confirm()` is on the button, not every downstream call.
+`js/agent.js` gains `let liveAgentMode` + `window.__setLiveAgentMode` / `__getLiveAgentMode`. `runBidAgent()`'s guard is `if (DEMO_MODE && !liveAgentMode)`. **Session-only, never persisted**; every offline "Load Demo" resets it to `false`. **Session-sticky** — once on, later recalcs also call live; the confirm gate is on the button, not every downstream call.
 
 **The live path is asynchronous (background function + polling), and the dual-demo button and the real `DEMO_MODE=false` product path use the identical request — same model (`claude-sonnet-4-6`), same everything.** How it got that way, from the first-ever live runs (2026-09-02/03 — `DEMO_MODE` had always been `true`, so this code had never executed):
 
@@ -175,7 +177,7 @@ The dev toolbar has **two** demo-load buttons (was one "Load seed data"):
    - **`lib/bid-agent-jobs.js`** — record shapes + injected-store I/O (unit-tested without Blobs).
    - **`js/agent.js`** — POSTs `{ jobId, …payload }` to `-background`, then polls `-result` every 2s up to 120s. Terminal `error` / a timeout → an `AGENT_FALLBACK`-shaped object tagged `_liveError: <reason>` (never fabricated numbers); `_loadDemo()`'s live branch shows a red toolbar note + `alert()`.
 
-Tests never fire a live call: `dual-demo-mode.spec.js` intercepts `**/.netlify/functions/bid-agent*` (all three endpoints) and always dismisses the `confirm()`; `helpers.js`'s `loadSeed()` uses `button:text-is("Load Demo")` (exact). `bid-agent-not-configured.spec.js` now covers `bid-agent-result`'s method/id guards. `/.netlify/functions/bid-agent-background` has no rate limit / cost cap / auth — a known, accepted exposure (Eric's call, 2026-09-02).
+Tests never fire a live call: `dual-demo-mode.spec.js` intercepts `**/.netlify/functions/bid-agent*` (all three endpoints, stubbed 503) — the modal-gated tests locate `#confirm-dialog-overlay` and click its Cancel/Continue buttons (no `page.on('dialog')` any more); the "confirming fires the live call" test asserts the stub is hit and `__getLiveAgentMode()` flips true. `helpers.js`'s `loadSeed()` uses `button:text-is("Load Demo")` (exact). `bid-agent-not-configured.spec.js` now covers `bid-agent-result`'s method/id guards. `/.netlify/functions/bid-agent-background` has no rate limit / cost cap / auth — a known, accepted exposure (Eric's call, 2026-09-02).
 
 ## Testing conventions
 
