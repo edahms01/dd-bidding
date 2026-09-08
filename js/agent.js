@@ -3,8 +3,9 @@
 // All Anthropic API interaction lives here — single swap point for
 // future model changes or proxy migration.
 //
-// Live path (DEMO_MODE = false, or the dual-demo "Load Demo — live
-// agent" button): POSTs the business-data payload to the background
+// Live path (DEMO_MODE false — i.e. running on the production host — or
+// the dual-demo "Load Demo — live agent" button): POSTs the business-data
+// payload to the background
 // function /.netlify/functions/bid-agent-background and then polls
 // /.netlify/functions/bid-agent-result for the outcome. The server holds
 // ANTHROPIC_API_KEY, the system prompt, and the forced-tool schema
@@ -13,13 +14,18 @@
 // exceeds Netlify's synchronous HTTP timeout.
 // ─────────────────────────────────────────────────────────────────────
 
-// Set to false to enable live Anthropic API calls (via the server-side proxy).
-const DEMO_MODE = true;
+// Live Anthropic calls (via the server-side proxy) run in production only.
+// Demo everywhere else — deploy previews / branch deploys
+// (deploy-preview-N--bid-iq.netlify.app etc.), localhost, and Vitest's node
+// env (no `location`, hence the same `typeof` guard the window.* bridges use
+// below). If the production host ever changes, update the hostname here.
+const DEMO_MODE =
+  typeof location === 'undefined' || location.hostname !== 'bid-iq.netlify.app';
 
 // Dual demo mode — a load-time, session-only override of DEMO_MODE for the
 // "Load Demo — live agent" dev-toolbar button. When true, runBidAgent()
-// takes the live /.netlify/functions/bid-agent path even though DEMO_MODE
-// is still true. Deliberately NOT persisted (not on the bid record, not in
+// takes the live /.netlify/functions/bid-agent path even when DEMO_MODE
+// resolved true (any non-production host). Deliberately NOT persisted (not on the bid record, not in
 // drafts) and reset to false by every offline "Load Demo" load — it exists
 // only so the real Anthropic connection can be exercised from the running
 // app. Session-sticky by design: once on, later recalcs / Tab 7-8 visits
@@ -111,7 +117,7 @@ if (typeof window !== 'undefined') {
 
 // Fixed demo response for the Harborview Plaza retail project (seed dataset).
 // winLikelihood is derived dynamically from state.intelligence via deriveWinLikelihood().
-// Set DEMO_MODE = false to use live Anthropic API.
+// The live Anthropic path runs in production; see DEMO_MODE at the top of this file.
 function _demoResponse(state, summary, markupResult, bidHistory) {
   const intel = state.intelligence || {};
   return {
