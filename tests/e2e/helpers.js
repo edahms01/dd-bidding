@@ -25,8 +25,5 @@ export async function clearAll(page) {
 }
 
 export async function loadSeed(page) {
-  // text-is (exact) — "Load Demo" must not also match "Load Demo — live
-  // agent", the dual-demo button that makes a real billable API call and
-  // must never be exercised by the automated suite.
   await page.click('button:text-is("Load Demo")');
 }
