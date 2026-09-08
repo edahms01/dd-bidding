@@ -237,36 +237,11 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
     return _demoResponse(state, summary, markupResult, bidHistory);
   }
 
-  const payload = {
-    project: {
-      name:         state.project.name,
-      gc:           state.project.gc,
-      buildingType: state.project.buildingType,
-      startDate:    state.project.startDate,
-      bidDate:      state.project.bidDate
-    },
-    costs: {
-      directCost:      Math.round(summary.directCostTotal),
-      overhead:        Math.round(markupResult.overhead),
-      contingency:     Math.round(markupResult.contingency),
-      profit:          Math.round(markupResult.profit),
-      totalMarkup:     Math.round(markupResult.totalMarkup),
-      finalBidPrice:   Math.round(markupResult.finalBidPrice),
-      effectiveMargin: +markupResult.effectiveMargin.toFixed(1)
-    },
-    conditions: {
-      confidence:    state.conditions.confidence,
-      wastePct:      state.conditions.wastePct,
-      sfAbove12:     state.conditions.sfAbove12,
-      sfAbove20:     state.conditions.sfAbove20,
-      durationWeeks: state.conditions.durationWeeks
-    },
-    intelligence: state.intelligence,
-    history: bidHistory
-    // No `schema` key — the server-side function attaches the forced
-    // recommendation tool (Track A). Same request for the dual-demo live
-    // button and the real product path — same model, same everything.
-  };
+  // project / conditions go whole (minus an empty denylist) rather than
+  // hand-picked, so a new state.project / state.conditions field reaches
+  // the agent automatically — see js/agent-payload.js, loaded just before
+  // this file, and docs/dirigo-ux-decisions.md §9.10.
+  const payload = buildAgentPayload(state, summary, markupResult, bidHistory);
 
   // Async flow: a full structured-output Sonnet 4.6 response takes
   // ~40-45s, and Netlify's *synchronous* function HTTP path cuts off

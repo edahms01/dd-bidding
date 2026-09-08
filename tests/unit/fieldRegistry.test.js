@@ -12,6 +12,10 @@ import {
 // app boots with. store.jsx reads localStorage at module scope; the stub
 // in tests/unit/_setup.js makes that import safe under the node env.
 import { initialState } from '../../src/state/store.jsx';
+import {
+  AGENT_PROJECT_DENYLIST,
+  AGENT_CONDITIONS_DENYLIST,
+} from '../../js/agent-payload.js';
 
 // Comments stripped: a field named only in a comment ("delivery/disposal/lift
 // don't have commodity-price risk…") is not *consumed*, and would be a false
@@ -77,12 +81,10 @@ describe('calculator-consumption', () => {
 });
 
 describe('agent-consumption', () => {
-  // A field tagged agent/both must not be withheld from the payload.
-  // js/agent-payload.js (Part 2) will export the real denylists; until it
-  // lands they are empty here, so this asserts the slice-level guarantee:
-  // no agent-tagged field's top-level slice is on a denylist.
-  const AGENT_PROJECT_DENYLIST = []; // Part 2 will export from js/agent-payload.js
-  const AGENT_CONDITIONS_DENYLIST = []; // Part 2 will export from js/agent-payload.js
+  // A field tagged agent/both must not be withheld from the payload —
+  // asserted against the real denylists js/agent-payload.js exports
+  // (both empty today). intelligence is a whole-object passthrough with
+  // no denylist concept.
   const denylistFor = {
     project: AGENT_PROJECT_DENYLIST,
     conditions: AGENT_CONDITIONS_DENYLIST,
