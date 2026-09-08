@@ -494,6 +494,26 @@ Both real, currently harmless because the toasts are transient and rarely coinci
 - *Persist bid/no-bid gate decisions and tie them to actual outcomes.* 8.4's gate is ephemeral by decision (Q3). Recording each decision (with the job it was for and, later, whether the bid won/lost) would make it a calibration signal alongside Phase F's other analytics — a natural Phase F extension, not scoped now.
 - *Add `source_draft_id` to the bid record.* The unified Bids list (2.5) can't currently trace a submitted bid back to the draft it came from (`clearFinalizedDraft()` deletes the draft with no link kept). Additive, no migration — worth doing in whichever phase first needs draft→outcome continuity (likely alongside the item above).
 
+### 9.10 Every bid field is wired on purpose, enforced — APPROVED. Part 1 implemented (2026-09-08).
+
+Standalone brief (`/Users/eric/.claude/plans/new-brief-for-dirigo-adaptive-stroustrup.md`), three independent PRs. Makes "every bid field is wired to something on purpose" an automatic property instead of a periodic hand audit.
+
+**Part 1 — field registry + enforcing test (this commit).** `src/state/fieldRegistry.js` is a flat manifest: one entry per leaf of `initialState.bid`, each `{ consumedBy: 'calculator' | 'agent' | 'both' | 'display-only' | 'unresolved' }`, plus an optional `knownGap: true` (valid only on `calculator`/`both`) and an optional `calcToken` (the substring to grep when a field's own name isn't what appears in `calculator.js` — e.g. a walls/ceilings row quantity consumed as the derived `netSF`). `walkLeafPaths()` (exported, reused by the test — not reimplemented) walks the real `initialState.bid`: `_`-prefixed keys skipped, `asmCounter`/`tabConfirmations` excluded (bookkeeping, not bid inputs), the price-map sub-trees (`rates.finish`/`stud`/`board`, `rateEscalation.stud`/`board`) emitted as one leaf each, arrays walked via their first element's shape with no index (`assemblies.studSize`, once, not per row), an array of primitives (`project.scope`) itself a leaf.
+
+`tests/unit/fieldRegistry.test.js` fails the run if a leaf has no entry, or a registry key no longer matches a leaf (rename/removal). It greps `calculator.js` (comments stripped) for every `calculator`/`both` field; `knownGap` entries run that grep under Vitest `it.fails()`, so the suite stays **green** while the gap stays visible ("expected fail — passed"). Wiring a gap field later makes its `it.fails()` pass → the test goes red until `knownGap: true` is removed from the entry — the registry and the test's gap list cannot drift apart because the list *is* the registry.
+
+**`display-only` vs `unresolved`** is load-bearing: `display-only` = "decided this doesn't need to do anything" (`project.address`, `project.drawingsRef`); `unresolved` = "should feed something, isn't wired yet" (`project.floors`). Conflating them defeats the tag.
+
+**Tags reflect today's behavior**, except the `conditions.*` fields not sent today (`maxHt`, `curvedWalls`, `curvedWallsLF`, `exteriorExposure`, `phasedWork`, `phaseCount`, `accessDifficulty`, `parking`, `notes`) are tagged `agent` as intended destination — Part 2 makes that true with no further work.
+
+**`knownGap` fields (9), tracked for the follow-up wiring audit, not this brief:** `rates.burdenPct`, `rates.superPct` (costed under the param names `burdenRate`/`supervisionRate`, not these), `rates.disposal`, `rates.adder12Pct`, `rates.adder20Pct`, `conditions.sfAbove20`, `assemblies.spacing`, `assemblies.fireRating` (all captured, never in cost math), and `ceilings.soffitLF` — surfaced by the registry itself: captured in `collectFormData()`, never costed (no soffit-framing line). This is the mechanism doing its job.
+
+**CI — first in this repo.** `.github/workflows/unit-tests.yml` runs `npm test` on every push/PR. `tests/unit/_setup.js` (wired via `vitest.config.mjs` `setupFiles`) stubs an inert `localStorage` so `src/state/store.jsx` — which reads it at module scope — is importable under the `node` env; no test relies on `localStorage` behavior.
+
+**Spec.** `tests/unit/fieldRegistry.test.js`.
+
+**Parts 2 & 3 (separate PRs):** Part 2 flips `js/agent.js`'s payload from a hand-picked allowlist to `omit(state.project/conditions, denylist)` with both denylists empty (`js/agent-payload.js`, own unit test); Part 3 adds the "New bid-field rule" to `CLAUDE.md`. **Deferred:** reconciling every `knownGap`; prompt-tuning `AGENT_SYSTEM` for the newly-visible fields; plaster/external-wall costing (§9.9).
+
 ---
 
 ## 10. Phase plan

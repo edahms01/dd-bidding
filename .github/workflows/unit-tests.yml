@@ -1,0 +1,22 @@
+name: unit tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  vitest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # npm install, not npm ci: package-lock.json is drifted from
+      # package.json on main (pre-existing — several @netlify/* deps
+      # missing from the lock). Regenerating the lockfile is out of
+      # scope for this PR; revisit alongside the "vite -> dependencies"
+      # cleanup in Known follow-ups.
+      - run: npm install --no-audit --no-fund
+      - run: npm test
