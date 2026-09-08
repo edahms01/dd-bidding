@@ -12,7 +12,7 @@ import seedData from '../../data/seed.json';
 
 function sampleRates(overrides = {}) {
   return {
-    framing: 4.20, hanging: 0.95,
+    framing: 4.20, hanging: 0.95, extwall: 1.90,
     finish: { 1: 0.55, 2: 0.75, 3: 1.10, 4: 1.55, 5: 2.40 },
     stud: { '3-5/8"': 0.52 },
     board: { Standard: 0.48 },
@@ -91,6 +91,63 @@ describe('calculateWallCosts — per-assembly waste override', () => {
     const [overriddenRow, defaultRow] = calculateWallCosts(walls, assemblies, sampleRates(), sampleConditions({ wastePct: 10 }));
     expect(overriddenRow.boardMaterial).toBeCloseTo(overriddenRow.boardMaterialBase * 1.30, 6);
     expect(defaultRow.boardMaterial).toBeCloseTo(defaultRow.boardMaterialBase * 1.10, 6);
+  });
+});
+
+describe('calculateWallCosts — Exterior wall rate swap', () => {
+  // An assembly flagged Exterior (assemblies[].exteriorWall === 'Yes')
+  // costs its hanging labor at rates.extwall instead of rates.hanging.
+  // Straight swap, Wall-category only, nothing else in the formula moves.
+  const rates = sampleRates({ hanging: 0.95, extwall: 1.90 });
+  const conditions = sampleConditions({ wastePct: 10 });
+
+  it('an Exterior-flagged wall assembly uses rates.extwall for hanging labor', () => {
+    const [row] = calculateWallCosts(
+      [sampleWall()], [sampleAssembly({ exteriorWall: 'Yes' })], rates, conditions
+    );
+    expect(row.hangingLabor).toBeCloseTo(row.netSF * 1 * 1.90, 6);
+  });
+
+  it('a non-Exterior wall assembly is unaffected by rates.extwall (flag "No" or absent)', () => {
+    const [noFlag] = calculateWallCosts(
+      [sampleWall()], [sampleAssembly({ exteriorWall: 'No' })], rates, conditions
+    );
+    const [keyAbsent] = calculateWallCosts(
+      [sampleWall()], [sampleAssembly()], rates, conditions
+    );
+    expect(noFlag.hangingLabor).toBeCloseTo(noFlag.netSF * 1 * 0.95, 6);
+    expect(keyAbsent.hangingLabor).toBeCloseTo(keyAbsent.netSF * 1 * 0.95, 6);
+  });
+
+  it('the swap replaces the hanging rate, it does not stack — every other component is identical to a normal wall', () => {
+    const spec = { studSize: '3-5/8"', boardType: 'Standard', finishLevel: 3, layers: 2, acoustic: 'No' };
+    const [normal] = calculateWallCosts(
+      [sampleWall()], [sampleAssembly({ ...spec, exteriorWall: 'No' })], rates, conditions
+    );
+    const [exterior] = calculateWallCosts(
+      [sampleWall()], [sampleAssembly({ ...spec, exteriorWall: 'Yes' })], rates, conditions
+    );
+
+    // Only hangingLabor differs, and by exactly (extwall - hanging) * netSF * layers.
+    expect(exterior.hangingLabor).toBeCloseTo(normal.netSF * 2 * 1.90, 6);
+    expect(exterior.laborTotal - normal.laborTotal).toBeCloseTo(normal.netSF * 2 * (1.90 - 0.95), 6);
+
+    for (const k of ['framingLabor', 'finishingLabor', 'studMaterial',
+      'boardMaterialBase', 'boardMaterial', 'tapeMaterial', 'fastenMaterial',
+      'insulMaterial', 'materialTotal']) {
+      expect(exterior[k]).toBeCloseTo(normal[k], 6);
+    }
+  });
+
+  it('calculateCeilingCosts ignores exteriorWall entirely — Exterior is Wall-only', () => {
+    const [withFlag] = calculateCeilingCosts(
+      [sampleCeiling()], [sampleAssembly({ id: 'C1', category: 'Ceiling', exteriorWall: 'Yes' })], rates, conditions
+    );
+    const [without] = calculateCeilingCosts(
+      [sampleCeiling()], [sampleAssembly({ id: 'C1', category: 'Ceiling' })], rates, conditions
+    );
+    expect(withFlag.hangingLabor).toBeCloseTo(without.hangingLabor, 6);
+    expect(withFlag.hangingLabor).toBeCloseTo(without.netSF * 1 * 0.95, 6);
   });
 });
 
