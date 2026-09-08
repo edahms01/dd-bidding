@@ -494,7 +494,7 @@ Both real, currently harmless because the toasts are transient and rarely coinci
 - *Persist bid/no-bid gate decisions and tie them to actual outcomes.* 8.4's gate is ephemeral by decision (Q3). Recording each decision (with the job it was for and, later, whether the bid won/lost) would make it a calibration signal alongside Phase F's other analytics — a natural Phase F extension, not scoped now.
 - *Add `source_draft_id` to the bid record.* The unified Bids list (2.5) can't currently trace a submitted bid back to the draft it came from (`clearFinalizedDraft()` deletes the draft with no link kept). Additive, no migration — worth doing in whichever phase first needs draft→outcome continuity (likely alongside the item above).
 
-### 9.10 Every bid field is wired on purpose, enforced — APPROVED. Part 1 implemented (2026-09-08).
+### 9.10 Every bid field is wired on purpose, enforced — APPROVED. Parts 1–2 implemented (2026-09-08).
 
 Standalone brief (`/Users/eric/.claude/plans/new-brief-for-dirigo-adaptive-stroustrup.md`), three independent PRs. Makes "every bid field is wired to something on purpose" an automatic property instead of a periodic hand audit.
 
@@ -512,7 +512,13 @@ Standalone brief (`/Users/eric/.claude/plans/new-brief-for-dirigo-adaptive-strou
 
 **Spec.** `tests/unit/fieldRegistry.test.js`.
 
-**Parts 2 & 3 (separate PRs):** Part 2 flips `js/agent.js`'s payload from a hand-picked allowlist to `omit(state.project/conditions, denylist)` with both denylists empty (`js/agent-payload.js`, own unit test); Part 3 adds the "New bid-field rule" to `CLAUDE.md`. **Deferred:** reconciling every `knownGap`; prompt-tuning `AGENT_SYSTEM` for the newly-visible fields; plaster/external-wall costing (§9.9).
+**Part 2 — agent payload allowlist → denylist (2026-09-08).** `runBidAgent()` (`js/agent.js`) no longer hand-picks 5 `project` + 5 `conditions` keys onto the payload. `js/agent-payload.js` (new classic script, loaded just before `js/agent.js`, guarded `module.exports` tail like `js/calculator.js`) exports `buildAgentPayload(state, summary, markupResult, bidHistory)` and `omit(obj, denyKeys)`. It sends `omit(state.project, AGENT_PROJECT_DENYLIST)` and `omit(state.conditions, AGENT_CONDITIONS_DENYLIST)` — **both denylists empty**, so all 11 `collectFormData().project` keys and all 15 `.conditions` keys now reach the agent (was: `name`/`gc`/`buildingType`/`startDate`/`bidDate` and `confidence`/`wastePct`/`sfAbove12`/`sfAbove20`/`durationWeeks`). The denylists exist so a *future* decision to withhold a field has one obvious home. `costs` stays a hand-built rounded summary (computed, not raw state); `intelligence` and `history` are unchanged whole-object passthroughs. `vite.config.mjs` needs no edit — its dist-copy assertion is a generic directory diff, not a file list.
+
+`tests/unit/agent-payload.test.js` pins the key-set guarantee and the withhold mechanism (a key added to a denylist is dropped). `fieldRegistry.test.js`'s agent-consumption check now imports the real (empty) denylists instead of hard-coding `[]`. Full unit suite green (209 + 9 expected-fail); agent-flow Playwright specs (`agent-staleness`, `draft-switch-no-contamination`, `dual-demo-mode`, `reactive-calc-no-manual-button`, `finalize-confirmation-tab`, …) green unmodified; golden-export byte-identical (that path never calls the agent).
+
+`AGENT_SYSTEM` (`netlify/functions/lib/bid-agent-request.js`) is **not** updated to reason about the newly-visible fields (`conditions.curvedWalls`, `project.exclusions`, …) — deliberate scoping; the payload now carries strictly more than the prompt discusses by name, and a future prompt-tuning pass can call them out the way it already does for `openDraftCount`.
+
+**Part 3 (separate PR):** adds the "New bid-field rule" to `CLAUDE.md`. **Deferred:** reconciling every `knownGap`; prompt-tuning `AGENT_SYSTEM`; plaster/external-wall costing (§9.9).
 
 ---
 
