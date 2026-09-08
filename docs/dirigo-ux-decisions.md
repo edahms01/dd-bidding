@@ -494,7 +494,7 @@ Both real, currently harmless because the toasts are transient and rarely coinci
 - *Persist bid/no-bid gate decisions and tie them to actual outcomes.* 8.4's gate is ephemeral by decision (Q3). Recording each decision (with the job it was for and, later, whether the bid won/lost) would make it a calibration signal alongside Phase F's other analytics — a natural Phase F extension, not scoped now.
 - *Add `source_draft_id` to the bid record.* The unified Bids list (2.5) can't currently trace a submitted bid back to the draft it came from (`clearFinalizedDraft()` deletes the draft with no link kept). Additive, no migration — worth doing in whichever phase first needs draft→outcome continuity (likely alongside the item above).
 
-### 9.10 Every bid field is wired on purpose, enforced — APPROVED. Parts 1–2 implemented (2026-09-08).
+### 9.10 Every bid field is wired on purpose, enforced — APPROVED. Implemented (2026-09-08).
 
 Standalone brief (`/Users/eric/.claude/plans/new-brief-for-dirigo-adaptive-stroustrup.md`), three independent PRs. Makes "every bid field is wired to something on purpose" an automatic property instead of a periodic hand audit.
 
@@ -518,7 +518,9 @@ Standalone brief (`/Users/eric/.claude/plans/new-brief-for-dirigo-adaptive-strou
 
 `AGENT_SYSTEM` (`netlify/functions/lib/bid-agent-request.js`) is **not** updated to reason about the newly-visible fields (`conditions.curvedWalls`, `project.exclusions`, …) — deliberate scoping; the payload now carries strictly more than the prompt discusses by name, and a future prompt-tuning pass can call them out the way it already does for `openDraftCount`.
 
-**Part 3 (separate PR):** adds the "New bid-field rule" to `CLAUDE.md`. **Deferred:** reconciling every `knownGap`; prompt-tuning `AGENT_SYSTEM`; plaster/external-wall costing (§9.9).
+**Part 3 — process rule (2026-09-08).** `CLAUDE.md` "How this project works" gains the **New bid-field rule**: a new leaf in `initialState.bid` (or a row shape) needs a `fieldRegistry.js` entry in the same PR, `consumedBy` chosen deliberately, `display-only` ≠ `unresolved`, `knownGap: true` for a deferred calculator wiring; and a new-field design brief states the `consumedBy` destination inline. The registry test makes skipping that call visible instead of silent.
+
+**Deferred (the follow-up wiring audit):** reconciling every `knownGap` (burden/supervision under param names, the adders, `disposal`, `sfAbove20`, `spacing`, `fireRating`, `soffitLF`); prompt-tuning `AGENT_SYSTEM` to reason about Part 2's newly-visible fields; plaster/external-wall costing (§9.9). The audit verifies against the registry rather than by hand.
 
 ---
 
