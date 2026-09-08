@@ -102,15 +102,28 @@ function applyLaborBurden(laborSubtotal, burdenRate, supervisionRate) {
   };
 }
 
+// Job duration (weeks) → whole months for the per-month waste-disposal
+// rate. 4 weeks/month is a deliberate simplification (not the calendar
+// 4.33); minimum 1 month, mirroring liftWeeks' Math.max(1, ...) floor.
+function disposalMonthsFor(durationWeeks) {
+  return Math.max(1, Math.ceil((durationWeeks || 0) / 4));
+}
+
 function calculateLogistics(conditions, rates) {
-  const deliveryCost = conditions.trips * rates.delivery;
-  const liftWeeks    = conditions.sfAbove12 > 0 ? Math.max(1, conditions.durationWeeks) : 0;
-  const liftCost     = liftWeeks * rates.lift;
+  const deliveryCost   = conditions.trips * rates.delivery;
+  const liftWeeks      = conditions.sfAbove12 > 0 ? Math.max(1, conditions.durationWeeks) : 0;
+  const liftCost       = liftWeeks * rates.lift;
+  // Disposal is a per-month rental, same shape as the lift (rate × count,
+  // min 1) — always applies, no sfAbove12-style gate.
+  const disposalMonths = disposalMonthsFor(conditions.durationWeeks);
+  const disposalCost   = disposalMonths * rates.disposal;
   return {
     deliveryCost,
     liftWeeks,
     liftCost,
-    total: deliveryCost + liftCost
+    disposalMonths,
+    disposalCost,
+    total: deliveryCost + liftCost + disposalCost
   };
 }
 
@@ -196,7 +209,7 @@ function applyRateEscalation(rates, rateEscalation) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    calculateWallCosts, calculateCeilingCosts, calculateLogistics,
+    calculateWallCosts, calculateCeilingCosts, calculateLogistics, disposalMonthsFor,
     applyLaborBurden, buildCostSummary, applyMarkup, computeWeightedWastePct,
     applyRateEscalation
   };

@@ -60,22 +60,24 @@ function collectFormData() {
     // UI-fixes batch (2026-09-04): AssembliesPage.jsx moved Waste %
     // ahead of Notes in the row (inp[1] is now Waste %, inp[2] Notes) --
     // positional indices below updated to match, not left stale.
-    // exteriorWall (sel[8]) is deliberately last in the row's <select>
-    // sequence so sel[0]..sel[7] stay put; a Ceiling-category row renders
-    // no such <select> (plain "-" cell), so sel[8] is undefined there and
+    // exteriorWall (sel[7]) is deliberately last in the row's <select>
+    // sequence so sel[0]..sel[6] stay put; a Ceiling-category row renders
+    // no such <select> (plain "-" cell), so sel[7] is undefined there and
     // falls back to 'No'. See AssembliesPage.jsx's colgroup note.
+    // 2026-09-08: the stud-spacing <select> (was sel[2]) was removed
+    // outright, shifting layers/boardType/fireRating/acoustic/finishLevel/
+    // exteriorWall down one each — indices below updated to match.
     const wasteVal = parseFloat(inp[1]?.value);
     assemblies.push({
       id:          inp[0].value.trim(),
       category:    sel[0]?.value || 'Wall',
       studSize:    sel[1]?.value || '3-5/8"',
-      spacing:     sel[2]?.value || '16"',
-      layers:      parseInt(sel[3]?.value) || 1,
-      boardType:   sel[4]?.value || 'Standard',
-      fireRating:  sel[5]?.value || 'None',
-      acoustic:    sel[6]?.value || 'No',
-      finishLevel: parseInt(sel[7]?.value) || 3,
-      exteriorWall: sel[8]?.value || 'No',
+      layers:      parseInt(sel[2]?.value) || 1,
+      boardType:   sel[3]?.value || 'Standard',
+      fireRating:  sel[4]?.value || 'None',
+      acoustic:    sel[5]?.value || 'No',
+      finishLevel: parseInt(sel[6]?.value) || 3,
+      exteriorWall: sel[7]?.value || 'No',
       notes:       inp[2]?.value || '',
       wastePctOverride: Number.isNaN(wasteVal) ? null : wasteVal
     });

@@ -51,9 +51,10 @@ test('the External wall rate reaches the bid total only for an Exterior-flagged 
 
   // Flag assembly W1 (first row) Exterior = Yes. The two seed walls that
   // reference W1 now cost their hanging labor at rates.extwall (9),
-  // pushing the direct-cost total up.
+  // pushing the direct-cost total up. Exterior is select .nth(7) since the
+  // stud-spacing <select> was removed 2026-09-08 (was .nth(8)).
   await page.click('#tab-assemblies');
-  await page.locator('#asm-body tr').first().locator('select').nth(8).selectOption('Yes');
+  await page.locator('#asm-body tr').first().locator('select').nth(7).selectOption('Yes');
   await page.waitForTimeout(1000);
   expect(await directCostTotal(page)).toBeGreaterThan(baseline);
 });
@@ -77,7 +78,7 @@ test('the External wall rate replaces the drywall-hanging rate, it does not stac
   expect(await directCostTotal(page)).toBe(baseline);
 
   await page.click('#tab-assemblies');
-  await page.locator('#asm-body tr').first().locator('select').nth(8).selectOption('Yes');
+  await page.locator('#asm-body tr').first().locator('select').nth(7).selectOption('Yes');
   await page.waitForTimeout(1000);
   expect(await directCostTotal(page)).toBe(baseline);
 
@@ -93,7 +94,7 @@ test('the External wall rate replaces the drywall-hanging rate, it does not stac
   // Un-flag W1: now nothing is Exterior, so rate-extwall = 12 is inert
   // again and the total falls back exactly to baseline.
   await page.click('#tab-assemblies');
-  await page.locator('#asm-body tr').first().locator('select').nth(8).selectOption('No');
+  await page.locator('#asm-body tr').first().locator('select').nth(7).selectOption('No');
   await page.waitForTimeout(1000);
   expect(await directCostTotal(page)).toBe(baseline);
 });

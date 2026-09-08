@@ -15,6 +15,9 @@ import { initialState } from '../../src/state/store.jsx';
 import {
   AGENT_PROJECT_DENYLIST,
   AGENT_CONDITIONS_DENYLIST,
+  AGENT_ASSEMBLY_DENYLIST,
+  AGENT_WALL_DENYLIST,
+  AGENT_CEILING_DENYLIST,
 } from '../../js/agent-payload.js';
 
 // Comments stripped: a field named only in a comment ("delivery/disposal/lift
@@ -88,6 +91,9 @@ describe('agent-consumption', () => {
   const denylistFor = {
     project: AGENT_PROJECT_DENYLIST,
     conditions: AGENT_CONDITIONS_DENYLIST,
+    assemblies: AGENT_ASSEMBLY_DENYLIST,
+    walls: AGENT_WALL_DENYLIST,
+    ceilings: AGENT_CEILING_DENYLIST,
     intelligence: [],
   };
 

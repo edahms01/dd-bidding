@@ -158,7 +158,9 @@ function Phase3({ output }) {
             <SubtotalRow label="Labor (raw)" value={fmtCost(summary.laborTotal)} accent="var(--teal)" />
             <SubtotalRow label={'Materials (incl. ' + fmtPct(summary.weightedWastePct) + ' waste)'} value={fmtCost(summary.materialTotal)} />
             <SubtotalRow
-              label={'Logistics (' + output.state.conditions.trips + ' trips' + (summary.logisticsTotal > 0 ? ', lift ' + fmtCost(output.state.rates.lift) + '/wk' : '') + ')'}
+              label={'Logistics (' + output.state.conditions.trips + ' trips'
+                + (summary.logisticsTotal > 0 ? ', disposal ' + Math.max(1, Math.ceil((output.state.conditions.durationWeeks || 0) / 4)) + ' mo' : '')
+                + (summary.logisticsTotal > 0 ? ', lift ' + fmtCost(output.state.rates.lift) + '/wk' : '') + ')'}
               value={fmtCost(summary.logisticsTotal)}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0 6px', marginTop: 4 }}>

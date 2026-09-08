@@ -124,7 +124,7 @@ function realRows(rows) {
 // but un-engaged-with assembly. Keep in sync with blankAssemblyRow() if
 // its defaults ever change (store.jsx carries the reciprocal note).
 const ASM_DEFAULTS = {
-  category: 'Wall', studSize: '1-5/8"', spacing: '16"', layers: 1,
+  category: 'Wall', studSize: '1-5/8"', layers: 1,
   boardType: 'Standard', fireRating: 'None', acoustic: 'No', finishLevel: 1,
   exteriorWall: 'No'
 };

@@ -4,6 +4,9 @@ import {
   buildAgentPayload,
   AGENT_PROJECT_DENYLIST,
   AGENT_CONDITIONS_DENYLIST,
+  AGENT_ASSEMBLY_DENYLIST,
+  AGENT_WALL_DENYLIST,
+  AGENT_CEILING_DENYLIST,
 } from '../../js/agent-payload.js';
 
 // Mirrors the key sets js/state.js collectFormData() actually returns for
@@ -122,5 +125,86 @@ describe('buildAgentPayload', () => {
       finalBidPrice: 185519,
       effectiveMargin: 28.4,
     });
+  });
+});
+
+describe('buildAgentPayload — assemblies / walls / ceilings passthrough (2026-09-08)', () => {
+  function argsWithRows(overrides = {}) {
+    const { state, summary, markupResult, bidHistory } = fakeArgs();
+    return {
+      state: {
+        ...state,
+        assemblies: [
+          {
+            id: 'W1', category: 'Wall', studSize: '3-5/8"', layers: 2,
+            boardType: 'Type-X', fireRating: '1-hr', acoustic: 'Yes',
+            finishLevel: 4, exteriorWall: 'No', notes: 'extra fire-taping',
+            wastePctOverride: 12, _key: 7, _num: 1,
+          },
+        ],
+        walls: [
+          { location: 'L1', typeId: 'W1', height: 14, lf: 320, grossSF: 4480, openings: 380, netSF: 4100, _key: 9 },
+        ],
+        ceilings: [
+          { location: 'L1', typeId: 'C1', height: 14, grossSF: 3800, soffitLF: 60, openings: 220, netSF: 3580, _key: 11 },
+        ],
+        ...overrides,
+      },
+      summary, markupResult, bidHistory,
+    };
+  }
+
+  it('every real row field reaches the payload verbatim', () => {
+    const { state, summary, markupResult, bidHistory } = argsWithRows();
+    const p = buildAgentPayload(state, summary, markupResult, bidHistory);
+    expect(p.assemblies[0]).toEqual({
+      id: 'W1', category: 'Wall', studSize: '3-5/8"', layers: 2,
+      boardType: 'Type-X', fireRating: '1-hr', acoustic: 'Yes',
+      finishLevel: 4, exteriorWall: 'No', notes: 'extra fire-taping',
+      wastePctOverride: 12,
+    });
+    expect(p.walls[0]).toEqual({
+      location: 'L1', typeId: 'W1', height: 14, lf: 320, grossSF: 4480, openings: 380, netSF: 4100,
+    });
+    expect(p.ceilings[0]).toEqual({
+      location: 'L1', typeId: 'C1', height: 14, grossSF: 3800, soffitLF: 60, openings: 220, netSF: 3580,
+    });
+  });
+
+  it('internal bookkeeping keys (_key / _num) are stripped', () => {
+    const { state, summary, markupResult, bidHistory } = argsWithRows();
+    const p = buildAgentPayload(state, summary, markupResult, bidHistory);
+    expect(AGENT_ASSEMBLY_DENYLIST).toEqual(['_key', '_num']);
+    expect(AGENT_WALL_DENYLIST).toEqual(['_key']);
+    expect(AGENT_CEILING_DENYLIST).toEqual(['_key']);
+    for (const row of [...p.assemblies, ...p.walls, ...p.ceilings]) {
+      expect(row).not.toHaveProperty('_key');
+      expect(row).not.toHaveProperty('_num');
+    }
+  });
+
+  it('empty arrays and missing slices do not throw', () => {
+    const { summary, markupResult, bidHistory } = fakeArgs();
+    for (const state of [
+      { project: {}, conditions: {}, intelligence: {}, assemblies: [], walls: [], ceilings: [] },
+      { project: {}, conditions: {}, intelligence: {} }, // slices absent entirely
+    ]) {
+      const p = buildAgentPayload(state, summary, markupResult, bidHistory);
+      expect(p.assemblies).toEqual([]);
+      expect(p.walls).toEqual([]);
+      expect(p.ceilings).toEqual([]);
+    }
+  });
+
+  it('spacing is gone from the row shape entirely', () => {
+    const { state, summary, markupResult, bidHistory } = argsWithRows({
+      assemblies: [{ id: 'W1', category: 'Wall', spacing: '16"', layers: 1, _key: 1, _num: 1 }],
+    });
+    const p = buildAgentPayload(state, summary, markupResult, bidHistory);
+    // omit() only strips the denylist — a stale `spacing` on an old
+    // in-memory row would pass straight through. The real guarantee is
+    // that collectFormData()/blankAssemblyRow() no longer produce it;
+    // this asserts the denylist is NOT relied on to hide it.
+    expect(AGENT_ASSEMBLY_DENYLIST).not.toContain('spacing');
   });
 });

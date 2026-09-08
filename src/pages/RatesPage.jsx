@@ -421,7 +421,7 @@ export default function RatesPage({ active }) {
             <div className="tray-col">
               <RRRow name="Delivery" tip="Multiplied by estimated delivery trips." pfx="$" sfx="/trip"
                 valueEl={<RateField id="rate-delivery" className="rr-val cur X" path={['rates', 'delivery']} get={get} dispatch={dispatch} placeholder="0.00" />} />
-              <RRRow name="Waste disposal" pfx="$"
+              <RRRow name="Waste disposal" tip="Multiplied by job duration in whole months (4 weeks/month, minimum 1)." pfx="$" sfx="/mo"
                 valueEl={<RateField id="rate-disposal" className="rr-val cur X" path={['rates', 'disposal']} get={get} dispatch={dispatch} placeholder="0.00" />} />
               <RRRow name="Lift rental" tip="Only applied if SF above 12 ft > 0." pfx="$" sfx="/wk"
                 valueEl={<RateField id="rate-lift" className="rr-val cur X" path={['rates', 'lift']} get={get} dispatch={dispatch} placeholder="0.00" />} />

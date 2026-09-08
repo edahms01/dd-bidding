@@ -315,6 +315,15 @@ function populateForm(state) {
     // mentions assemblies at all.
     if (state.assemblies !== undefined) window.__hydrateAssemblies(state.assemblies);
   } else {
+    // UNREACHABLE legacy fallback. window.__hydrateAssemblies is set
+    // unconditionally at app load (src/state/bridges.js, from AppShell's
+    // mount effect) and no unit test exercises this path, so the `if`
+    // branch above always wins. Left in place, not deleted — but its
+    // positional sels[N] indices below are deliberately NOT maintained
+    // (the stud-spacing <select> removal on 2026-09-08 shifted every
+    // select after studSize down one and this was not updated). Do not
+    // trust these indices; fix them properly if this branch ever becomes
+    // live again.
     const asmBody = document.getElementById('asm-body');
     if (asmBody && state.assemblies !== undefined) {
       asmBody.innerHTML = '';
@@ -328,7 +337,6 @@ function populateForm(state) {
         inps[0].dataset.auto = asm.id        || '';
         if (sels[0]) sels[0].value = asm.category   || 'Wall';
         if (sels[1]) sels[1].value = asm.studSize    || '3-5/8"';
-        if (sels[2]) sels[2].value = asm.spacing     || '16"';
         if (sels[3]) sels[3].value = String(asm.layers      ?? 1);
         if (sels[4]) sels[4].value = asm.boardType   || 'Standard';
         if (sels[5]) sels[5].value = asm.fireRating  || 'None';

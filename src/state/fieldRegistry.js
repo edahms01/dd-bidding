@@ -110,9 +110,10 @@ export const FIELD_REGISTRY = {
   // calculator.js reads conditions.durationWeeks (liftWeeks); collectFormData()
   // copies proj-dur into its conditions slice, so it also reaches the agent.
   'project.durationWeeks': { consumedBy: 'both', calcToken: 'durationWeeks' },
-  // Looks like an intended cost/complexity driver that was never wired —
-  // NOT display-only (that means "we chose not to use this").
-  'project.floors':        { consumedBy: 'unresolved' },
+  // Already reaches the agent — payload.project is sent whole
+  // (js/agent-payload.js, empty denylist) and floors is a key on it
+  // (js/state.js collectFormData). The old 'unresolved' tag was stale.
+  'project.floors':        { consumedBy: 'agent' },
   'project.scope':         { consumedBy: 'agent' },   // risk-relevant: what's in/out of the bid
   'project.exclusions':    { consumedBy: 'agent' },   // live once Part 2 ships
 
@@ -157,7 +158,7 @@ export const FIELD_REGISTRY = {
   'rates.insul':       { consumedBy: 'calculator' },
   'rates.fasten':      { consumedBy: 'calculator' },
   'rates.delivery':    { consumedBy: 'calculator' },
-  'rates.disposal':    { consumedBy: 'calculator', knownGap: true }, // captured, never costed
+  'rates.disposal':    { consumedBy: 'calculator' }, // calculateLogistics: disposalMonths * rate
   'rates.lift':        { consumedBy: 'calculator' },
 
   // ── rateEscalation (applyRateEscalation) ─────────────────────────
@@ -168,45 +169,49 @@ export const FIELD_REGISTRY = {
   'rateEscalation.fasten': { consumedBy: 'calculator' },
 
   // ── assemblies (row shape — registered once per field, not per row) ──
-  'assemblies.id':              { consumedBy: 'calculator' }, // asmMap key
-  // Drives ONLY the W/C Type-ID prefix auto-fill for that row
-  // (AssembliesPage handleCategoryChange). Does NOT filter the
-  // Walls/Ceilings Type-ID picker — TypeIdSelect lists every assembly
-  // regardless of category. display-only as the least-wrong of five tags.
-  'assemblies.category':        { consumedBy: 'display-only' },
-  'assemblies.studSize':        { consumedBy: 'calculator' },
-  'assemblies.spacing':         { consumedBy: 'calculator', knownGap: true }, // captured, never in cost math
-  'assemblies.layers':          { consumedBy: 'calculator' },
-  'assemblies.boardType':       { consumedBy: 'calculator' },
-  'assemblies.fireRating':      { consumedBy: 'calculator', knownGap: true }, // captured, never in cost math
-  'assemblies.acoustic':        { consumedBy: 'calculator' },
-  'assemblies.finishLevel':     { consumedBy: 'calculator' },
+  // 2026-09-08: the whole assemblies/walls/ceilings row shape now goes to
+  // the agent verbatim (js/agent-payload.js maps each array through omit()
+  // with only a `_key`/`_num` denylist). Fields the cost math actually
+  // reads are `both`; fields the agent reads but calculator.js never
+  // touches (category, fireRating, notes, soffitLF) are `agent` — tagging
+  // those `both` would fail the calculator-consumption grep in
+  // fieldRegistry.test.js and misrepresent what the calculator uses. The
+  // stud-spacing field was removed outright (not reclassified).
+  'assemblies.id':              { consumedBy: 'both' }, // asmMap key
+  // Drives the W/C Type-ID prefix auto-fill for that row (AssembliesPage
+  // handleCategoryChange); calculator.js never reads it, agent now does.
+  'assemblies.category':        { consumedBy: 'agent' },
+  'assemblies.studSize':        { consumedBy: 'both' },
+  'assemblies.layers':          { consumedBy: 'both' },
+  'assemblies.boardType':       { consumedBy: 'both' },
+  // Captured and sent to the agent; still not in any cost formula.
+  'assemblies.fireRating':      { consumedBy: 'agent' },
+  'assemblies.acoustic':        { consumedBy: 'both' },
+  'assemblies.finishLevel':     { consumedBy: 'both' },
   // Yes/No, Wall assemblies only. 'Yes' makes calculateWallCosts() use
-  // rates.extwall instead of rates.hanging. Takeoff-spec detail like
-  // boardType/studSize — not sent to the agent individually (the job-level
-  // conditions.exteriorExposure signal covers that).
-  'assemblies.exteriorWall':    { consumedBy: 'calculator' },
-  // NOT display-only: nobody decided a per-assembly note ("extra
-  // fire-taping here") shouldn't reach the agent — the payload just
-  // structurally omits the assemblies array. Follow-up audit's call.
-  'assemblies.notes':           { consumedBy: 'unresolved' },
-  'assemblies.wastePctOverride': { consumedBy: 'calculator' },
+  // rates.extwall instead of rates.hanging. Sent to the agent as part of
+  // the whole assemblies row now (superseding the earlier "not sent
+  // individually" call — the job-level conditions.exteriorExposure signal
+  // still covers the job-wide read).
+  'assemblies.exteriorWall':    { consumedBy: 'both' },
+  'assemblies.notes':           { consumedBy: 'agent' }, // free-text, agent-only
+  'assemblies.wastePctOverride': { consumedBy: 'both' },
 
   // ── walls (row shape) — quantities are consumed as the derived netSF ──
-  'walls.location':  { consumedBy: 'calculator' },
-  'walls.typeId':    { consumedBy: 'calculator' },
-  'walls.height':    { consumedBy: 'calculator', calcToken: 'netSF' }, // dimensions-mode grossSF input
-  'walls.lf':        { consumedBy: 'calculator' },
-  'walls.grossSF':   { consumedBy: 'calculator', calcToken: 'netSF' },
-  'walls.openings':  { consumedBy: 'calculator', calcToken: 'netSF' },
+  'walls.location':  { consumedBy: 'both' },
+  'walls.typeId':    { consumedBy: 'both' },
+  'walls.height':    { consumedBy: 'both', calcToken: 'netSF' }, // dimensions-mode grossSF input
+  'walls.lf':        { consumedBy: 'both' },
+  'walls.grossSF':   { consumedBy: 'both', calcToken: 'netSF' },
+  'walls.openings':  { consumedBy: 'both', calcToken: 'netSF' },
 
   // ── ceilings (row shape) ─────────────────────────────────────────
-  'ceilings.location':  { consumedBy: 'calculator' },
-  'ceilings.typeId':    { consumedBy: 'calculator' },
-  'ceilings.height':    { consumedBy: 'calculator', calcToken: 'netSF' },
-  'ceilings.grossSF':   { consumedBy: 'calculator', calcToken: 'netSF' },
-  'ceilings.soffitLF':  { consumedBy: 'calculator', knownGap: true }, // captured in collectFormData(), never costed
-  'ceilings.openings':  { consumedBy: 'calculator', calcToken: 'netSF' },
+  'ceilings.location':  { consumedBy: 'both' },
+  'ceilings.typeId':    { consumedBy: 'both' },
+  'ceilings.height':    { consumedBy: 'both', calcToken: 'netSF' },
+  'ceilings.grossSF':   { consumedBy: 'both', calcToken: 'netSF' },
+  'ceilings.soffitLF':  { consumedBy: 'agent' }, // captured + sent; never costed
+  'ceilings.openings':  { consumedBy: 'both', calcToken: 'netSF' },
 
   // ── page-level toggles ───────────────────────────────────────────
   'wallsMode':    { consumedBy: 'display-only' }, // column-visibility control; calculator never sees the mode
