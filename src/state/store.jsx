@@ -60,7 +60,7 @@ function blankAssemblyRow(num) {
   return {
     id: 'W' + num, category: 'Wall', studSize: '1-5/8"', spacing: '16"',
     layers: 1, boardType: 'Standard', fireRating: 'None', acoustic: 'No',
-    finishLevel: 1, notes: '', wastePctOverride: null,
+    finishLevel: 1, exteriorWall: 'No', notes: '', wastePctOverride: null,
     _num: num, _key: freshRowKey()
   };
 }
@@ -218,7 +218,7 @@ export const initialState = {
       knownCompetitors: '', dirigoEdge: ''
     },
     rates: {
-      framing: '', hanging: '', burdenPct: '', superPct: '',
+      framing: '', hanging: '', extwall: '', burdenPct: '', superPct: '',
       finish: { 1: '', 2: '', 3: '', 4: '', 5: '' },
       adder12Pct: '', adder20Pct: '',
       stud:  { '1-5/8"': '', '2-1/2"': '', '3-5/8"': '', '4"': '', '6"': '' },
@@ -527,6 +527,7 @@ export function reducer(state, action) {
         id: asm.id || '', category: asm.category || 'Wall', studSize: asm.studSize || '3-5/8"',
         spacing: asm.spacing || '16"', layers: asm.layers ?? 1, boardType: asm.boardType || 'Standard',
         fireRating: asm.fireRating || 'None', acoustic: asm.acoustic || 'No', finishLevel: asm.finishLevel ?? 3,
+        exteriorWall: asm.exteriorWall || 'No',
         notes: asm.notes || '', wastePctOverride: asm.wastePctOverride ?? null,
         _num: i + 1, _key: freshRowKey()
       }));

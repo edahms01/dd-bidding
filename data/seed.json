@@ -33,6 +33,7 @@
     "rates": {
       "framing": 4.20,
       "hanging": 0.95,
+      "extwall": 1.85,
       "burdenPct": 34,
       "superPct": 9,
       "finish": { "1": 0.55, "2": 0.75, "3": 1.10, "4": 1.55, "5": 2.40 },

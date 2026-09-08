@@ -224,6 +224,7 @@ function populateForm(state) {
   const r = state.rates || {};
   set('rate-frame',   r.framing);
   set('rate-hang',    r.hanging);
+  set('rate-extwall', r.extwall);
   set('rate-burden',  r.burdenPct);
   set('rate-super',   r.superPct);
   if (r.finish) {
@@ -445,6 +446,7 @@ function applyRateTemplate(rates, rateEscalation) {
   const r = rates || {};
   set('rate-frame',   r.framing);
   set('rate-hang',    r.hanging);
+  set('rate-extwall', r.extwall);
   set('rate-burden',  r.burdenPct);
   set('rate-super',   r.superPct);
   if (r.finish) {
@@ -643,7 +645,7 @@ function resetFormFields() {
    'intel-gc-price', 'intel-competition', 'intel-competitors', 'intel-edge'].forEach(clear);
 
   // ── Rates ──
-  ['rate-frame', 'rate-hang', 'rate-burden', 'rate-super',
+  ['rate-frame', 'rate-hang', 'rate-extwall', 'rate-burden', 'rate-super',
    'rate-fin1', 'rate-fin2', 'rate-fin3', 'rate-fin4', 'rate-fin5',
    'rate-add12', 'rate-add20',
    'rate-stud158', 'rate-stud212', 'rate-stud358', 'rate-stud4', 'rate-stud6',

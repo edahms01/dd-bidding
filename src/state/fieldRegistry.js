@@ -145,6 +145,7 @@ export const FIELD_REGISTRY = {
   // ── rates ────────────────────────────────────────────────────────
   'rates.framing':    { consumedBy: 'calculator' },
   'rates.hanging':     { consumedBy: 'calculator' },
+  'rates.extwall':     { consumedBy: 'calculator' }, // swaps in for rates.hanging on Exterior-flagged wall assemblies
   'rates.burdenPct':   { consumedBy: 'calculator', knownGap: true }, // costed as `burdenRate`, not this name
   'rates.superPct':    { consumedBy: 'calculator', knownGap: true }, // costed as `supervisionRate`, not this name
   'rates.finish':      { consumedBy: 'calculator' }, // LEAF_SUBTREE — rates.finish[level]
@@ -180,6 +181,11 @@ export const FIELD_REGISTRY = {
   'assemblies.fireRating':      { consumedBy: 'calculator', knownGap: true }, // captured, never in cost math
   'assemblies.acoustic':        { consumedBy: 'calculator' },
   'assemblies.finishLevel':     { consumedBy: 'calculator' },
+  // Yes/No, Wall assemblies only. 'Yes' makes calculateWallCosts() use
+  // rates.extwall instead of rates.hanging. Takeoff-spec detail like
+  // boardType/studSize — not sent to the agent individually (the job-level
+  // conditions.exteriorExposure signal covers that).
+  'assemblies.exteriorWall':    { consumedBy: 'calculator' },
   // NOT display-only: nobody decided a per-assembly note ("extra
   // fire-taping here") shouldn't reach the agent — the payload just
   // structurally omits the assemblies array. Follow-up audit's call.

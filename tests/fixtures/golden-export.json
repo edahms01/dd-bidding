@@ -11,6 +11,7 @@
       "fireRating": "None",
       "acoustic": "No",
       "finishLevel": 3,
+      "exteriorWall": "No",
       "notes": "Standard partition",
       "wastePctOverride": null
     },
@@ -24,6 +25,7 @@
       "fireRating": "1-hr",
       "acoustic": "Yes",
       "finishLevel": 3,
+      "exteriorWall": "No",
       "notes": "Demising wall - fire rated",
       "wastePctOverride": null
     },
@@ -37,6 +39,7 @@
       "fireRating": "None",
       "acoustic": "No",
       "finishLevel": 4,
+      "exteriorWall": "No",
       "notes": "Exterior-adjacent wall - moisture resistant",
       "wastePctOverride": null
     },
@@ -50,6 +53,7 @@
       "fireRating": "None",
       "acoustic": "No",
       "finishLevel": 3,
+      "exteriorWall": "No",
       "notes": "Standard ceiling",
       "wastePctOverride": null
     },
@@ -63,6 +67,7 @@
       "fireRating": "1-hr",
       "acoustic": "Yes",
       "finishLevel": 4,
+      "exteriorWall": "No",
       "notes": "Level 2 rated ceiling",
       "wastePctOverride": null
     }
@@ -172,6 +177,7 @@
   "rates": {
     "framing": 4.2,
     "hanging": 0.95,
+    "extwall": 1.85,
     "burdenPct": 34,
     "superPct": 9,
     "finish": {
