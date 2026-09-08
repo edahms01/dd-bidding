@@ -21,14 +21,21 @@ async function loadSeedData() {
 }
 
 async function loadDemoLive() {
-  const ok = confirm(
-    'Load Demo with the LIVE agent?\n\n' +
-    'This calls the real Anthropic API through the server: it makes a ' +
-    'billable request, can take several seconds, and may fail on a bad ' +
-    'API key, network issue, or rate limit.\n\n' +
-    'The plain "Load Demo" button uses the offline canned response and ' +
-    'does none of that.'
-  );
+  // DOM modal (window.__confirm, ConfirmHost in src/components/
+  // ConfirmDialog.jsx) instead of a native confirm() — the native dialog
+  // blocks the JS thread where CDP-based browser automation can't reach
+  // it, hanging the tab. Native confirm() stays only as a fallback for
+  // the (dev-toolbar-only) case where React hasn't mounted yet.
+  const ask = (typeof window !== 'undefined' && window.__confirm)
+    ? window.__confirm(
+        'Load Demo with the LIVE agent?',
+        'This calls the real Anthropic API through the server: it makes a billable ' +
+        'request, can take several seconds, and may fail on a bad API key, network ' +
+        'issue, or rate limit.\n\n' +
+        'The plain "Load Demo" button uses the offline canned response and does none of that.'
+      )
+    : Promise.resolve(window.confirm('Load Demo with the LIVE agent? This makes a billable API call.'));
+  const ok = await ask;
   if (!ok) return;
   return _loadDemo({ live: true });
 }

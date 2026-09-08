@@ -255,3 +255,13 @@ export function registerTabConfirmationsReader(getConfirmations) {
 export function registerDemoConfirmAllTabs(fn) {
   window.__confirmAllTabsForDemo = fn;
 }
+
+// ── Classic-script confirm() replacement (DOM modal) ──
+// data/seed.js's loadDemoLive() awaits window.__confirm(title, message)
+// before the billable live-agent call, instead of a native confirm() a
+// CDP-based browser-automation tool can't see or dismiss. Returns a
+// Promise<boolean>. Implemented by ConfirmHost (src/components/
+// ConfirmDialog.jsx) — it stashes the resolver and renders the modal.
+export function registerConfirmBridge(fn) {
+  window.__confirm = fn;
+}
