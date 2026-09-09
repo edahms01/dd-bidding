@@ -104,8 +104,9 @@ function TopCostDrivers({ output }) {
 
   if (rows.length === 0) return null;
 
-  // Burden-loaded labor, so this doesn't understate labor's real share
-  // once burden + supervision are baked into directCostTotal.
+  // Burden-loaded labor (also includes the height-adder uplift, which is
+  // computed upstream of burden), so this doesn't understate labor's real
+  // share once burden + supervision are baked into directCostTotal.
   const laborPct = direct > 0 ? (summary.laborWithBurden / direct) * 100 : 0;
 
   return (
@@ -144,6 +145,7 @@ function Phase3({ output }) {
   return (
     <>
       <div className="totals-bar" style={{ marginBottom: 28 }}>
+        {/* laborWithBurden also reflects the height-adder uplift (computed upstream of burden) */}
         <div className="total-item"><div className="total-val">{fmtCost(summary.laborWithBurden)}</div><div className="total-lbl">Labor</div></div>
         <div className="total-div" />
         <div className="total-item"><div className="total-val">{fmtCost(summary.materialTotal)}</div><div className="total-lbl">Materials</div></div>
@@ -158,6 +160,8 @@ function Phase3({ output }) {
           <div className="section-label">Category subtotals</div>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
             <SubtotalRow label="Labor (raw)" value={fmtCost(summary.laborTotal)} accent="var(--teal)" />
+            <SubtotalRow label="Above 12 ft" value={fmtCost(summary.heightUplift12)} />
+            <SubtotalRow label="Above 20 ft" value={fmtCost(summary.heightUplift20)} />
             <SubtotalRow label="Burden" value={fmtCost(summary.burden)} />
             <SubtotalRow label="Supervision" value={fmtCost(summary.supervision)} />
             <SubtotalRow label={'Materials (incl. ' + fmtPct(summary.weightedWastePct) + ' waste)'} value={fmtCost(summary.materialTotal)} />

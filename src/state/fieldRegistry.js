@@ -120,7 +120,7 @@ export const FIELD_REGISTRY = {
   // ── conditions ───────────────────────────────────────────────────
   'conditions.maxHt':            { consumedBy: 'agent' },
   'conditions.sfAbove12':        { consumedBy: 'both' },        // calculateLogistics + sent today
-  'conditions.sfAbove20':        { consumedBy: 'both', knownGap: true }, // sent today; calc never multiplies by adder20Pct
+  'conditions.sfAbove20':        { consumedBy: 'both' },        // sent today + buildCostSummary() height uplift (>20 ft band, stacked adders)
   'conditions.curvedWalls':      { consumedBy: 'agent' },
   'conditions.curvedWallsLF':    { consumedBy: 'agent' },
   'conditions.exteriorExposure': { consumedBy: 'agent' },
@@ -150,8 +150,8 @@ export const FIELD_REGISTRY = {
   'rates.burdenPct':   { consumedBy: 'calculator' }, // applyLaborBurden() via buildCostSummary()
   'rates.superPct':    { consumedBy: 'calculator' }, // applyLaborBurden() via buildCostSummary()
   'rates.finish':      { consumedBy: 'calculator' }, // LEAF_SUBTREE — rates.finish[level]
-  'rates.adder12Pct':  { consumedBy: 'calculator', knownGap: true }, // captured, never applied
-  'rates.adder20Pct':  { consumedBy: 'calculator', knownGap: true }, // captured, never applied
+  'rates.adder12Pct':  { consumedBy: 'calculator' }, // buildCostSummary() height uplift (12–20 ft band)
+  'rates.adder20Pct':  { consumedBy: 'calculator' }, // buildCostSummary() height uplift (>20 ft band, stacked on adder12Pct)
   'rates.stud':        { consumedBy: 'calculator' }, // LEAF_SUBTREE
   'rates.board':       { consumedBy: 'calculator' }, // LEAF_SUBTREE
   'rates.tape':        { consumedBy: 'calculator' },

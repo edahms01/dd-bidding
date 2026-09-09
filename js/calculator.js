@@ -146,24 +146,52 @@ function computeWeightedWastePct(rows, fallbackPct) {
   return base > 0 ? (waste / base) * 100 : fallbackPct;
 }
 
-function buildCostSummary(wallCosts, ceilingCosts, logistics, fallbackWastePct, burdenPct, superPct) {
+function buildCostSummary(
+  wallCosts, ceilingCosts, logistics, fallbackWastePct,
+  burdenPct, superPct, adder12Pct, adder20Pct, sfAbove12, sfAbove20
+) {
   const laborTotal    = wallCosts.reduce((s, r)    => s + (r.laborTotal    || 0), 0)
                       + ceilingCosts.reduce((s, r) => s + (r.laborTotal    || 0), 0);
   const materialTotal = wallCosts.reduce((s, r)    => s + (r.materialTotal || 0), 0)
                       + ceilingCosts.reduce((s, r) => s + (r.materialTotal || 0), 0);
 
+  // Height adders (Above 12 ft / Above 20 ft): a labor % premium for tall
+  // work. The app only knows a job-wide SF total per height band, not which
+  // wall/ceiling row it belongs to, so the premium is approximated using the
+  // job's average labor cost per SF, applied only to the SF in each band.
+  // sfAbove12 / sfAbove20 are NON-overlapping bands as entered (12–20 ft, and
+  // >20 ft); the >20 ft band is above 12 ft too, so it stacks both adders.
+  // This runs BEFORE applyLaborBurden — burden is a % of total wages paid, and
+  // a height premium is part of that wage, so burden loads on top of it.
+  const totalSF = wallCosts.reduce((s, r)    => s + (r.netSF || 0), 0)
+                + ceilingCosts.reduce((s, r) => s + (r.netSF || 0), 0);
+  const avgLaborPerSF = totalSF > 0 ? laborTotal / totalSF : 0;
+
+  const a12  = Number(adder12Pct) || 0;
+  const a20  = Number(adder20Pct) || 0;
+  const sf12 = Number(sfAbove12)  || 0;
+  const sf20 = Number(sfAbove20)  || 0;
+
+  const heightUplift12 = sf12 * avgLaborPerSF * (a12 / 100);
+  const heightUplift20 = sf20 * avgLaborPerSF * ((a12 + a20) / 100); // stacked
+  const laborWithHeightUplift = laborTotal + heightUplift12 + heightUplift20;
+
   // Labor burden (payroll tax / workers comp / benefits) and supervision
-  // (foreman cost) load onto raw labor BEFORE markup — they're part of
-  // directCostTotal, the figure overhead/contingency/profit are computed on
-  // top of (applyMarkup below), not a separate never-marked-up line.
-  // laborTotal stays raw on purpose — buildBidRecord() persists it as the
-  // pre-burden split. Number(x) || 0 guards a missing/'' rate (see
-  // src/state/store.jsx's empty-string initial values).
+  // (foreman cost) load onto the height-adjusted labor BEFORE markup — they're
+  // part of directCostTotal, the figure overhead/contingency/profit are
+  // computed on top of (applyMarkup below), not a separate never-marked-up
+  // line. laborTotal stays raw on purpose (pre-height-uplift, pre-burden) —
+  // buildBidRecord() persists it as the pre-burden split. Number(x) || 0
+  // guards a missing/'' rate (see src/state/store.jsx's empty-string initial
+  // values).
   const { burden, supervision, laborWithBurden } =
-    applyLaborBurden(laborTotal, Number(burdenPct) || 0, Number(superPct) || 0);
+    applyLaborBurden(laborWithHeightUplift, Number(burdenPct) || 0, Number(superPct) || 0);
 
   return {
     laborTotal,
+    heightUplift12,
+    heightUplift20,
+    laborWithHeightUplift,
     burden,
     supervision,
     laborWithBurden,
