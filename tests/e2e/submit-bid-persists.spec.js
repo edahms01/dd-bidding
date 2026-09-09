@@ -30,6 +30,8 @@ test('submitting a bid saves it, and it survives a full reload', async ({ page }
   // same reasoning as displayedLogistics above.
   const rowVal = (label) => page.locator(`#output-phase3 [data-row="${label}"] .subtotal-val`).innerText().then(parseCost);
   const displayedRawLabor    = await rowVal('Labor (raw)');
+  const displayedUplift12    = await rowVal('Above 12 ft');
+  const displayedUplift20    = await rowVal('Above 20 ft');
   const displayedBurden      = await rowVal('Burden');
   const displayedSupervision = await rowVal('Supervision');
 
@@ -64,10 +66,14 @@ test('submitting a bid saves it, and it survives a full reload', async ({ page }
   // split. It equals direct_cost minus logistics, burden, and supervision:
   //   estimated_labor_cost + estimated_material_cost
   //     = direct_cost - logistics - burden - supervision
+  //       - heightUplift12 - heightUplift20
+  // (The height adders load onto raw labor upstream of burden, same as burden
+  // itself — they're in direct_cost but not in the raw persisted split.)
   // A badly wrong split (e.g. material silently zeroed) still fails this;
   // ±2 tolerance because each part is Math.round()'d independently.
   const expectedSplitTotal =
-    saved.direct_cost - displayedLogistics - displayedBurden - displayedSupervision;
+    saved.direct_cost - displayedLogistics - displayedBurden - displayedSupervision
+      - displayedUplift12 - displayedUplift20;
   expect(Math.abs((saved.estimated_labor_cost + saved.estimated_material_cost) - expectedSplitTotal)).toBeLessThanOrEqual(2);
   // And the raw split is genuinely raw: estimated_labor_cost tracks the
   // "Labor (raw)" row, not the burden-loaded figure.

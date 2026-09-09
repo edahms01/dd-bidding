@@ -73,7 +73,9 @@ test('escalation on one board type changes only that material, survives a rate t
     const ceilCosts = calculateCeilingCosts(state.ceilings, state.assemblies, escalatedRates, state.conditions);
     const logistics = calculateLogistics(state.conditions, state.rates);
     const summary   = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct,
-      state.rates.burdenPct, state.rates.superPct);
+      state.rates.burdenPct, state.rates.superPct,
+      state.rates.adder12Pct, state.rates.adder20Pct,
+      state.conditions.sfAbove12, state.conditions.sfAbove20);
     return fmtCost(summary.materialTotal);
   });
   await expect(page.locator('#output-phase3')).toContainText(expectedMaterialsText);
