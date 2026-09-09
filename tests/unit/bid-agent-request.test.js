@@ -53,6 +53,29 @@ describe('buildAnthropicRequest', () => {
     expect(RECOMMENDATION_TOOL.input_schema).toBe(RECOMMENDATION_SCHEMA);
   });
 
+  it('requires a per-option factors array (win-likelihood attribution) with a bounded, strict item shape', () => {
+    const opt = RECOMMENDATION_SCHEMA.properties.options.items;
+    expect(opt.required).toContain('factors');
+
+    const factors = opt.properties.factors;
+    expect(factors.type).toBe('array');
+    expect(factors.minItems).toBe(2);
+    expect(factors.maxItems).toBe(5);
+
+    const factor = factors.items;
+    expect(factor.type).toBe('object');
+    expect(factor.additionalProperties).toBe(false);
+    expect(factor.required).toEqual(['label', 'direction', 'note']);
+    expect(factor.properties.direction.enum).toEqual(['positive', 'negative', 'neutral']);
+    expect(factor.properties.label.type).toBe('string');
+    expect(factor.properties.note.type).toBe('string');
+  });
+
+  it('instructs the model to ground each factor and not cite an unavailable margin curve', () => {
+    expect(AGENT_SYSTEM).toContain('list 2-5 factors');
+    expect(AGENT_SYSTEM).toContain("If marginOutcomeCurve isn't available");
+  });
+
   it('does not mutate the input payload', () => {
     const original = JSON.parse(JSON.stringify(REPRESENTATIVE_PAYLOAD));
     buildAnthropicRequest(REPRESENTATIVE_PAYLOAD);
