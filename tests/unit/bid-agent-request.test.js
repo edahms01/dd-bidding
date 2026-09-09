@@ -59,8 +59,12 @@ describe('buildAnthropicRequest', () => {
 
     const factors = opt.properties.factors;
     expect(factors.type).toBe('array');
-    expect(factors.minItems).toBe(2);
-    expect(factors.maxItems).toBe(5);
+    // minItems/maxItems are deliberately absent — Anthropic's strict tool
+    // schema rejects array length constraints (400). The 2-5 bound lives
+    // in the description + AGENT_SYSTEM instead.
+    expect(factors.minItems).toBeUndefined();
+    expect(factors.maxItems).toBeUndefined();
+    expect(factors.description).toMatch(/2 to 5/);
 
     const factor = factors.items;
     expect(factor.type).toBe('object');

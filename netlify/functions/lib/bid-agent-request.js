@@ -58,9 +58,11 @@ const RECOMMENDATION_SCHEMA = {
           rationale:     { type: 'string', description: '2-3 sentences on when to pick this option.' },
           factors: {
             type: 'array',
-            description: "The specific things that drove this option's winLikelihood call, most important first. Each must tie to something real in the payload — a specific intelligence value, history figure, or takeoff detail — not a generic statement that could apply to any bid.",
-            minItems: 2,
-            maxItems: 5,
+            // 2-5 entries. minItems/maxItems are NOT expressible here —
+            // Anthropic's strict tool schema (strict: true) rejects array
+            // length constraints with a 400; the count is enforced by this
+            // description and the matching sentence in AGENT_SYSTEM instead.
+            description: "2 to 5 entries. The specific things that drove this option's winLikelihood call, most important first. Each must tie to something real in the payload — a specific intelligence value, history figure, or takeoff detail — not a generic statement that could apply to any bid.",
             items: {
               type: 'object',
               additionalProperties: false,
