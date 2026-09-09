@@ -355,7 +355,9 @@ function calculateOnly() {
   const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, escalatedRates, state.conditions);
   const logistics    = calculateLogistics(state.conditions, state.rates);
   const summary      = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct,
-    state.rates.burdenPct, state.rates.superPct);
+    state.rates.burdenPct, state.rates.superPct,
+    state.rates.adder12Pct, state.rates.adder20Pct,
+    state.conditions.sfAbove12, state.conditions.sfAbove20);
   const markupResult = applyMarkup(summary, state.markupInputs);
   renderOutput(state, wallCosts, ceilCosts, summary, markupResult);
 
@@ -449,7 +451,9 @@ async function submitBid(finalizeSelection) {
   const ceilCosts    = calculateCeilingCosts(state.ceilings, state.assemblies, escalatedRates, state.conditions);
   const logistics    = calculateLogistics(state.conditions, state.rates);
   const summary      = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct,
-    state.rates.burdenPct, state.rates.superPct);
+    state.rates.burdenPct, state.rates.superPct,
+    state.rates.adder12Pct, state.rates.adder20Pct,
+    state.conditions.sfAbove12, state.conditions.sfAbove20);
   const markupResult = applyMarkup(summary, state.markupInputs);
 
   let saved;
