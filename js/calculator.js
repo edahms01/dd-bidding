@@ -146,16 +146,30 @@ function computeWeightedWastePct(rows, fallbackPct) {
   return base > 0 ? (waste / base) * 100 : fallbackPct;
 }
 
-function buildCostSummary(wallCosts, ceilingCosts, logistics, fallbackWastePct) {
+function buildCostSummary(wallCosts, ceilingCosts, logistics, fallbackWastePct, burdenPct, superPct) {
   const laborTotal    = wallCosts.reduce((s, r)    => s + (r.laborTotal    || 0), 0)
                       + ceilingCosts.reduce((s, r) => s + (r.laborTotal    || 0), 0);
   const materialTotal = wallCosts.reduce((s, r)    => s + (r.materialTotal || 0), 0)
                       + ceilingCosts.reduce((s, r) => s + (r.materialTotal || 0), 0);
+
+  // Labor burden (payroll tax / workers comp / benefits) and supervision
+  // (foreman cost) load onto raw labor BEFORE markup — they're part of
+  // directCostTotal, the figure overhead/contingency/profit are computed on
+  // top of (applyMarkup below), not a separate never-marked-up line.
+  // laborTotal stays raw on purpose — buildBidRecord() persists it as the
+  // pre-burden split. Number(x) || 0 guards a missing/'' rate (see
+  // src/state/store.jsx's empty-string initial values).
+  const { burden, supervision, laborWithBurden } =
+    applyLaborBurden(laborTotal, Number(burdenPct) || 0, Number(superPct) || 0);
+
   return {
     laborTotal,
+    burden,
+    supervision,
+    laborWithBurden,
     materialTotal,
     logisticsTotal:  logistics.total,
-    directCostTotal: laborTotal + materialTotal + logistics.total,
+    directCostTotal: laborWithBurden + materialTotal + logistics.total,
     weightedWastePct: computeWeightedWastePct([...wallCosts, ...ceilingCosts], fallbackWastePct)
   };
 }

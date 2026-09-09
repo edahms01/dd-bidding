@@ -50,9 +50,9 @@ function fmtPct(n)  { return (+n).toFixed(1) + '%'; }
 
 function SubtotalRow({ label, value, accent }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+    <div data-row={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ color: 'var(--text2)' }}>{label}</span>
-      <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: accent || 'var(--text)' }}>{value}</span>
+      <span className="subtotal-val" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, color: accent || 'var(--text)' }}>{value}</span>
     </div>
   );
 }
@@ -104,7 +104,9 @@ function TopCostDrivers({ output }) {
 
   if (rows.length === 0) return null;
 
-  const laborPct = direct > 0 ? (summary.laborTotal / direct) * 100 : 0;
+  // Burden-loaded labor, so this doesn't understate labor's real share
+  // once burden + supervision are baked into directCostTotal.
+  const laborPct = direct > 0 ? (summary.laborWithBurden / direct) * 100 : 0;
 
   return (
     <div className="section-block top-cost-drivers">
@@ -142,7 +144,7 @@ function Phase3({ output }) {
   return (
     <>
       <div className="totals-bar" style={{ marginBottom: 28 }}>
-        <div className="total-item"><div className="total-val">{fmtCost(summary.laborTotal)}</div><div className="total-lbl">Labor</div></div>
+        <div className="total-item"><div className="total-val">{fmtCost(summary.laborWithBurden)}</div><div className="total-lbl">Labor</div></div>
         <div className="total-div" />
         <div className="total-item"><div className="total-val">{fmtCost(summary.materialTotal)}</div><div className="total-lbl">Materials</div></div>
         <div className="total-div" />
@@ -156,6 +158,8 @@ function Phase3({ output }) {
           <div className="section-label">Category subtotals</div>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
             <SubtotalRow label="Labor (raw)" value={fmtCost(summary.laborTotal)} accent="var(--teal)" />
+            <SubtotalRow label="Burden" value={fmtCost(summary.burden)} />
+            <SubtotalRow label="Supervision" value={fmtCost(summary.supervision)} />
             <SubtotalRow label={'Materials (incl. ' + fmtPct(summary.weightedWastePct) + ' waste)'} value={fmtCost(summary.materialTotal)} />
             <SubtotalRow
               label={'Logistics (' + output.state.conditions.trips + ' trips'

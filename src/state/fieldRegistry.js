@@ -147,8 +147,8 @@ export const FIELD_REGISTRY = {
   'rates.framing':    { consumedBy: 'calculator' },
   'rates.hanging':     { consumedBy: 'calculator' },
   'rates.extwall':     { consumedBy: 'calculator' }, // swaps in for rates.hanging on Exterior-flagged wall assemblies
-  'rates.burdenPct':   { consumedBy: 'calculator', knownGap: true }, // costed as `burdenRate`, not this name
-  'rates.superPct':    { consumedBy: 'calculator', knownGap: true }, // costed as `supervisionRate`, not this name
+  'rates.burdenPct':   { consumedBy: 'calculator' }, // applyLaborBurden() via buildCostSummary()
+  'rates.superPct':    { consumedBy: 'calculator' }, // applyLaborBurden() via buildCostSummary()
   'rates.finish':      { consumedBy: 'calculator' }, // LEAF_SUBTREE — rates.finish[level]
   'rates.adder12Pct':  { consumedBy: 'calculator', knownGap: true }, // captured, never applied
   'rates.adder20Pct':  { consumedBy: 'calculator', knownGap: true }, // captured, never applied
