@@ -235,6 +235,14 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .divider{height:1px;background:var(--border);margin:20px 0}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}
 
+/* ── HOME LAUNCHER — recent-drafts rows inside a .tray ── */
+.home-draft-row{display:flex;align-items:center;gap:14px;padding:12px 0;
+                border-bottom:1px solid var(--border)}
+.home-draft-name{flex:1;font-weight:600;font-size:13px;white-space:nowrap;
+                 overflow:hidden;text-overflow:ellipsis}
+.home-draft-meta{color:var(--text3);font-size:12px;white-space:nowrap}
+.home-viewall{margin-top:14px}
+
 /* ── INSIGHTS (Phase F, 8.1) — CSS-only bar rows, no charting dep ──
    Read-only output inside a .tray; Cost Summary is the visual precedent,
    not the .rr-* input system. Bar width is the one runtime-computed

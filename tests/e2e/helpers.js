@@ -22,6 +22,14 @@ export async function clearAll(page) {
   await page.click('button:has-text("Clear all data")');
   await page.waitForFunction(() => !window.__preClearReload);
   await page.waitForLoadState('load');
+  // Home-launcher brief: cold load now lands on the Home launcher, not
+  // the workflow. Nearly every spec calls clearAll() and then immediately
+  // touches a workflow selector, so restore the pre-brief guarantee here —
+  // navigate into the workflow (Project tab) via the always-present
+  // window.goto bridge. Specs that want the Home screen navigate to it
+  // explicitly.
+  await page.evaluate(() => window.goto && window.goto('project'));
+  await page.locator('#page-project').waitFor({ state: 'visible' });
 }
 
 export async function loadSeed(page) {

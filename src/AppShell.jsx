@@ -20,6 +20,7 @@ import { useStore } from './state/store.jsx';
 import { registerBridges, registerTabConfirmationsReader, registerDemoConfirmAllTabs } from './state/bridges.js';
 import { parseHash, canonicalHash } from './state/router.js';
 import { stepStatus, GATED_TABS, tabEligible, ownedSliceJSON } from './state/stepStatus.js';
+import HomePage from './pages/HomePage.jsx';
 import ProjectPage from './pages/ProjectPage.jsx';
 import ConditionsPage from './pages/ConditionsPage.jsx';
 import RatesPage from './pages/RatesPage.jsx';
@@ -419,6 +420,22 @@ export default function AppShell() {
             </span>
           </button>
           <div className="nav-items">
+            {/* Home launcher — the cold-load landing. Top of the nav,
+                above the open-drafts list. Serves the mobile drawer too
+                (same <nav>). */}
+            <div
+              className={'nav-item' + (activeSection === 'home' ? ' active' : '')}
+              data-nav="home"
+              onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'home' }); closeDrawer(); }}
+              title="Home"
+            >
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 7l6-5 6 5" />
+                <path d="M4 6.5V13a1 1 0 001 1h6a1 1 0 001-1V6.5" />
+              </svg>
+              {navLabelsVisible && <span className="nav-label">Home</span>}
+            </div>
+
             {/* Phase C 2.5 established a single "current bid" nav item;
                 this replaces it with one row per open draft (everything
                 in dirigo_drafts, newest first — same source/sort as the
@@ -552,6 +569,7 @@ export default function AppShell() {
           {activeSection === 'bids' && <BidsToolbar />}
 
           <div className="body">
+            <HomePage active={activeSection === 'home'} />
             <ProjectPage active={activeSection === 'workflow' && activeTab === 'project'} />
             <ConditionsPage active={activeSection === 'workflow' && activeTab === 'conditions'} />
             <RatesPage active={activeSection === 'workflow' && activeTab === 'rates'} />
