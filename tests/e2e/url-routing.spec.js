@@ -9,11 +9,22 @@ import { clearAll } from './helpers.js';
 
 const hash = (page) => page.evaluate(() => location.hash);
 
-test('a bare load normalizes the URL to #/project without adding a history entry', async ({ page }) => {
+test('a bare load lands on the Home launcher and normalizes the URL to #/home', async ({ page }) => {
+  // Home-launcher brief: the cold-load section is 'home', not 'workflow'.
+  // No clearAll() here — that helper now navigates into the workflow, which
+  // would mask the very thing this test checks. initialState.ui.activeSection
+  // is 'home' regardless of what's in localStorage, so a bare load is
+  // deterministic.
   await page.goto('/');
-  await clearAll(page);
-  await expect.poll(() => hash(page)).toBe('#/project');
+  await expect.poll(() => hash(page)).toBe('#/home');
+  await expect(page.locator('#page-home')).toHaveClass(/active/);
+});
+
+test('a workflow deep link still opens the named step directly — the Home default does not break routing', async ({ page }) => {
+  await page.goto('/#/project');
   await expect(page.locator('#page-project')).toHaveClass(/active/);
+  await expect(page.locator('#page-home')).not.toHaveClass(/active/);
+  await expect.poll(() => hash(page)).toBe('#/project');
 });
 
 test('deep link opens the named step directly', async ({ page }) => {

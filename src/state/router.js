@@ -33,6 +33,10 @@ export const HASH_PREFIX = '#/';
 // { slug, section, tab } — `tab` only meaningful when section === 'workflow'.
 // Order here matches the step bar; lookup is by slug or by section+tab.
 export const ROUTES = [
+  // Cold-load launcher — the default landing since the Home-launcher
+  // brief. Standalone screen, its own left-nav item; same section+route
+  // shape as 'insights'/'summary'. See HomePage.jsx.
+  { slug: 'home',            section: 'home',       tab: null },
   { slug: 'project',         section: 'workflow', tab: 'project' },
   { slug: 'site-conditions', section: 'workflow', tab: 'conditions' },
   { slug: 'assemblies',      section: 'workflow', tab: 'assemblies' },

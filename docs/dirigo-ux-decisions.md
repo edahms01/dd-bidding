@@ -93,6 +93,17 @@ Test note: `mobile-layout.spec.js`'s drawer "tap-through" check asserted that a 
 - **Persistence:** `bid.tabConfirmations` rides on the **draft record** (`buildDraftRecord`, `js/drafts.js`) but is stripped from the **export/import payload** (`buildExportPayload`, `js/autosave.js`) — review state isn't part of the bid, and this keeps `tests/fixtures/golden-export.json` untouched. Read into `collectFormData()` via `window.__getTabConfirmations` (AppShell), hydrated via `LOAD_SECTION` (mergeDeep no-ops on the missing key, so a pre-feature draft loads all-unconfirmed). The `TabConfirmButton` fires `window._autosave()` one render after its dispatch (a bare dispatch has no native event for the `.workflow-area` listener) — the `RatesPage` `needsImmediateSave` precedent, deliberately not a blanket `state.bid` watcher (CLAUDE.md's standing rule).
 - **Demo:** `data/seed.js`'s `_loadDemo()` calls `window.__confirmAllTabsForDemo()` (AppShell bridge) after the first calc, firing the real `SET_TAB_CONFIRMATION` for every eligible tab so the demo reads all-green rather than all-amber — no demo-only branch in the derivation. `stepStatus.js`'s old `hasUnresolvedReferences()`-forces-amber rule is dropped with the heuristic (the Finalize orphan gate in `validation.js` is untouched).
 
+**2.8 Home launcher (Option A) — APPROVED. Implemented (2026-09-09, standalone brief, not a phase).**
+The app cold-loaded into the 9-step workflow, dropping the user mid-form into whatever draft was last active. There was no neutral landing surface. Home is a lightweight launcher shown on cold load instead: a "Bid IQ" header, a single **"+ New Bid"** CTA, the **3** most recent drafts (`window.getAllDrafts()` — the same source `BidsPage` uses, `lastModifiedAt` desc) each with an **"Open"** button, and a "View all bids →" link. Zero drafts → just the CTA, no list.
+
+Explicitly out of scope: Insights teaser, Bid Decision nudges, rate-staleness nudges. **No Load Demo button** — dropped from the brief during review; the dev-only Load Demo toolbar elsewhere is untouched.
+
+Implementation: `initialState.ui.activeSection` is `'home'` (`GOTO_SECTION` is generic — no reducer case); `src/pages/HomePage.jsx` (`id="page-home"`, `data-noautosave`, the `BidDecisionPage` small-page shape); `{ slug: 'home', section: 'home', tab: null }` as the first `ROUTES` entry (`#/home`); a "Home" left-nav item at the top of `.nav-items`, above the "Open bids" list, serving desktop nav + mobile drawer. `activeSection === 'home'` renders no step bar and no `BidsToolbar` — same as `insights`/`summary`.
+
+**"Open" lands on Project, by decision** — `HomePage` calls `window.switchToDraft(id)`, exactly like `BidsPage`'s Open button (`switchToDraft` → `goto('project')`). There is no per-draft last-tab persistence anywhere in the app; adding it would touch `drafts.js`/`forms.js`/`store.jsx`/`collectFormData()` and every draft-open path — separate brief-sized work, not done here.
+
+**Test-suite impact** (same category as 2.5's Dashboard/History merge): `clearAll()` (`tests/e2e/helpers.js`) now navigates into the workflow after its reload, so the ~38 specs that `clearAll` then immediately touch a workflow selector keep working with no per-spec edit. Three specs touched (`helpers.js`, `url-routing.spec.js`, `mobile-layout.spec.js`'s incidental drawer tap-through assertion — see §2.6's own note about that block's fragility), one new (`home.spec.js`).
+
 ---
 
 ## 3. Decisions — Takeoff tables
