@@ -28,7 +28,9 @@ The payload's history object may include marginOutcomeCurve, seasonality, and co
 - The payload's history object may also include competitorPatterns — competitors Dirigo has specifically lost to before, each with timesLost and, where enough pricing data exists, avgUndercutPct. Cross-reference this against intelligence.knownCompetitors — if a named competitor there matches an entry here, factor their historical undercut pattern directly into pricing guidance, not just general competition-level reasoning. Don't assume a match if the names are clearly different companies.
 - The payload's intelligence.openDraftCount reports how many other bids are currently open and competing for attention, separate from the subjective pipelinePressure signal. Treat a nonzero value as added pressure toward the competitive end of the range — more open work competing for the same crew capacity is a real constraint, not a neutral fact.
 
-The payload also carries the full takeoff: assemblies (each wall/ceiling system — stud size, board layers, board type, fire rating, acoustic, finish level, exterior-wall flag, per-assembly notes, per-assembly waste override), walls, and ceilings (each area's location, referenced assembly type, dimensions, openings, and — for ceilings — soffit linear footage). This is the complete row set, not a curated subset. Use it to ground your risk read in the actual scope: high fire-rated or high-finish-level content, unusual assembly mixes, or a note flagging site-specific complexity are all things the cost number alone won't tell you. Soffit linear footage in particular can carry outsized labor complexity relative to its size at this company — factor it into risk judgment, not just direct cost.`;
+The payload also carries the full takeoff: assemblies (each wall/ceiling system — stud size, board layers, board type, fire rating, acoustic, finish level, exterior-wall flag, per-assembly notes, per-assembly waste override), walls, and ceilings (each area's location, referenced assembly type, dimensions, openings, and — for ceilings — soffit linear footage). This is the complete row set, not a curated subset. Use it to ground your risk read in the actual scope: high fire-rated or high-finish-level content, unusual assembly mixes, or a note flagging site-specific complexity are all things the cost number alone won't tell you. Soffit linear footage in particular can carry outsized labor complexity relative to its size at this company — factor it into risk judgment, not just direct cost.
+
+For each option, list 2-5 factors that actually drove your winLikelihood call for that specific option, ordered most important first. Ground every factor in something real from this payload — a specific intelligence value, a specific history figure, a specific detail from the takeoff — never a generic statement that would read the same on any bid. The mix of directions across an option's factors should be consistent with its winLikelihood: a "High" call shouldn't be explained mostly by negative factors, and vice versa. If marginOutcomeCurve isn't available for this bid, don't cite it as a factor — don't invent false precision from data that doesn't exist yet.`;
 
 // Real JSON Schema for the forced tool call. `strict: true` on the tool
 // definition means the API guarantees `tool_use.input` validates against
@@ -46,14 +48,30 @@ const RECOMMENDATION_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['type', 'label', 'bidAmount', 'margin', 'winLikelihood', 'rationale'],
+        required: ['type', 'label', 'bidAmount', 'margin', 'winLikelihood', 'rationale', 'factors'],
         properties: {
           type:          { type: 'string', enum: ['competitive', 'recommended', 'ambitious'] },
           label:         { type: 'string' },
           bidAmount:     { type: 'number' },
           margin:        { type: 'number', description: 'Effective margin percentage for this option.' },
           winLikelihood: { type: 'string', enum: ['Very High', 'High', 'Medium', 'Low–Medium', 'Low'] },
-          rationale:     { type: 'string', description: '2-3 sentences on when to pick this option.' }
+          rationale:     { type: 'string', description: '2-3 sentences on when to pick this option.' },
+          factors: {
+            type: 'array',
+            description: "The specific things that drove this option's winLikelihood call, most important first. Each must tie to something real in the payload — a specific intelligence value, history figure, or takeoff detail — not a generic statement that could apply to any bid.",
+            minItems: 2,
+            maxItems: 5,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['label', 'direction', 'note'],
+              properties: {
+                label:     { type: 'string', description: 'Short name for this factor, e.g. "Strong GC relationship" or "Below the win-rate band for this margin."' },
+                direction: { type: 'string', enum: ['positive', 'negative', 'neutral'] },
+                note:      { type: 'string', description: 'One sentence grounding this in the actual data — name the specific signal, number, or history it comes from.' }
+              }
+            }
+          }
         }
       }
     },

@@ -48,7 +48,6 @@ import AgentStalenessWarning from '../components/AgentStalenessWarning.jsx';
 // import WhatIfSlider from '../components/WhatIfSlider.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
-function fmtFactorValue(v) { return v ? v.charAt(0).toUpperCase() + v.slice(1) : 'Not set'; }
 
 function StatusPill({ status }) {
   if (status === 'positive') return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: 'rgba(58,191,122,.1)', border: '1px solid rgba(58,191,122,.25)', color: 'var(--green)' }}>Positive</span>;
@@ -107,34 +106,31 @@ function WinLikelihoodPill({ val }) {
   return <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, ...s }}>{val || '-'}</span>;
 }
 
-// 5.2 — the pill is a black box built from four intelligence signals plus
-// the option's base offset. Clicking it expands this: each of the four
-// contributors, its current value, and its direction. Reads the single
-// source of truth in js/agent.js (window.__winLikelihoodBreakdown), not a
-// copy of the scoring table.
+// 5.2 — the panel under each win-likelihood pill is the model's own
+// per-option `factors`: the specific things it says drove that option's
+// call, most important first, each with a direction and a one-sentence
+// grounding in the actual payload. Live path returns them in the agent
+// response; demo mode has a hardcoded set in js/agent.js's _demoResponse().
+// Empty or absent → nothing renders (the agent-unavailable fallback
+// options carry no factors).
 function AttrArrow({ direction }) {
   if (direction === 'up') return <span style={{ color: 'var(--green)' }}>▲</span>;
   if (direction === 'down') return <span style={{ color: '#e85c4a' }}>▼</span>;
   return <span style={{ color: 'var(--text3)' }}>–</span>;
 }
 
-function WinLikelihoodAttribution({ optionType, intelligence }) {
-  const breakdown = typeof window !== 'undefined' && window.__winLikelihoodBreakdown
-    ? window.__winLikelihoodBreakdown(intelligence || {}, optionType)
-    : null;
-  if (!breakdown) return null;
+function WinLikelihoodAttribution({ factors }) {
+  if (!factors || !factors.length) return null;
+  const dirToArrow = (d) => (d === 'positive' ? 'up' : d === 'negative' ? 'down' : 'neutral');
   return (
     <div className="win-attr" style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '8px 10px', background: 'rgba(255,255,255,.02)' }}>
-      <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-        Base {breakdown.base > 0 ? '+' : ''}{breakdown.base} · score {breakdown.score} → {breakdown.label}
-      </div>
-      {breakdown.contributions.map((c) => (
-        <div key={c.factor} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 11, color: 'var(--text2)', padding: '3px 0' }}>
-          <span style={{ flexShrink: 0 }}>{c.factor}</span>
-          <span style={{ flex: 1, textAlign: 'right', color: 'var(--text3)' }}>{fmtFactorValue(c.value)}</span>
-          <span style={{ flexShrink: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-            <AttrArrow direction={c.direction} /> {c.delta > 0 ? '+' : ''}{c.delta}
-          </span>
+      {factors.map((f) => (
+        <div key={f.label} style={{ fontSize: 11, color: 'var(--text2)', padding: '4px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ flexShrink: 0 }}><AttrArrow direction={dirToArrow(f.direction)} /></span>
+            <span style={{ fontWeight: 600 }}>{f.label}</span>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', paddingLeft: 16, marginTop: 2, lineHeight: 1.45 }}>{f.note}</div>
         </div>
       ))}
     </div>
@@ -184,7 +180,7 @@ function Header({ options, dispatch, blocked, onSend, sendLabel }) {
   );
 }
 
-function OptionCard({ opt, isSelected, dispatch, intelligence }) {
+function OptionCard({ opt, isSelected, dispatch }) {
   const [attrOpen, setAttrOpen] = useState(false);
   const isRec = opt.type === 'recommended';
   // 5.1 — P(win) band × margin$, as a range. See src/state/expectedValue.js.
@@ -222,7 +218,7 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
           <WinLikelihoodPill val={opt.winLikelihood} />
           <span style={{ fontSize: 9, color: 'var(--text3)' }}>{attrOpen ? '▲' : '▼'}</span>
         </button>
-        {attrOpen && <WinLikelihoodAttribution optionType={opt.type} intelligence={intelligence} />}
+        {attrOpen && <WinLikelihoodAttribution factors={opt.factors} />}
       </div>
       {/* Reasoning sentence — same kind of content as the Agent analysis box
           above, so matched to its treatment (--text2). */}
@@ -260,7 +256,7 @@ function OptionCard({ opt, isSelected, dispatch, intelligence }) {
   );
 }
 
-function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked, staleness, generatedBidPrice, currentBidPrice, intelligence }) {
+function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked, staleness, generatedBidPrice, currentBidPrice }) {
   const showStale = staleness.stale && generatedBidPrice != null;
   return (
     <>
@@ -307,7 +303,7 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         <div className="agent-cards-scroll">
           <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
             {(r.options || []).map((opt) => (
-              <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} intelligence={intelligence} />
+              <OptionCard key={opt.type} opt={opt} isSelected={selectedOption === opt.type} dispatch={dispatch} />
             ))}
           </div>
         </div>
@@ -421,7 +417,6 @@ export default function AgentPage({ active }) {
         r={cachedResult} selectedOption={selectedOption} historyUnavailable={historyUnavailable}
         dispatch={dispatch} blocked={blocked}
         staleness={staleness} generatedBidPrice={generatedBidPrice} currentBidPrice={currentBidPrice}
-        intelligence={state.bid.intelligence}
       />
     );
   } else if (loading) {

@@ -3,9 +3,9 @@
 // P(win) × margin$, rendered as a RANGE with a visible caveat, never a
 // false-precision point value.
 //
-// Honesty constraint (docs/dirigo-ux-decisions.md §5.1): deriveWinLikelihood()
-// (js/agent.js) is a hand-tuned integer score with zero calibrated bid
-// outcomes behind it yet — it is not a probability. So P(win) is a wide
+// Honesty constraint (docs/dirigo-ux-decisions.md §5.1): the winLikelihood
+// label is the model's own qualitative call, not a calibrated probability,
+// and has zero validated bid outcomes behind it yet. So P(win) is a wide
 // band per likelihood label (Q2 = A, decided with Eric), and the band
 // width itself is the signal that EV is directional. Do not narrow these
 // without real win/loss data to calibrate against.

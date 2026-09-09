@@ -41,7 +41,11 @@ test('agent-returned text with markup-like content renders as literal text in ev
         bidAmount: 250000,
         margin: 25,
         winLikelihood: 'High <u>likelihood</u>',
-        rationale: 'Rationale <script>window.__xss=1</script> text.'
+        rationale: 'Rationale <script>window.__xss=1</script> text.',
+        factors: [
+          { label: 'Factor <b>label</b> one', direction: 'positive', note: 'Factor <script>window.__xss=1</script> note one.' },
+          { label: 'Factor <i>label</i> two', direction: 'negative', note: 'Factor <b>note</b> two.' }
+        ]
       }
     ],
     signals: [
@@ -69,6 +73,12 @@ test('agent-returned text with markup-like content renders as literal text in ev
     await toggle.click();
   }
 
+  // The win-likelihood attribution panel (the model's per-option `factors`)
+  // only mounts once the pill is expanded — open it so its label/note text
+  // is in the DOM to assert on.
+  await agentPage.locator('[data-bid-opt="recommended"] .win-likelihood-pill-btn').click();
+  await expect(agentPage.locator('.win-attr')).toBeVisible();
+
   // Every injected tag must show up as literal visible text...
   await expect(agentPage).toContainText('Reasoning <b>bold injected</b> text.');
   await expect(agentPage).toContainText('Recommended <i>label</i>');
@@ -82,6 +92,9 @@ test('agent-returned text with markup-like content renders as literal text in ev
   // escape there now; the message field is still rendered verbatim.
   await expect(agentPage).toContainText('Risk <b>message</b>');
   await expect(agentPage).toContainText('Historical <b>note</b> text.');
+  await expect(agentPage).toContainText('Factor <b>label</b> one');
+  await expect(agentPage).toContainText('Factor <script>window.__xss=1</script> note one.');
+  await expect(agentPage).toContainText('Factor <i>label</i> two');
 
   // ...and never as actual injected elements or an executed script.
   expect(await agentPage.locator('b, i, u, script').count()).toBe(0);

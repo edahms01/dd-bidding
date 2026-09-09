@@ -33,75 +33,14 @@ const AGENT_FALLBACK = {
   historicalNotes: []
 };
 
-// Derives win likelihood from intelligence signals + option type.
-// Used in demo mode; live API returns winLikelihood directly.
-//
-// Phase E 5.2 — the scoring is now expressed as a data table so the same
-// single source of truth can also produce a per-factor *breakdown* (which
-// of the four signals pushed this option's likelihood up or down, and by
-// how much) for the win-likelihood attribution UI. deriveWinLikelihood()
-// stays as the thin label-only wrapper every existing caller uses
-// (_demoResponse(), any future live path) — behaviour is identical, this
-// is a refactor, not a change.
-var _WIN_LIKELIHOOD_BASE = { competitive: 2, recommended: 0, ambitious: -2 };
-
-// One entry per contributing signal, in the order the attribution UI
-// shows them. `deltas` maps each recognised intelligence value to its
-// score adjustment; any other value (incl. unset) contributes 0.
-var _WIN_LIKELIHOOD_FACTORS = [
-  { key: 'gcRelationship',     label: 'GC relationship',      deltas: { strong: 1, new: -1, difficult: -2 } },
-  { key: 'gcPriceSensitivity', label: 'GC price sensitivity', deltas: { lowest: -2, quality: 1 } },
-  { key: 'competitionLevel',   label: 'Competition level',    deltas: { light: 2, heavy: -2 } },
-  { key: 'dirigoEdge',         label: "Dirigo's edge",        deltas: { strong: 1, weak: -2 } }
-];
-
-function _winLikelihoodLabel(score) {
-  if (score >= 4)  return 'Very High';
-  if (score >= 2)  return 'High';
-  if (score >= 0)  return 'Medium';
-  if (score >= -2) return 'Low–Medium';
-  return 'Low';
-}
-
-// { label, score, base, optionType, contributions: [{ factor, value,
-// delta, direction }] }. Same arithmetic the original if-chain did — the
-// factor values are mutually exclusive per signal, so a table lookup and
-// the chain produce identical scores.
-function deriveWinLikelihoodBreakdown(intelligence, optionType) {
-  var intel = intelligence || {};
-  var base = _WIN_LIKELIHOOD_BASE[optionType] || 0;
-  var score = base;
-  var contributions = _WIN_LIKELIHOOD_FACTORS.map(function (f) {
-    var value = intel[f.key] != null && intel[f.key] !== '' ? intel[f.key] : null;
-    var delta = value != null && f.deltas[value] != null ? f.deltas[value] : 0;
-    score += delta;
-    return {
-      factor: f.label,
-      value: value,
-      delta: delta,
-      direction: delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral'
-    };
-  });
-  return { label: _winLikelihoodLabel(score), score: score, base: base, optionType: optionType, contributions: contributions };
-}
-
-function deriveWinLikelihood(intelligence, optionType) {
-  return deriveWinLikelihoodBreakdown(intelligence, optionType).label;
-}
-
-// Phase E 5.2 — read-only accessor for AgentPage.jsx's win-likelihood
-// attribution. Guarded per CLAUDE.md checklist item 9 (a top-level
-// window.X assignment must not throw if this file is ever imported in a
-// no-window context).
-if (typeof window !== 'undefined') {
-  window.__winLikelihoodBreakdown = deriveWinLikelihoodBreakdown;
-}
-
 // Fixed demo response for the Harborview Plaza retail project (seed dataset).
-// winLikelihood is derived dynamically from state.intelligence via deriveWinLikelihood().
-// The live Anthropic path runs in production; see DEMO_MODE at the top of this file.
+// Every field here is a fixed literal, winLikelihood included — the live
+// Anthropic path (production only; see DEMO_MODE at the top of this file)
+// returns winLikelihood and the per-option `factors` breakdown directly.
+// The old client-side win-likelihood scoring table was removed once the
+// live model reported its own factors — it never had any connection to
+// what the real model actually reasoned.
 function _demoResponse(state, summary, markupResult, bidHistory) {
-  const intel = state.intelligence || {};
   return {
     options: [
       {
@@ -109,24 +48,39 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
         label:          'Competitive',
         bidAmount:      271000,
         margin:         22.4,
-        winLikelihood:  deriveWinLikelihood(intel, 'competitive'),
-        rationale:      'Sharpens the number to maximise win probability. Best used when pipeline pressure is high or the GC relationship needs strengthening. Leaves less room for cost overruns; only viable if confidence in the takeoff is solid.'
+        winLikelihood:  'Very High',
+        rationale:      'Sharpens the number to maximise win probability. Best used when pipeline pressure is high or the GC relationship needs strengthening. Leaves less room for cost overruns; only viable if confidence in the takeoff is solid.',
+        factors: [
+          { label: 'Strong relationship with Callahan', direction: 'positive', note: 'Callahan has awarded Dirigo work before and values quality over lowest price, so a sharpened number lands with an already-favourable GC.' },
+          { label: 'Priced below the takeoff risk', direction: 'positive', note: 'At 22.4% margin this sits well under the Recommended option, leaving the widest gap against competitors on a scope that plays to Dirigo strengths.' },
+          { label: 'Thin cushion for the curved feature wall', direction: 'negative', note: "The curved wall is captured in conditions but carries more execution risk than a standard fit-out, and this margin leaves the least room to absorb an overrun." }
+        ]
       },
       {
         type:           'recommended',
         label:          'Recommended',
         bidAmount:      284500,
         margin:         28.4,
-        winLikelihood:  deriveWinLikelihood(intel, 'recommended'),
-        rationale:      "The agent's best read of this bid given current signals. Callahan Construction Group values quality over lowest price and your relationship is strong, so this margin is defensible. The 8% contingency is appropriate given medium confidence on the takeoff."
+        winLikelihood:  'High',
+        rationale:      "The agent's best read of this bid given current signals. Callahan Construction Group values quality over lowest price and your relationship is strong, so this margin is defensible. The 8% contingency is appropriate given medium confidence on the takeoff.",
+        factors: [
+          { label: 'Strong relationship with Callahan', direction: 'positive', note: 'Callahan values quality over lowest price and the relationship here is strong — less pressure to sharpen the number.' },
+          { label: 'Curved feature wall adds real risk', direction: 'negative', note: "It's captured in conditions, but curved-wall work carries more execution risk than a standard retail fit-out." },
+          { label: 'Medium takeoff confidence', direction: 'neutral', note: 'The 8% contingency built into this option is appropriate given medium confidence on the takeoff, not high.' }
+        ]
       },
       {
         type:           'ambitious',
         label:          'Ambitious',
         bidAmount:      298000,
         margin:         34.1,
-        winLikelihood:  deriveWinLikelihood(intel, 'ambitious'),
-        rationale:      'Reaches for maximum margin at the cost of win probability. Justified when crews are fully available and pipeline is healthy; a loss here costs nothing. Only viable with a GC who prioritises quality over price, which Callahan does. Worth attempting if Dirigo has recently won other work from this GC.'
+        winLikelihood:  'Medium',
+        rationale:      'Reaches for maximum margin at the cost of win probability. Justified when crews are fully available and pipeline is healthy; a loss here costs nothing. Only viable with a GC who prioritises quality over price, which Callahan does. Worth attempting if Dirigo has recently won other work from this GC.',
+        factors: [
+          { label: 'Reaches past the winnable range', direction: 'negative', note: 'At 34.1% margin this is roughly 12 points above the Recommended option, trading win probability for upside on a competitively-bid retail job.' },
+          { label: 'Quality-focused GC softens the downside', direction: 'positive', note: 'Callahan weighs quality and reliability, not just price, so a higher number is not dismissed outright the way a lowest-price GC would.' },
+          { label: 'No pipeline pressure to win this one', direction: 'neutral', note: 'Crews are fully available and pipeline pressure is neutral, so a loss at this margin costs nothing and the reach is low-stakes.' }
+        ]
       }
     ],
 
@@ -288,4 +242,11 @@ function _agentJobId() {
 // letting AGENT_FALLBACK read as a quiet, degraded recommendation.
 function _liveFallback(reason) {
   return Object.assign({}, AGENT_FALLBACK, { _liveError: reason });
+}
+
+// Guarded CommonJS export so the demo response shape can be unit-tested
+// under Vitest's node env without a browser — inert in the browser (no
+// `module`), same pattern as js/ui.js's escapeHtml export.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { _demoResponse, AGENT_FALLBACK };
 }
