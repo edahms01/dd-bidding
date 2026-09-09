@@ -23,6 +23,15 @@ test('submitting a bid saves it, and it survives a full reload', async ({ page }
   const totalVals = page.locator('#output-phase3 .total-item .total-val');
   const parseCost = (t) => parseInt(t.replace(/[$,]/g, ''), 10);
   const displayedLogistics = parseCost(await totalVals.nth(2).innerText());
+  // Labor burden + supervision now load onto raw labor before markup and
+  // are part of direct_cost (js/calculator.js buildCostSummary() →
+  // applyLaborBurden()). They surface as their own rows in the Category
+  // subtotals panel; read them from the DOM as independent ground truth,
+  // same reasoning as displayedLogistics above.
+  const rowVal = (label) => page.locator(`#output-phase3 [data-row="${label}"] .subtotal-val`).innerText().then(parseCost);
+  const displayedRawLabor    = await rowVal('Labor (raw)');
+  const displayedBurden      = await rowVal('Burden');
+  const displayedSupervision = await rowVal('Supervision');
 
   // Visit Tab 8 explicitly — goto('output') alone doesn't render the agent
   // UI; #agent-finalize-btn only exists once renderAgentTab() has run.
@@ -49,17 +58,22 @@ test('submitting a bid saves it, and it survives a full reload', async ({ page }
   );
   expect(saved.estimated_labor_cost).toBeGreaterThan(0);
   expect(saved.estimated_material_cost).toBeGreaterThan(0);
-  // direct_cost = laborTotal + materialTotal + logisticsTotal (js/calculator.js,
-  // buildCostSummary() — confirmed no other component). Checking the split
-  // sums to exactly direct_cost minus the independently-displayed Logistics
-  // figure is the tight version of this check: a badly wrong split (e.g.
-  // material silently zeroed) would fail it, where a bare <= would not.
-  // A ±2 tolerance, not exact equality, because estimated_labor_cost and
-  // estimated_material_cost are each Math.round()'d independently
-  // (js/state.js's buildBidRecord()) — sum-of-rounded-parts can legitimately
-  // differ by a dollar or two from a value rounded once as a whole.
-  const expectedSplitTotal = saved.direct_cost - displayedLogistics;
+  // estimated_labor_cost stays RAW (pre-burden) on purpose — buildBidRecord()
+  // (js/state.js) keeps Math.round(summary.laborTotal), matching the
+  // "Labor (raw)" row, so a future labor-burden report has the un-loaded
+  // split. It equals direct_cost minus logistics, burden, and supervision:
+  //   estimated_labor_cost + estimated_material_cost
+  //     = direct_cost - logistics - burden - supervision
+  // A badly wrong split (e.g. material silently zeroed) still fails this;
+  // ±2 tolerance because each part is Math.round()'d independently.
+  const expectedSplitTotal =
+    saved.direct_cost - displayedLogistics - displayedBurden - displayedSupervision;
   expect(Math.abs((saved.estimated_labor_cost + saved.estimated_material_cost) - expectedSplitTotal)).toBeLessThanOrEqual(2);
+  // And the raw split is genuinely raw: estimated_labor_cost tracks the
+  // "Labor (raw)" row, not the burden-loaded figure.
+  expect(Math.abs(saved.estimated_labor_cost - displayedRawLabor)).toBeLessThanOrEqual(2);
+  expect(displayedBurden).toBeGreaterThan(0);
+  expect(displayedSupervision).toBeGreaterThan(0);
 
   // Reload the whole page — confirms this is actually server-side now,
   // not just working because the page never refreshed.
