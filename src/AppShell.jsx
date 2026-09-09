@@ -498,8 +498,18 @@ export default function AppShell() {
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Bid summary</span>}
             </div>
 
-            {/* Separates the current-bid group above from Bid History below. */}
+            {/* Separates the current-bid group above from the Tools group below. */}
             <div className="nav-divider" role="separator" />
+
+            {/* Nav-column header for the standalone destinations below
+                (bid/no-bid gate, Insights, Bid History) — reuses
+                .section-label the same way "Open bids" does (no rule,
+                hidden in the collapsed rail). */}
+            {navLabelsVisible && (
+              <div className="section-label" style={{ margin: '4px 6px 10px', borderBottom: 'none', paddingBottom: 0 }}>
+                Tools
+              </div>
+            )}
 
             {/* 8.4 — the bid/no-bid gate. Its own nav destination now,
                 sitting above Insights; still ephemeral, no left-nav
