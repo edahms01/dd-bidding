@@ -436,6 +436,8 @@ export default function AppShell() {
               {navLabelsVisible && <span className="nav-label">Home</span>}
             </div>
 
+            <div className="nav-divider" role="separator" />
+
             {/* Phase C 2.5 established a single "current bid" nav item;
                 this replaces it with one row per open draft (everything
                 in dirigo_drafts, newest first — same source/sort as the
@@ -499,10 +501,21 @@ export default function AppShell() {
             {/* Separates the current-bid group above from Bid History below. */}
             <div className="nav-divider" role="separator" />
 
-            {/* Phase F — read-only estimating intelligence. Its own
-                destination (unlike the bid/no-bid gate, which is reached
-                in-context from the Bids list): analytics you visit
-                deliberately. */}
+            {/* 8.4 — the bid/no-bid gate. Its own nav destination now,
+                sitting above Insights; still ephemeral, no left-nav
+                highlight bleeds onto Bid History (see BidDecisionPage). */}
+            <div className={'nav-item' + (activeSection === 'biddecision' ? ' active' : '')} data-nav="biddecision" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'biddecision' }); closeDrawer(); }} title="Bid / no-bid gate">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="3" r="1.5" />
+                <path d="M8 4.5v3M8 7.5L4 10M8 7.5l4 2.5" />
+                <circle cx="4" cy="11.5" r="1.5" />
+                <circle cx="12" cy="11.5" r="1.5" />
+              </svg>
+              {navLabelsVisible && <span className="nav-label">Bid / no-bid gate</span>}
+            </div>
+
+            {/* Phase F — read-only estimating intelligence, a destination
+                you visit deliberately. */}
             <div className={'nav-item' + (activeSection === 'insights' ? ' active' : '')} data-nav="insights" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'insights' }); closeDrawer(); }} title="Insights">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="2" y1="14" x2="14" y2="14" />
@@ -513,7 +526,7 @@ export default function AppShell() {
               {(!navCollapsed || navDrawerOpen) && <span className="nav-label">Insights</span>}
             </div>
 
-            <div className={'nav-item' + (activeSection === 'bids' || activeSection === 'biddecision' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bid History">
+            <div className={'nav-item' + (activeSection === 'bids' ? ' active' : '')} data-nav="bids" onClick={() => { dispatch({ type: 'GOTO_SECTION', section: 'bids' }); closeDrawer(); }} title="Bid History">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="12" height="3" rx="1" />
                 <rect x="2" y="8" width="12" height="3" rx="1" />

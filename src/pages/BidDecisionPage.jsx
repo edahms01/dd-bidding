@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────
 // BidDecisionPage.jsx — Phase C 8.4. A short scoring screen that
 // recommends whether to pursue a job at all, deliberately OUTSIDE the
-// 9-step bid flow (so it doesn't lengthen it) and reached only from the
-// Bids list.
+// 9-step bid flow (so it doesn't lengthen it). Its own left-nav item,
+// above Insights; the "Bids" nav item does NOT stay active while it's
+// open.
 //
 // Ephemeral by decision (Q3): the five factor answers are local
 // component state, reset to neutral every time the screen becomes
