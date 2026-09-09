@@ -319,6 +319,25 @@ export default function AppShell() {
     if (window.location.hash !== desired) window.history.pushState(null, '', desired);
   }, [activeSection, activeTab]);
 
+  // Keep the active step chip in view. #app-tabs is a horizontally
+  // scrolling row of 9 chips (flex-wrap:nowrap; overflow-x:auto) — no nav
+  // path (chip click, page Back/Next, hash routing) scrolls it, so on a
+  // narrow viewport the active chip can land off-screen after Back/Next
+  // with no cue which step you're on. block:'nearest' — the bar's own
+  // vertical position never moves, only its horizontal scroll.
+  // behavior:'auto' (instant) — no stacked/laggy animation when Next is
+  // clicked repeatedly. activeSection is a dep because entering the
+  // workflow from another section (Open bids, mobile Bid Summary "back")
+  // remounts this nav without changing activeTab. The id lookup can be
+  // null before the DOM commits, and the whole nav is unmounted outside
+  // the workflow section.
+  useEffect(() => {
+    if (activeSection !== 'workflow') return;
+    const el = document.getElementById('tab-' + activeTab);
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+  }, [activeTab, activeSection]);
+
   return (
     <Fragment>
     <div className="shell">
