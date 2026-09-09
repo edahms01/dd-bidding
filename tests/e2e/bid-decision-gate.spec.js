@@ -1,22 +1,25 @@
 import { test, expect } from '@playwright/test';
 import { clearAll } from './helpers.js';
 
-// Phase C 8.4 — standalone bid/no-bid gate. Reached only from the Bids
-// list, not the 9-step flow. Ephemeral: five factor selects, reset to
-// neutral on every visit, no persistence, no bid record touched.
+// Phase C 8.4 — standalone bid/no-bid gate. Its own left-nav item (above
+// Insights), not a step in the 9-step flow. Ephemeral: five factor
+// selects, reset to neutral on every visit, no persistence, no bid
+// record touched.
 
 async function openGate(page) {
   await page.goto('/');
   await clearAll(page);
-  await page.click('.nav-item[data-nav="bids"]');
-  await page.click('#bid-decision-btn');
+  await page.click('.nav-item[data-nav="biddecision"]');
   await expect(page.locator('#page-biddecision')).toHaveClass(/active/);
 }
 
-test('reached from the Bids list; not a step in the workflow bar', async ({ page }) => {
+test('reached from the left nav; not a step in the workflow bar', async ({ page }) => {
   await openGate(page);
   await expect(page.locator('#app-tabs')).toHaveCount(0);
   await expect(page.locator('#app-tabs div:has-text("Bid / no-bid")')).toHaveCount(0);
+  // its own nav item is lit; Bid History is not
+  await expect(page.locator('.nav-item[data-nav="biddecision"]')).toHaveClass(/active/);
+  await expect(page.locator('.nav-item[data-nav="bids"]')).not.toHaveClass(/active/);
   // deep-linkable
   await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/bid-decision');
 });
@@ -49,7 +52,7 @@ test('the gate is ephemeral — leaving and returning resets the factors', async
 
   await page.click('#page-biddecision button:has-text("Back to Bids")');
   await expect(page.locator('#page-bids')).toHaveClass(/active/);
-  await page.click('#bid-decision-btn');
+  await page.click('.nav-item[data-nav="biddecision"]');
 
   await expect(page.locator('#bd-fit')).toHaveValue('ok');
   await expect(page.locator('#bd-gc')).toHaveValue('ok');
