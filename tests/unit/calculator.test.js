@@ -186,10 +186,15 @@ describe('buildCostSummary — unaffected by the new boardMaterialBase field / 4
     const walls    = calculateWallCosts([sampleWall()], [sampleAssembly()], sampleRates(), sampleConditions({ wastePct: 10 }));
     const ceilings = calculateCeilingCosts([], [], sampleRates(), sampleConditions({ wastePct: 10 }));
     const logistics = calculateLogistics(sampleConditions({ wastePct: 10 }), sampleRates());
-    const summary = buildCostSummary(walls, ceilings, logistics, 10);
+    // 0% burden / 0% supervision — directCostTotal must be identical to the
+    // pre-burden-fix behavior (raw labor + material + logistics).
+    const summary = buildCostSummary(walls, ceilings, logistics, 10, 0, 0);
 
     expect(summary.laborTotal).toBeCloseTo(walls[0].laborTotal, 6);
     expect(summary.materialTotal).toBeCloseTo(walls[0].materialTotal, 6);
+    expect(summary.burden).toBe(0);
+    expect(summary.supervision).toBe(0);
+    expect(summary.laborWithBurden).toBeCloseTo(summary.laborTotal, 6);
     expect(summary.directCostTotal).toBeCloseTo(summary.laborTotal + summary.materialTotal + logistics.total, 6);
   });
 
@@ -204,7 +209,7 @@ describe('buildCostSummary — unaffected by the new boardMaterialBase field / 4
     ];
     const conditions = sampleConditions({ wastePct: 10 });
     const wallCosts = calculateWallCosts(walls, assemblies, sampleRates(), conditions);
-    const summary = buildCostSummary(wallCosts, [], calculateLogistics(conditions, sampleRates()), conditions.wastePct);
+    const summary = buildCostSummary(wallCosts, [], calculateLogistics(conditions, sampleRates()), conditions.wastePct, 0, 0);
 
     // Both rows have identical boardMaterialBase (same netSF/layers/boardType),
     // one at 0% waste and one at 10% waste -> blended average is 5%, not a
@@ -212,6 +217,46 @@ describe('buildCostSummary — unaffected by the new boardMaterialBase field / 4
     // the weights happen to be equal, so 5% is also the naive average --
     // covered distinctly by the computeWeightedWastePct blend test below).
     expect(summary.weightedWastePct).toBeCloseTo(5, 6);
+  });
+});
+
+describe('buildCostSummary — labor burden + supervision (applyLaborBurden wired in)', () => {
+  function setup(burdenPct, superPct) {
+    const conditions = sampleConditions({ wastePct: 10 });
+    const walls    = calculateWallCosts([sampleWall()], [sampleAssembly()], sampleRates(), conditions);
+    const logistics = calculateLogistics(conditions, sampleRates());
+    const summary  = buildCostSummary(walls, [], logistics, 10, burdenPct, superPct);
+    return { walls, logistics, summary };
+  }
+
+  it('computes burden / supervision off the given rates and folds them into directCostTotal before markup', () => {
+    const { walls, logistics, summary } = setup(32, 8);
+    const raw = walls[0].laborTotal;
+
+    expect(summary.laborTotal).toBeCloseTo(raw, 6);            // raw stays raw
+    expect(summary.burden).toBeCloseTo(raw * 0.32, 6);
+    expect(summary.supervision).toBeCloseTo(raw * 0.08, 6);
+    expect(summary.laborWithBurden).toBeCloseTo(raw * 1.40, 6);
+    expect(summary.directCostTotal).toBeCloseTo(
+      summary.laborWithBurden + summary.materialTotal + logistics.total, 6);
+    // directCostTotal is built on laborWithBurden, not raw laborTotal
+    expect(summary.directCostTotal).toBeGreaterThan(
+      summary.laborTotal + summary.materialTotal + logistics.total);
+  });
+
+  it('0% / 0% leaves directCostTotal identical to the pre-fix (raw) behavior', () => {
+    const { walls, logistics, summary } = setup(0, 0);
+    expect(summary.burden).toBe(0);
+    expect(summary.supervision).toBe(0);
+    expect(summary.directCostTotal).toBeCloseTo(
+      walls[0].laborTotal + summary.materialTotal + logistics.total, 6);
+  });
+
+  it('coerces a missing / empty-string rate to 0 rather than NaN', () => {
+    const { summary } = setup(undefined, '');
+    expect(summary.burden).toBe(0);
+    expect(summary.supervision).toBe(0);
+    expect(Number.isFinite(summary.directCostTotal)).toBe(true);
   });
 });
 
@@ -323,17 +368,26 @@ describe('golden-bid regression — Harborview Plaza (data/seed.json), current s
     const wallCosts  = calculateWallCosts(seed.walls, seed.assemblies, escalatedRates, seed.conditions);
     const ceilCosts  = calculateCeilingCosts(seed.ceilings, seed.assemblies, escalatedRates, seed.conditions);
     const logistics  = calculateLogistics(seed.conditions, seed.rates);
-    const summary    = buildCostSummary(wallCosts, ceilCosts, logistics, seed.conditions.wastePct);
+    const summary    = buildCostSummary(wallCosts, ceilCosts, logistics, seed.conditions.wastePct,
+      seed.rates.burdenPct, seed.rates.superPct);
     const markup     = applyMarkup(summary, seed.markupInputs);
 
     expect(summary.laborTotal).toBeCloseTo(76956, 3);
     expect(summary.materialTotal).toBeCloseTo(21490.6168, 3);
-    // directCostTotal / finalBidPrice re-pinned 2026-09-08: waste disposal
-    // is now costed per month (disposalMonths = ceil(14 wk / 4) = 4,
-    // × $420 = $1,680 into logistics.total, hence directCost). laborTotal /
-    // materialTotal / effectiveMargin are unchanged by it.
-    expect(summary.directCostTotal).toBeCloseTo(111506.6168, 3);
-    expect(markup.finalBidPrice).toBeCloseTo(144958.60184, 3);
+    // Labor burden + supervision now load onto raw labor before markup
+    // (seed rates: burdenPct 34, superPct 9):
+    //   burden       = 76956 × 0.34 = 26165.04
+    //   supervision  = 76956 × 0.09 =  6926.04
+    //   laborWithBurden            = 110047.08
+    expect(summary.burden).toBeCloseTo(26165.04, 3);
+    expect(summary.supervision).toBeCloseTo(6926.04, 3);
+    expect(summary.laborWithBurden).toBeCloseTo(110047.08, 3);
+    // directCostTotal / finalBidPrice re-pinned: laborWithBurden (110047.08)
+    // + materialTotal (21490.6168) + logistics.total (13060.00) = 144597.6968;
+    // markup is a flat ×1.3 (30%), so finalBidPrice = 187977.00584.
+    // effectiveMargin is unchanged — a uniform markup scale preserves it.
+    expect(summary.directCostTotal).toBeCloseTo(144597.6968, 3);
+    expect(markup.finalBidPrice).toBeCloseTo(187977.00584, 3);
     expect(markup.effectiveMargin).toBeCloseTo(23.076923076923084, 6);
 
     // No waste override on any seed assembly -> weighted average must
