@@ -75,7 +75,7 @@ for (const [name, viewport] of [['phone-390', PHONE], ['tablet-768', TABLET]]) {
       await navVia(page, 'bids');
       await assertNoHorizontalScroll(page, `${name} / bids`);
       // Bid/no-bid gate
-      await page.click('#bid-decision-btn');
+      await navVia(page, 'biddecision');
       await page.waitForTimeout(150);
       await assertNoHorizontalScroll(page, `${name} / bid-decision`);
     });

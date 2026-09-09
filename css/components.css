@@ -236,6 +236,7 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}
 
 /* ── HOME LAUNCHER — recent-drafts rows inside a .tray ── */
+.home-newbid{margin-bottom:20px}
 .home-draft-row{display:flex;align-items:center;gap:14px;padding:12px 0;
                 border-bottom:1px solid var(--border)}
 .home-draft-name{flex:1;font-weight:600;font-size:13px;white-space:nowrap;

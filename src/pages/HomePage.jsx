@@ -59,15 +59,20 @@ export default function HomePage({ active }) {
           <div className="page-title">Bid IQ</div>
           <div className="page-sub">Start a new bid, or pick up a recent one.</div>
         </div>
-        <div className="page-actions">
-          <button className="btn btn-primary" onClick={() => window.createDraft?.()}>+ New Bid</button>
-        </div>
       </div>
+
+      <button
+        className="btn btn-primary home-newbid"
+        onClick={() => window.createDraft?.()}
+      >+ New Bid</button>
 
       {drafts.length === 0 ? (
         <div className="empty-state">No bids yet. Start one above.</div>
       ) : (
-        <div className="tray">
+        // 2-column body: Recent bids fills column 1 (.tray-half sizes it
+        // to one column; the right half is left open), same tray-column
+        // sizing MarketReadPage uses. Collapses to full width <=768px.
+        <div className="tray tray-half">
           <div className="tray-hdr">Recent bids</div>
           {drafts.map((d) => (
             <div className="home-draft-row" key={d.id}>
