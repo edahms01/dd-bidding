@@ -21,15 +21,15 @@
   "private": true,
   "dependencies": {
     "@netlify/blobs": "^11.0.1",
+    "@vitejs/plugin-react": "^6.1.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "vite": "^8.2.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@vitejs/plugin-react": "^6.1.0",
     "http-server": "^14.1.1",
     "netlify-cli": "^27.1.2",
-    "vite": "^8.2.2",
     "vitest": "^4.1.11"
   }
 }
