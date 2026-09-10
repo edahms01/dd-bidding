@@ -797,12 +797,18 @@ function deleteDraft(id) {
 // draft (never a bare null — same invariant as deleteDraft() above).
 // The Tab 7 "Bid submitted ✓" confirmation screen currently on-screen
 // is untouched; resetFormFields() only affects Tabs 1–6 underneath it.
+//
+// announce:false, unlike deleteDraft() — post-finalize FinalizeModal.jsx
+// navigates the user to Home, not this blank draft, so a "Started a new
+// bid" toast would announce something they didn't ask for and would
+// collide with BidSubmitToast at the same screen corner. deleteDraft()
+// keeps announce:true — that path does land the user on the blank draft.
 function clearFinalizedDraft() {
   if (!activeDraftId) return;
   const drafts = getAllDrafts();
   delete drafts[activeDraftId];
   _saveDraftsMap(drafts);
-  _createAndActivateBlankDraft({ announce: true });
+  _createAndActivateBlankDraft({ announce: false });
 }
 
 // ── CONFIDENCE ────────────────────────────────────────────────────────

@@ -887,46 +887,16 @@ function runAgentIfNeeded() {
     });
 }
 
-// ── POST-FINALIZE TOAST ──────────────────────────────────────────────
+// ── FINALIZE MODAL BRIDGE NOTE ───────────────────────────────────────
 // The finalize modal itself is React now (src/pages/FinalizeModal.jsx).
 // _initFinalizeModal()/_showFinalizeModal()/_closeFinalizeModal()/
 // _modalSelectRow()/_modalCustomInput()/_finalizeBid() were the classic-
 // script implementation — all dead, removed in the A2 close-out cleanup.
 // window._closeFinalizeModal is still a real bridge (src/state/bridges.js)
 // that js/ui.js's own Escape-key listener below calls by name.
-// _showBidToast() stays — FinalizeModal.jsx calls window._showBidToast()
-// directly after a successful finalize.
-
-function _showBidToast(label, amount) {
-  const existing = document.getElementById('bid-submit-toast');
-  if (existing) existing.remove();
-
-  const toast = document.createElement('div');
-  toast.id = 'bid-submit-toast';
-  toast.style.cssText = [
-    'position:fixed', 'bottom:24px', 'right:24px',
-    'background:var(--surface)', 'border:1px solid rgba(58,191,122,.35)',
-    'border-radius:var(--rl)', 'padding:12px 18px',
-    'color:var(--green)', 'font-size:13px', 'font-weight:500',
-    'box-shadow:0 4px 12px rgba(0,0,0,.3)', 'z-index:1100',
-    'transition:opacity .4s ease'
-  ].join(';');
-  toast.textContent = 'Bid submitted: ' + fmtCost(amount) + ' logged to history ✓';
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => {
-      toast.remove();
-      const btn = document.getElementById('agent-finalize-btn');
-      if (btn) {
-        btn.textContent = 'View bid history →';
-        btn.className   = 'btn btn-ghost';
-        btn.onclick     = function() { goto('history'); };
-      }
-    }, 400);
-  }, 3000);
-}
+// The post-finalize confirmation toast is React now too
+// (src/components/BidSubmitToast.jsx) — _showBidToast() was removed with
+// the post-finalize-Home-nav change; nothing here shows it any more.
 
 // Guarded — this file's only other top-level (module-load-time) DOM side
 // effect, unlike calculator.js/drafts.js which never touch `document` at

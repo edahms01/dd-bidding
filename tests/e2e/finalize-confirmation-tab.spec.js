@@ -44,7 +44,7 @@ test('a failed finalize from Bid Strategy shows the durable failure panel on tha
   await expect(page.locator('#page-output .submit-result-panel')).not.toBeVisible();
 });
 
-test('a successful finalize from Bid Strategy shows the confirmation + recommended-vs-chosen on that tab', async ({ page }) => {
+test('a successful finalize flashes "Submitted ✓", lands on Home, and shows the corner toast', async ({ page }) => {
   await page.goto('/');
   await clearAll(page);
   await loadSeed(page);
@@ -54,18 +54,26 @@ test('a successful finalize from Bid Strategy shows the confirmation + recommend
   await page.waitForTimeout(1000);
 
   await page.click('#agent-finalize-btn');
-  // Choose Competitive ($271,000) — a non-recommended option, so
-  // recommended-vs-chosen has a real gap to show.
+  // Choose Competitive ($271,000) — a non-recommended option, so the
+  // persisted recommended-vs-chosen figures have a real gap.
   await page.locator('[data-modal-opt="competitive"]').click();
   await page.click('#finalize-confirm-btn');
 
-  await expect(page.locator('#bid-submit-toast')).toBeVisible();
+  // The confirm button flashes "Submitted ✓" for a beat before the modal
+  // closes (tight ~700ms window — rely on Playwright's auto-retry).
+  await expect(page.locator('#finalize-confirm-btn')).toHaveText('Submitted ✓');
 
-  const panel = page.locator('#page-agent .submit-result-panel');
-  await expect(panel).toBeVisible();
-  await expect(panel).toContainText('Bid submitted');
-  await expect(panel).toContainText('Recommended $284,500');
-  await expect(panel).toContainText('you bid $271,000');
+  // Then the modal closes and the user lands on Home, not the background
+  // blank draft clearFinalizedDraft() created.
+  await expect(page.locator('#finalize-modal-overlay')).not.toHaveClass(/open/);
+  await expect(page.locator('#page-home')).toBeVisible();
+  await expect(page.locator('#page-agent')).not.toBeVisible();
+
+  // The corner toast (React BidSubmitToast) overlays Home, then self-dismisses.
+  const toast = page.locator('#bid-submit-toast');
+  await expect(toast).toBeVisible();
+  await expect(toast).toContainText('Bid submitted: $271,000');
+  await expect(toast).toHaveCount(0, { timeout: 5000 });
 
   // The persisted record carries the recommended figures for later
   // recommended-vs-chosen analysis, not just the live UI.

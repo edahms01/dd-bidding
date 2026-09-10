@@ -5,10 +5,10 @@
 // regardless of which is currently active.
 //
 // Deliberately a NEW component rather than an extension of js/forms.js's
-// _showFormToast()/js/ui.js's _showBidToast() — both are generic
-// fire-and-forget message toasts used by several unrelated callers;
-// retrofitting an action button onto either risks regressing those
-// call sites for a feature specific to this one.
+// generic _showFormToast() — a fire-and-forget message toast used by
+// several unrelated callers; retrofitting an action button onto it
+// risks regressing those call sites for a feature specific to this one.
+// (BidSubmitToast.jsx follows the same one-field-of-ui-state model.)
 //
 // Toast, not a confirm dialog, per the decision record: "deleting a bid
 // record asks for confirmation; deleting a takeoff row after 40 minutes

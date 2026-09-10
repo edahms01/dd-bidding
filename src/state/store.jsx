@@ -196,7 +196,12 @@ export const initialState = {
     // and js/ui.js's _resetAgentCache() bridge) — unlike submitResult's
     // deliberately-preserved wrong-tab quirk, a pending undo surviving a
     // draft switch is actively data-corrupting, not cosmetic.
-    rowUndo: null
+    rowUndo: null,
+    // Post-finalize confirmation toast: null | { label, amount }. Set by
+    // FinalizeModal.jsx's success path once the modal has closed and Home
+    // is showing; auto-cleared by BidSubmitToast.jsx after its timeout via
+    // the generic SET_FIELD setter (same pattern as rowUndo above).
+    bidSubmitToast: null
   },
   bid: {
     project: {
