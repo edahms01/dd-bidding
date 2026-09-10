@@ -751,7 +751,6 @@ function _renderAgentResult(page, r) {
       <div data-bid-opt="${escapeHtml(opt.type)}"
            data-default-border="${oc.border}"
            data-default-bg="${oc.bg}"
-           onclick="_selectBidOption('${escapeHtml(opt.type)}')"
            style="flex:1;background:${isSel ? 'var(--accent-dim)' : oc.bg};
                   border:1px solid ${isSel ? 'var(--accent-border)' : oc.border};
                   border-radius:var(--rl);padding:18px 16px;cursor:pointer;position:relative;
@@ -886,28 +885,6 @@ function runAgentIfNeeded() {
       // goes through _launchBidAgent()'s own handled error path instead.
       console.warn('runAgentIfNeeded: pre-run failed, will retry on next Tab 7/8 visit', e);
     });
-}
-
-function _selectBidOption(type) {
-  _selectedBidOption = type;
-
-  document.querySelectorAll('[data-bid-opt]').forEach(el => {
-    const isSel = el.dataset.bidOpt === type;
-    el.style.borderColor = isSel ? 'var(--accent-border)' : el.dataset.defaultBorder;
-    el.style.background  = isSel ? 'var(--accent-dim)'   : el.dataset.defaultBg;
-  });
-
-  document.querySelectorAll('input[name="agent-bid-option"]').forEach(radio => {
-    radio.checked = radio.value === type;
-  });
-
-  ['competitive', 'recommended', 'ambitious', 'override'].forEach(t => {
-    const row = document.getElementById('finalize-row-' + t);
-    if (!row) return;
-    const isSel = t === type;
-    row.style.borderColor = isSel ? 'var(--accent-border)' : 'transparent';
-    row.style.background  = isSel ? 'var(--accent-dim)'    : 'transparent';
-  });
 }
 
 // ── POST-FINALIZE TOAST ──────────────────────────────────────────────
