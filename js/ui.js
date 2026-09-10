@@ -75,7 +75,7 @@ function _resetAgentCache() {
 // Shows the computed "other open drafts" count next to the subjective
 // Pipeline pressure dropdown (Conditions tab) — informs the estimator's
 // own call, doesn't replace it. Recomputed on every visit to the tab
-// (goto('conditions'), js/tabs.js), same pattern as runCalculation()/
+// (window.goto's per-tab side effects, src/state/bridges.js), same pattern as runCalculation()/
 // renderAgentTab() self-refreshing on their own tab visits.
 function _renderPipelineHint() {
   const el = document.getElementById('pipeline-count-hint');
@@ -436,9 +436,8 @@ async function _launchBidAgent(state, summary, markupResult) {
 // ── SUBMIT BID ────────────────────────────────────────────────────────
 
 // A2.5: finalizeSelection ({ amount, selectedOption }) is the modal's
-// resolved choice (FinalizeModal.jsx's handleConfirm(), or the dead
-// classic-script _finalizeBid() below — not currently reachable) —
-// threaded straight through to buildBidRecord() (js/state.js), which is
+// resolved choice (FinalizeModal.jsx's handleConfirm()) — threaded
+// straight through to buildBidRecord() (js/state.js), which is
 // where it actually replaces the plain-calculator amount. Everything
 // below still computes state/summary/markupResult exactly as before:
 // they're still the source for direct_cost/estimated_labor_cost/
@@ -484,16 +483,15 @@ async function submitBid(finalizeSelection) {
                 border-radius:var(--rl);padding:28px;text-align:center">
               <div style="font-size:24px;color:#e85c4a;margin-bottom:10px">✕</div>
               <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Bid submission failed</div>
-              <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
+              <div style="font-size:12px;color:var(--text3)">
                 Nothing was saved — your draft is unchanged. Check your connection and try again.
               </div>
-              <button class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Try again</button>
             </div>
           </div>
         `;
       }
     }
-    throw e; // let _finalizeBid()'s catch re-enable the confirm button
+    throw e; // let FinalizeModal.jsx's handleConfirm() catch re-enable the confirm button
   }
 
   // The finalized draft now lives permanently in dirigo_bids — clear it out
@@ -523,220 +521,13 @@ async function submitBid(finalizeSelection) {
   }
 }
 
-// ── BID HISTORY RENDER ────────────────────────────────────────────────
-
-async function renderHistory() {
-  const page = document.getElementById('page-history');
-  if (!page) return;
-
-  // page-history's static "Loading bid history…" placeholder markup
-  // (index.html) stays on screen for the duration of this fetch — it's
-  // a genuinely meaningful loading state now, not an instant flash.
-  let bids;
-  try {
-    bids = await getAllBids();
-  } catch (e) {
-    page.innerHTML = `
-      <div class="page-hdr">
-        <div>
-          <div class="page-title">Bid history</div>
-          <div class="page-sub">Track submitted bids and log outcomes for competitive analysis</div>
-        </div>
-      </div>
-      <div class="empty-state" style="color:#e85c4a">
-        Couldn't load bid history — check your connection and try again.
-      </div>`;
-    return;
-  }
-
-  const total    = bids.length;
-  const won      = bids.filter(b => b.outcome === 'won').length;
-  const winRate  = total > 0 ? Math.round((won / total) * 100) : 0;
-  const wonBids  = bids.filter(b => b.outcome === 'won' && b.final_bid > 0 && b.direct_cost > 0);
-  const avgMargin = wonBids.length > 0
-    ? wonBids.reduce((s, b) => s + ((b.final_bid - b.direct_cost) / b.final_bid * 100), 0) / wonBids.length
-    : null;
-
-  function outcomePill(outcome) {
-    if (outcome === 'won')
-      return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(58,191,122,.1);border:1px solid rgba(58,191,122,.25);color:var(--green)">Won</span>`;
-    if (outcome === 'lost')
-      return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(232,92,74,.1);border:1px solid rgba(232,92,74,.25);color:#e85c4a">Lost</span>`;
-    return `<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text3)">Pending</span>`;
-  }
-
-  function confLabel(conf) {
-    if (conf === 'hi') return `<span style="color:var(--green)">High</span>`;
-    if (conf === 'md') return `<span style="color:var(--accent)">Medium</span>`;
-    if (conf === 'lo') return `<span style="color:#e85c4a">Low</span>`;
-    return '<span style="color:var(--text3)">—</span>';
-  }
-
-  const rows = !bids.length
-    ? `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">No bids submitted yet — finalize a bid from the Bid Strategy step to see it here.</td></tr>`
-    : bids.map(b => {
-        const id = b.bid_id;
-        return `
-        <tr>
-          <td style="white-space:nowrap;color:var(--text2)">${b.date_submitted || '—'}</td>
-          <td style="font-weight:500">${escapeHtml(b.project_name) || '—'}</td>
-          <td style="color:var(--text2)">${escapeHtml(b.gc) || '—'}</td>
-          <td style="color:var(--text2)">${escapeHtml(b.building_type) || '—'}</td>
-          <td style="font-variant-numeric:tabular-nums;font-weight:600;color:var(--green)">${b.final_bid ? fmtCost(b.final_bid) : '—'}</td>
-          <td>${confLabel(b.confidence)}</td>
-          <td>${outcomePill(b.outcome)}</td>
-          <td style="white-space:nowrap">
-            <button class="btn btn-ghost btn-sm" onclick="toggleUpdate('${id}')">Update</button>
-            <button class="btn btn-ghost btn-sm" style="color:#e85c4a;margin-left:4px" onclick="deleteBidRecord('${id}')">×</button>
-          </td>
-        </tr>
-        <tr id="uprow-${id}" style="display:none;background:var(--surface2)">
-          <td colspan="8" style="padding:14px 12px">
-            <div class="grid g6" style="margin-bottom:12px">
-              <div class="field">
-                <span class="lbl">Outcome</span>
-                <select id="uf-outcome-${id}">
-                  <option value="pending"${b.outcome==='pending'?' selected':''}>Pending</option>
-                  <option value="won"${b.outcome==='won'?' selected':''}>Won</option>
-                  <option value="lost"${b.outcome==='lost'?' selected':''}>Lost</option>
-                </select>
-              </div>
-              <div class="field">
-                <span class="lbl">Competitor who won</span>
-                <input type="text" id="uf-winner-${id}" value="${escapeHtml(b.competitor_who_won)}" placeholder="Company name">
-              </div>
-              <div class="field">
-                <span class="lbl">Winning bid ($)</span>
-                <input type="number" id="uf-winbid-${id}" value="${b.winning_bid||''}" placeholder="0">
-              </div>
-              <div class="field">
-                <span class="lbl">Actual labor cost ($)</span>
-                <input type="number" id="uf-actuallabor-${id}" value="${b.actual_labor_cost||''}" placeholder="0">
-              </div>
-              <div class="field">
-                <span class="lbl">Actual material cost ($)</span>
-                <input type="number" id="uf-actualmaterial-${id}" value="${b.actual_material_cost||''}" placeholder="0">
-              </div>
-              <div class="field">
-                <span class="lbl">Notes</span>
-                <input type="text" id="uf-notes-${id}" value="${escapeHtml(b.notes)}" placeholder="Post-bid notes">
-              </div>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="saveUpdate('${id}')">Save</button>
-            <button class="btn btn-ghost btn-sm" style="margin-left:6px" onclick="toggleUpdate('${id}')">Cancel</button>
-          </td>
-        </tr>`;
-      }).join('');
-
-  page.innerHTML = `
-    <div class="page-hdr">
-      <div>
-        <div class="page-title">Bid history</div>
-        <div class="page-sub">Track submitted bids and log outcomes for competitive analysis</div>
-      </div>
-      <div class="page-actions">
-        <button class="btn btn-ghost" onclick="goto('output')">← Bid output</button>
-      </div>
-    </div>
-
-    <div class="totals-bar" style="margin-bottom:28px">
-      <div class="total-item">
-        <div class="total-val">${total}</div>
-        <div class="total-lbl">Total bids</div>
-      </div>
-      <div class="total-div"></div>
-      <div class="total-item">
-        <div class="total-val">${total > 0 ? winRate + '%' : '—'}</div>
-        <div class="total-lbl">Win rate</div>
-      </div>
-      <div class="total-div"></div>
-      <div class="total-item">
-        <div class="total-val">${won}</div>
-        <div class="total-lbl">Won</div>
-      </div>
-      <div class="total-div"></div>
-      <div class="total-item">
-        <div class="total-val ${avgMargin !== null ? 'green' : ''}">${avgMargin !== null ? fmtPct(avgMargin) : '—'}</div>
-        <div class="total-lbl">Avg margin (wins)</div>
-      </div>
-    </div>
-
-    <div class="section-block">
-      <div class="section-label">Submitted bids</div>
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th><th>Project</th><th>GC</th><th>Building type</th>
-              <th>Final bid</th><th>Confidence</th><th>Outcome</th><th></th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-}
-
-function toggleUpdate(bid_id) {
-  const row = document.getElementById('uprow-' + bid_id);
-  if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
-}
-
-async function saveUpdate(bid_id) {
-  const outcome        = document.getElementById('uf-outcome-'        + bid_id)?.value || 'pending';
-  const winner         = document.getElementById('uf-winner-'         + bid_id)?.value.trim() || null;
-  const winBid         = parseFloat(document.getElementById('uf-winbid-'         + bid_id)?.value) || null;
-  const actualLabor    = parseFloat(document.getElementById('uf-actuallabor-'    + bid_id)?.value);
-  const actualMaterial = parseFloat(document.getElementById('uf-actualmaterial-' + bid_id)?.value);
-  const notes          = document.getElementById('uf-notes-'          + bid_id)?.value.trim() || '';
-
-  try {
-    const bids = await getAllBids();
-    const rec  = bids.find(b => b.bid_id === bid_id);
-
-    // computeCostVariances() (js/history-analytics.js) owns the
-    // baseline-vs-legacy branching and the "both actuals required before
-    // computing anything in the legacy path" rule — kept out of this
-    // function so that null-handling is directly unit-testable.
-    const variances = computeCostVariances({
-      record:        rec,
-      actualLabor:    isNaN(actualLabor)    ? null : actualLabor,
-      actualMaterial: isNaN(actualMaterial) ? null : actualMaterial
-    });
-
-    await updateBid(bid_id, {
-      outcome,
-      competitor_who_won: winner || null,
-      winning_bid:        winBid ? Math.round(winBid) : null,
-      actual_labor_cost:    isNaN(actualLabor)    ? null : Math.round(actualLabor),
-      actual_material_cost: isNaN(actualMaterial) ? null : Math.round(actualMaterial),
-      ...variances,
-      notes
-    });
-    renderHistory();
-  } catch (e) {
-    alert('Failed to save update — check your connection and try again.');
-  }
-}
-
-async function deleteBidRecord(bid_id) {
-  if (!confirm('Delete this bid record? This cannot be undone.')) return;
-  try {
-    await deleteBid(bid_id);
-    renderHistory();
-  } catch (e) {
-    alert('Failed to delete bid — check your connection and try again.');
-  }
-}
-
 // ── RATE TEMPLATES (Tier 5, Part 1) ─────────────────────────────────
-// Save/Load controls on the Rates tab header. renderRateTemplateSelect()
-// lives here rather than js/forms.js — this file owns page-level render-
-// from-server-data orchestration (renderHistory(), renderDashboard()
-// below), while forms.js owns form field population/collection/autosave.
-// applyRateTemplate() itself (pure field hydration) stays in forms.js,
-// alongside populateForm()'s own rates-hydration logic.
+// Dead code — superseded by src/pages/RatesPage.jsx, which calls the
+// js/rate-templates.js network functions directly. renderRateTemplateSelect()/
+// saveRateTemplateFromForm()/loadSelectedRateTemplate()/deleteSelectedRateTemplate()
+// here (and applyRateTemplate() in js/forms.js) have zero live callers;
+// left in place for a separate follow-up cleanup, out of scope for the
+// A2 legacy-removal pass.
 
 let _rateTemplatesCache = [];
 
@@ -820,74 +611,6 @@ async function deleteSelectedRateTemplate() {
   }
 }
 
-// ── DASHBOARD RENDER ─────────────────────────────────────────────────
-// Deliberately no computed cost shown — running the calculator against
-// every draft just for a list preview would be scope creep; that's what
-// Tab 7 is for. Draft CRUD itself (createDraft/switchToDraft/
-// duplicateDraft/deleteDraft) lives in js/forms.js and stays DOM/dialog
-// -free, same split as history.js vs. this file's renderHistory().
-
-function renderDashboard() {
-  const page   = document.getElementById('page-dashboard');
-  if (!page) return;
-
-  const drafts = Object.values(getAllDrafts())
-    .sort((a, b) => new Date(b.lastModifiedAt) - new Date(a.lastModifiedAt));
-
-  const rows = !drafts.length
-    ? `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text3)">No drafts yet — click "New Bid" to start one.</td></tr>`
-    : drafts.map(d => {
-        const name     = (d.project && d.project.name) || 'Untitled bid';
-        const type     = (d.project && d.project.buildingType) || '—';
-        const modified = d.lastModifiedAt ? new Date(d.lastModifiedAt).toLocaleString() : '—';
-        return `
-        <tr>
-          <td style="font-weight:500">${escapeHtml(name)}</td>
-          <td style="color:var(--text2)">${escapeHtml(type)}</td>
-          <td style="white-space:nowrap;color:var(--text2)">${modified}</td>
-          <td style="white-space:nowrap">
-            <button class="btn btn-primary btn-sm" onclick="switchToDraft('${d.id}')">Open</button>
-            <button class="btn btn-ghost btn-sm" style="margin-left:4px" onclick="duplicateDraftAndRefresh('${d.id}')">Duplicate</button>
-            <button class="btn btn-ghost btn-sm" style="color:#e85c4a;margin-left:4px" onclick="confirmDeleteDraft('${d.id}')">×</button>
-          </td>
-        </tr>`;
-      }).join('');
-
-  page.innerHTML = `
-    <div class="page-hdr">
-      <div>
-        <div class="page-title">Dashboard</div>
-        <div class="page-sub">Every bid currently in progress</div>
-      </div>
-      <div class="page-actions">
-        <button class="btn btn-primary" onclick="createDraft()">+ New Bid</button>
-      </div>
-    </div>
-
-    <div class="section-block">
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr><th>Project</th><th>Building type</th><th>Last modified</th><th></th></tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-}
-
-function duplicateDraftAndRefresh(id) {
-  duplicateDraft(id);
-  renderDashboard();
-}
-
-function confirmDeleteDraft(id) {
-  if (!confirm('Delete this draft? This cannot be undone.')) return;
-  deleteDraft(id);
-  renderDashboard();
-}
-
 // ── BID AGENT RENDER ──────────────────────────────────────────────────
 
 // A2: AgentPage is now React-owned. window.__renderAgentTab (src/state/
@@ -939,7 +662,6 @@ function _renderAgentTabLegacy() {
       </div>
       <div class="page-actions">
         <button class="btn btn-ghost" onclick="goto('output')">← Back</button>
-        <button id="agent-finalize-btn" class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Finalize bid →</button>
       </div>
     </div>`;
 
@@ -1018,7 +740,6 @@ function _renderAgentResult(page, r) {
       </div>
       <div class="page-actions">
         <button class="btn btn-ghost" onclick="goto('output')">← Back</button>
-        <button id="agent-finalize-btn" class="btn btn-primary" onclick="_showFinalizeModal(_lastAgentResult?.options||[])">Finalize bid →</button>
       </div>
     </div>`;
 
@@ -1030,7 +751,6 @@ function _renderAgentResult(page, r) {
       <div data-bid-opt="${escapeHtml(opt.type)}"
            data-default-border="${oc.border}"
            data-default-bg="${oc.bg}"
-           onclick="_selectBidOption('${escapeHtml(opt.type)}')"
            style="flex:1;background:${isSel ? 'var(--accent-dim)' : oc.bg};
                   border:1px solid ${isSel ? 'var(--accent-border)' : oc.border};
                   border-radius:var(--rl);padding:18px 16px;cursor:pointer;position:relative;
@@ -1167,168 +887,15 @@ function runAgentIfNeeded() {
     });
 }
 
-function _selectBidOption(type) {
-  _selectedBidOption = type;
-
-  document.querySelectorAll('[data-bid-opt]').forEach(el => {
-    const isSel = el.dataset.bidOpt === type;
-    el.style.borderColor = isSel ? 'var(--accent-border)' : el.dataset.defaultBorder;
-    el.style.background  = isSel ? 'var(--accent-dim)'   : el.dataset.defaultBg;
-  });
-
-  document.querySelectorAll('input[name="agent-bid-option"]').forEach(radio => {
-    radio.checked = radio.value === type;
-  });
-
-  ['competitive', 'recommended', 'ambitious', 'override'].forEach(t => {
-    const row = document.getElementById('finalize-row-' + t);
-    if (!row) return;
-    const isSel = t === type;
-    row.style.borderColor = isSel ? 'var(--accent-border)' : 'transparent';
-    row.style.background  = isSel ? 'var(--accent-dim)'    : 'transparent';
-  });
-}
-
-// ── FINALIZE MODAL ────────────────────────────────────────────────────
-
-function _initFinalizeModal() {
-  if (document.getElementById('finalize-modal-overlay')) return;
-  const el = document.createElement('div');
-  el.className = 'modal-overlay';
-  el.id = 'finalize-modal-overlay';
-  el.innerHTML = `
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-title">Select your final bid amount</div>
-        <button class="modal-close" onclick="_closeFinalizeModal()">×</button>
-      </div>
-      <div id="finalize-modal-body"></div>
-      <div id="finalize-modal-error" style="display:none;margin:0 20px 12px;padding:10px 14px;
-          background:rgba(232,92,74,.08);border:1px solid rgba(232,92,74,.3);border-radius:var(--r);
-          color:#e85c4a;font-size:12px"></div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="_closeFinalizeModal()">Cancel</button>
-        <button class="btn btn-primary" id="finalize-confirm-btn" onclick="_finalizeBid()" disabled>
-          Confirm + submit →
-        </button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-  el.addEventListener('click', e => { if (e.target === el) _closeFinalizeModal(); });
-}
-
-function _showFinalizeModal(agentOptions) {
-  _initFinalizeModal();
-  const body = document.getElementById('finalize-modal-body');
-
-  const optRows = (agentOptions || []).map(opt => `
-    <div class="bid-option-row" data-modal-opt="${escapeHtml(opt.type)}" onclick="_modalSelectRow(this)">
-      <input type="radio" name="finalize-modal-option" value="${escapeHtml(opt.type)}" class="bid-option-radio">
-      <div style="flex:1">
-        <div class="bid-option-label">${escapeHtml(opt.label)}</div>
-        <div class="bid-option-note">${opt.margin}% margin</div>
-      </div>
-      <div class="bid-option-amount">${fmtCost(opt.bidAmount)}</div>
-    </div>`).join('');
-
-  body.innerHTML = optRows + `
-    <div class="bid-option-row" data-modal-opt="override" onclick="_modalSelectRow(this)">
-      <input type="radio" name="finalize-modal-option" value="override" class="bid-option-radio">
-      <div style="flex:1">
-        <div class="bid-option-label">Custom override</div>
-        <div class="custom-amount-wrap" id="modal-custom-wrap">
-          <input type="number" id="modal-custom-amount" placeholder="Enter amount" min="0" step="500"
-                 oninput="_modalCustomInput(this)" onclick="event.stopPropagation()"
-                 style="width:160px;background:var(--surface2);border:1px solid var(--border2);
-                        border-radius:var(--r);padding:5px 8px;font-size:13px;
-                        color:var(--text);font-variant-numeric:tabular-nums;margin-top:4px">
-        </div>
-      </div>
-    </div>`;
-
-  const recRow = body.querySelector('[data-modal-opt="recommended"]');
-  if (recRow) _modalSelectRow(recRow);
-
-  // Fresh open — clear any error left over from a previous failed attempt.
-  const errEl = document.getElementById('finalize-modal-error');
-  if (errEl) errEl.style.display = 'none';
-
-  document.getElementById('finalize-modal-overlay').classList.add('open');
-}
-
-function _closeFinalizeModal() {
-  const el = document.getElementById('finalize-modal-overlay');
-  if (el) el.classList.remove('open');
-}
-
-function _modalSelectRow(rowEl) {
-  const body = document.getElementById('finalize-modal-body');
-  body.querySelectorAll('.bid-option-row').forEach(r => r.classList.remove('selected'));
-  rowEl.classList.add('selected');
-
-  const radio = rowEl.querySelector('input[type="radio"]');
-  if (radio) radio.checked = true;
-
-  const isOverride = rowEl.dataset.modalOpt === 'override';
-  const wrap = document.getElementById('modal-custom-wrap');
-  if (wrap) wrap.classList.toggle('visible', isOverride);
-
-  const confirmBtn = document.getElementById('finalize-confirm-btn');
-  if (confirmBtn) confirmBtn.disabled = isOverride;
-}
-
-function _modalCustomInput(input) {
-  const confirmBtn = document.getElementById('finalize-confirm-btn');
-  if (confirmBtn) {
-    const val = parseFloat(input.value);
-    confirmBtn.disabled = !(val && val > 0);
-  }
-}
-
-async function _finalizeBid() {
-  const selected = document.querySelector('input[name="finalize-modal-option"]:checked');
-  if (!selected) return;
-  const decision = selected.value;
-
-  let amount, label;
-  if (decision === 'override') {
-    amount = parseFloat(document.getElementById('modal-custom-amount')?.value || 0);
-    if (!amount || amount <= 0) return;
-    label  = 'Custom override';
-  } else {
-    const opt = (_lastAgentResult?.options || []).find(o => o.type === decision);
-    amount = opt?.bidAmount ?? null;
-    label  = opt?.label ?? decision;
-  }
-
-  if (!amount) return;
-
-  // Phase 3: Finalize is now a real network round trip (saveBid() awaits
-  // a fetch), not an instant synchronous action — guard against a
-  // double-click or a slow connection firing saveBid() twice before the
-  // first response lands and creating two records for one submission.
-  const confirmBtn = document.getElementById('finalize-confirm-btn');
-  if (confirmBtn) confirmBtn.disabled = true;
-
-  try {
-    await submitBid();
-    _closeFinalizeModal();
-    _showBidToast(label, amount);
-  } catch (e) {
-    // submitBid() also rendered a failure panel into #output-bid, but that
-    // page is hidden behind this still-open modal (Tab 8, not Tab 7) —
-    // confirmed via a real Playwright run that a locator finding that
-    // panel isn't the same as the user actually seeing it. Show the
-    // failure here too, where the user is actually looking, and
-    // re-enable the button so they can retry without leaving the modal.
-    const errEl = document.getElementById('finalize-modal-error');
-    if (errEl) {
-      errEl.textContent = 'Bid submission failed. Check your connection and try again.';
-      errEl.style.display = 'block';
-    }
-    if (confirmBtn) confirmBtn.disabled = false;
-  }
-}
+// ── POST-FINALIZE TOAST ──────────────────────────────────────────────
+// The finalize modal itself is React now (src/pages/FinalizeModal.jsx).
+// _initFinalizeModal()/_showFinalizeModal()/_closeFinalizeModal()/
+// _modalSelectRow()/_modalCustomInput()/_finalizeBid() were the classic-
+// script implementation — all dead, removed in the A2 close-out cleanup.
+// window._closeFinalizeModal is still a real bridge (src/state/bridges.js)
+// that js/ui.js's own Escape-key listener below calls by name.
+// _showBidToast() stays — FinalizeModal.jsx calls window._showBidToast()
+// directly after a successful finalize.
 
 function _showBidToast(label, amount) {
   const existing = document.getElementById('bid-submit-toast');

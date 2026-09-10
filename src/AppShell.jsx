@@ -1,17 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────
 // AppShell.jsx — header, left nav, tab bar, and the page-switching that
 // used to live in js/tabs.js. Registers the window bridges on mount so
-// every existing inline onclick="goto(...)"/"showHistory()"/etc. keeps
-// working unmodified, whether it's calling into a LegacyPage or a real
-// React page.
+// every existing inline onclick="goto(...)" and classic-script call
+// (js/ui.js, js/forms.js) keeps working unmodified.
 //
 // Every page renders unconditionally, always mounted — only className
 // (active/inactive) changes based on ui state. This is deliberate, not
 // an oversight: the current app never destroys a page's DOM on
 // navigation (just toggles a CSS class), so a user's not-yet-submitted
 // typing on any page survives switching away and back. Conditionally
-// mounting/unmounting pages in React would silently break that for
-// every LegacyPage the moment the user navigated away — a real
+// mounting/unmounting pages in React would silently break that — a real
 // behavior regression, not a refactor.
 // ─────────────────────────────────────────────────────────────────────
 import { Fragment, useEffect, useRef, useState } from 'react';
@@ -214,11 +212,13 @@ export default function AppShell() {
     // reproducing the failure directly (addAsm() throwing on a null
     // #asm-body) rather than reasoning it away.
     //
-    // Fix: AppShell dispatches this event once every LegacyPage child's
-    // mount effect has run (children's effects fire before a parent's,
-    // in the same commit, so by the time this one fires every template
-    // has been cloned in). forms.js listens for it instead of
-    // DOMContentLoaded — see the INIT section at the bottom of forms.js.
+    // Fix: AppShell dispatches this event from a mount effect, after
+    // every page child's own mount effect has run (children's effects
+    // fire before a parent's, in the same commit). forms.js listens for
+    // it instead of DOMContentLoaded — see the INIT section at the bottom
+    // of forms.js. (LegacyPage.jsx, the <template>-cloning wrapper this
+    // originally coordinated with, was removed at A2 close-out once every
+    // page was React; the event and the ordering guarantee still stand.)
     window.dispatchEvent(new CustomEvent('dirigo:shell-ready'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

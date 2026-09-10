@@ -9,10 +9,10 @@
 <body>
 
 <!-- A2: AppShell (header/left nav/tabs) and every page render here now —
-     the last page (Dashboard) converted to React. No inert <template>
-     tags remain; LegacyPage (src/pages/LegacyPage.jsx) is unused but not
-     yet deleted (the final A2 cleanup pass — see CLAUDE.md — drops it
-     along with the window.* bridges once verified nothing needs them).
+     all ten pages are React. No inert <template> tags remain. The A2
+     close-out cleanup removed LegacyPage.jsx, js/tabs.js, and the dead
+     classic-script render functions (renderHistory/renderDashboard/the
+     finalize-modal functions) once verified nothing called them.
      See CLAUDE.md and the A2 plan for the full migration history. -->
 <div id="root"></div>
 
@@ -47,7 +47,6 @@
 <script src="js/agent-payload.js"></script>
 <script src="js/agent.js"></script>
 <script src="js/forms.js"></script>
-<script src="js/tabs.js"></script>
 <script src="js/ui.js"></script>
 <script src="data/seed.js"></script>
 <script type="module" src="/src/main.jsx"></script>
