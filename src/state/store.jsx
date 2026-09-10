@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────
 // store.jsx — the one reducer/context AppShell owns.
 //
-// Built out incrementally as each page converts — the `bid` slice below
-// holds project/conditions/intelligence/rates/rateEscalation now that
-// Project and Conditions have joined Rates. Every not-yet-converted page
-// still lives in the DOM on its LegacyPage, read via the existing
-// collectFormData()/populateForm().
+// Built out incrementally as each page converted — the `bid` slice below
+// holds project/conditions/intelligence/rates/rateEscalation. All ten
+// pages are React now; js/state.js's collectFormData()/populateForm()
+// still read/write the same `<input>`s the React pages render, as the
+// bridge for classic-script orchestration (js/ui.js, js/forms.js).
 //
 // `ui` holds the shell-level navigation state that used to live in
 // js/tabs.js's module-level variables (_lastWorkflowTab) and the DOM
