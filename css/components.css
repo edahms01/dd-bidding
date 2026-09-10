@@ -138,11 +138,23 @@
    EV honesty caveat that used to be a standing paragraph. */
 .ev-tip{position:relative;outline:none}
 .ev-tip-pop{display:none;position:absolute;left:0;bottom:calc(100% + 8px);z-index:1200;width:250px;
+  max-width:calc(100vw - 32px);
   padding:10px 12px;border-radius:var(--r);background:var(--surface2);border:1px solid var(--border2);
   box-shadow:0 6px 20px rgba(0,0,0,.45);font-size:11px;line-height:1.5;color:var(--text2);
   font-weight:400;letter-spacing:normal;text-transform:none;white-space:normal}
 .ev-tip:hover .ev-tip-pop,.ev-tip:focus .ev-tip-pop,.ev-tip:focus-visible .ev-tip-pop{display:block}
 .ev-tip-pop strong{color:var(--text);font-weight:600}
+/* Mobile: the 250px popup, left-anchored to the "Risk-adjusted profit"
+   span, ran ~43px off the right edge of the viewport when the middle or
+   right option card was the one tapped (verified at 390px, real WebKit
+   touch). Right-anchor it to the span for those two cards; the leftmost
+   (competitive) card keeps left:0 — it already fits and a right-anchor
+   there would clip the other edge. .ev-tip:hover/:focus visibility is
+   unchanged (confirmed working on touch). */
+@media (max-width:768px){
+  .ev-tip-pop{left:auto;right:0}
+  [data-bid-opt="competitive"] .ev-tip-pop{left:0;right:auto}
+}
 
 /* ── PILLS ── */
 .pills{display:flex;gap:8px;flex-wrap:wrap}

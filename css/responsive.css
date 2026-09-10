@@ -151,6 +151,16 @@
   .conf-btn { min-height: 44px; }
   .modal-close { min-width: 44px; min-height: 44px; }
   select, td select { min-height: 44px; }
+  /* Bid Strategy accordion headers (Signal summary / Risk flags /
+     Historical context) — components.css gives them 12px+12px padding,
+     ~40px total. Not previously in this list. */
+  .agent-section-toggle { min-height: 44px; }
+  /* Bid Strategy win-likelihood pill button — inline-styled padding:0 in
+     AgentPage.jsx, ~21px. Grow the hit area with padding and pull the
+     box back with a matching negative margin so the pill sits visually
+     where it did (the absorbed space is inert card whitespace between
+     the WIN LIKELIHOOD caption and the rationale). */
+  .win-likelihood-pill-btn { min-height: 44px; padding: 12px 0 !important; margin: -12px 0; }
   /* Inside a 3px-padded pill: 40 + 3 + 3 clears 44. */
   .mode-toggle-btn { min-height: 40px; padding: 8px 16px; }
   /* Row action buttons (⧉ duplicate / × delete) — real boxes, real gap.
