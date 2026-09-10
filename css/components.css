@@ -232,6 +232,13 @@ td input:focus,td select:focus{border-color:var(--action);outline:none}
 .row-undo-toast-btn{background:transparent;border:1px solid var(--action-border);color:var(--action);border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
 .row-undo-toast-btn:hover{background:var(--action-dim)}
 
+/* ── BID SUBMIT TOAST (post-finalize confirmation) ── */
+/* Replaces js/ui.js's inline-styled _showBidToast(); single-phase, no
+   action button (BidSubmitToast.jsx), green accent kept from the original.
+   Same bottom-right anchor as .row-undo-toast — both can't realistically
+   co-occur (finalize needs Bid Strategy; row delete needs a takeoff tab). */
+.bid-submit-toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid rgba(58,191,122,.35);border-radius:var(--rl);padding:12px 18px;color:var(--green);font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:1100}
+
 .divider{height:1px;background:var(--border);margin:20px 0}
 .empty-state{text-align:center;padding:48px 24px;color:var(--text3);font-size:13px}
 

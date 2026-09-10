@@ -24,6 +24,7 @@
 // empirically against the existing (unmodified) bid-storage-error-
 // handling.spec.js double-click spec, not just reasoned through.
 // ─────────────────────────────────────────────────────────────────────
+import { useState, useEffect } from 'react';
 import { useStore } from '../state/store.jsx';
 import { hasUnresolvedReferences } from '../state/validation.js';
 import { agentStaleness } from '../state/agentStaleness.js';
@@ -37,6 +38,14 @@ const REASON_CHIPS = ['scope uncertainty', 'relationship play', 'need the work',
 export default function FinalizeModal() {
   const [state, dispatch] = useStore();
   const { open, options, selected, customAmount, isSubmitting, error, staleAck, reasonChips, reasonText } = state.ui.finalizeModal;
+
+  // Post-finalize: flash "Submitted ✓" on the confirm button for a beat
+  // before the modal closes and Home renders. Reset whenever the modal
+  // (re)opens so a prior session's flash can't linger — mirrors this
+  // file's existing pattern of keying off `open` (OPEN_FINALIZE_MODAL
+  // already resets the reducer-side modal state).
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  useEffect(() => { if (open) setJustSubmitted(false); }, [open]);
 
   // Phase E, Step 5 — capture why, whenever the chosen option differs from
   // the recommended one (a non-recommended standard option OR a custom
@@ -103,8 +112,20 @@ export default function FinalizeModal() {
           ? { chips: reasonChips || [], text: (reasonText || '').trim() }
           : null
       });
+      // isSubmitting stays true through this whole block (it's only reset
+      // in the catch below, or by the next OPEN_FINALIZE_MODAL) — so
+      // confirmDisabled keeps the button locked during the flash; no
+      // extra double-click guard needed.
+      setJustSubmitted(true);
+      await new Promise((r) => setTimeout(r, 700));
       dispatch({ type: 'CLOSE_FINALIZE_MODAL' });
-      window._showBidToast?.(label, amount);
+      // Drop the user on Home rather than the background blank draft
+      // clearFinalizedDraft() has already created — same mechanism
+      // AppShell's own Home nav item uses.
+      dispatch({ type: 'GOTO_SECTION', section: 'home' });
+      // Replaces window._showBidToast?.(label, amount) — BidSubmitToast.jsx
+      // now overlays Home from this state field.
+      dispatch({ type: 'SET_FIELD', path: ['ui', 'bidSubmitToast'], value: { label, amount } });
     } catch (e) {
       // submitBid() also dispatches into OutputPage's submitResult (Tab
       // 7, hidden behind this still-open modal on Tab 8) — same
@@ -231,7 +252,7 @@ export default function FinalizeModal() {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={() => dispatch({ type: 'CLOSE_FINALIZE_MODAL' })}>Cancel</button>
           <button className="btn btn-primary" id="finalize-confirm-btn" onClick={handleConfirm} disabled={confirmDisabled}>
-            Confirm + submit →
+            {justSubmitted ? 'Submitted ✓' : 'Confirm + submit →'}
           </button>
         </div>
       </div>

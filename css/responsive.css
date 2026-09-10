@@ -337,6 +337,7 @@
   /* ── RowUndoToast: a full-width strip clear of the "+ Add area"
      button and the horizontally-scrolling table's action column. */
   .row-undo-toast { left: 12px; right: 12px; bottom: 12px; justify-content: space-between; }
+  .bid-submit-toast { left: 12px; right: 12px; bottom: 12px; }
 
   /* ── Bids list: let the row-action buttons wrap, not force width ── */
   #page-bids td:last-child { white-space: normal; }
