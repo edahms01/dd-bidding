@@ -75,7 +75,7 @@ function _resetAgentCache() {
 // Shows the computed "other open drafts" count next to the subjective
 // Pipeline pressure dropdown (Conditions tab) — informs the estimator's
 // own call, doesn't replace it. Recomputed on every visit to the tab
-// (goto('conditions'), js/tabs.js), same pattern as runCalculation()/
+// (window.goto's per-tab side effects, src/state/bridges.js), same pattern as runCalculation()/
 // renderAgentTab() self-refreshing on their own tab visits.
 function _renderPipelineHint() {
   const el = document.getElementById('pipeline-count-hint');
