@@ -108,35 +108,36 @@ export default function MarketReadPage({ active }) {
         </div>
       </div>
 
-      <div className="section-label" style={{ marginBottom: 10 }}>Estimator confidence</div>
-      <div className="conf-row" style={{ marginBottom: 20, maxWidth: 500 }}>
-        <button
-          className={'conf-btn' + (c.confidence === 'hi' ? ' hi' : '')}
-          id="c-hi"
-          onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'hi' })}
-        >High, straightforward</button>
-        <button
-          className={'conf-btn' + (c.confidence === 'md' ? ' md' : '')}
-          id="c-md"
-          onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'md' })}
-        >Medium, some unknowns</button>
-        <button
-          className={'conf-btn' + (c.confidence === 'lo' ? ' lo' : '')}
-          id="c-lo"
-          onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'lo' })}
-        >Low, significant risk</button>
-      </div>
-      <div className="field"><span className="lbl">Estimator notes</span>
-        <textarea
-          id="cond-notes"
-          style={{ minHeight: 100 }}
-          placeholder="Gut feelings, GC history, site concerns, anything not captured above…"
-          value={c.notes}
-          onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'notes'], value: e.target.value })}
-        />
+      <div className="tray">
+        <div className="tray-hdr">Estimator confidence</div>
+        <div className="conf-row" style={{ marginBottom: 20, maxWidth: 500 }}>
+          <button
+            className={'conf-btn' + (c.confidence === 'hi' ? ' hi' : '')}
+            id="c-hi"
+            onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'hi' })}
+          >High, straightforward</button>
+          <button
+            className={'conf-btn' + (c.confidence === 'md' ? ' md' : '')}
+            id="c-md"
+            onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'md' })}
+          >Medium, some unknowns</button>
+          <button
+            className={'conf-btn' + (c.confidence === 'lo' ? ' lo' : '')}
+            id="c-lo"
+            onClick={() => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'confidence'], value: 'lo' })}
+          >Low, significant risk</button>
+        </div>
+        <div className="field"><span className="lbl">Estimator notes</span>
+          <textarea
+            id="cond-notes"
+            style={{ minHeight: 100 }}
+            placeholder="Gut feelings, GC history, site concerns, anything not captured above…"
+            value={c.notes}
+            onChange={(e) => dispatch({ type: 'SET_FIELD', path: ['bid', 'conditions', 'notes'], value: e.target.value })}
+          />
+        </div>
       </div>
 
-      <div className="section-label" style={{ marginTop: 24 }}>Market Intelligence</div>
 
       {/* Market signals + Competitive signals are each their own tray
           (own .tray-hdr), sitting side by side in a .tray-row — same
