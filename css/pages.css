@@ -57,10 +57,3 @@
    plain inline label + a .switch (components.css), overriding .tray-hdr's
    uppercase/bold/letter-spacing. */
 .esc-toggle{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:400;text-transform:none;letter-spacing:normal;color:var(--text3);cursor:pointer;white-space:nowrap}
-
-/* Cost Summary: Category subtotals + Top cost drivers side by side; the
-   Pricing breakdown box narrowed to match and centred on the page. */
-#page-output .summary-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
-#page-output .summary-cols .section-block{margin-bottom:0}
-#page-output .pricing-breakdown > div:last-child{max-width:560px;margin-left:auto;margin-right:auto}
-#page-output .pricing-breakdown .section-label{text-align:center}
