@@ -81,7 +81,7 @@ function Accordion({ title, count, children }) {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{title}</span>
+        <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
         {count != null && (
           <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
         )}
@@ -267,15 +267,15 @@ function AgentResult({ r, selectedOption, historyUnavailable, dispatch, blocked,
         </div>
       )}
 
-      <div className="section-block">
-        <div className="section-label">Agent analysis</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '16px 18px', fontSize: 15, color: 'var(--text2)', lineHeight: 1.7 }}>
+      <div className="tray">
+        <div className="tray-hdr">Agent analysis</div>
+        <div style={{ fontSize: 15, color: 'var(--text2)', lineHeight: 1.7 }}>
           {r.reasoning || 'No analysis provided.'}
         </div>
       </div>
 
-      <div className="section-block">
-        <div className="section-label">Bid options</div>
+      <div className="tray">
+        <div className="tray-hdr">Bid options</div>
         {/* Win-rate ↔ margin scale sits directly under the section header,
             above the cards, so the axis is read before the options it frames. */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 2px' }}>
