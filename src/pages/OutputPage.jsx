@@ -110,9 +110,9 @@ function TopCostDrivers({ output }) {
   const laborPct = direct > 0 ? (summary.laborWithBurden / direct) * 100 : 0;
 
   return (
-    <div className="section-block top-cost-drivers">
-      <div className="section-label">Top cost drivers</div>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
+    <>
+      <div className="tray-hdr">Top cost drivers</div>
+      <div className="top-cost-drivers">
         {rows.map((r, i) => (
           <div key={i} className="driver-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: 'var(--text2)', minWidth: 0 }}>
@@ -132,7 +132,7 @@ function TopCostDrivers({ output }) {
           <span className="labor-pct" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16, fontWeight: 600, color: 'var(--text2)' }}>{fmtPct(laborPct)}</span>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -141,6 +141,12 @@ function Phase3({ output }) {
   const hasWalls = wallCosts.length > 0;
   const hasCeilings = ceilCosts.length > 0;
   const hasAreas = hasWalls || hasCeilings;
+  // Lightweight existence check — does NOT duplicate TopCostDrivers' own
+  // sort/filter/slice; just gates whether the second tray renders so a
+  // .tray-row is always well-formed (Category subtotals is unconditional,
+  // so it's 1 or 2 children, never 0). Matches TopCostDrivers' own
+  // `rows.length === 0` guard, which reads the same condition.
+  const hasDrivers = [...wallCosts, ...ceilCosts].some((r) => !r.error && r.total > 0);
 
   return (
     <>
@@ -155,10 +161,10 @@ function Phase3({ output }) {
         <div className="total-item"><div className="total-val green">{fmtCost(summary.directCostTotal)}</div><div className="total-lbl">Direct cost total</div></div>
       </div>
 
-      <div className="summary-cols">
-        <div className="section-block">
-          <div className="section-label">Category subtotals</div>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
+      <div className="tray-row">
+        <div className="tray">
+          <div className="tray-hdr">Category subtotals</div>
+          <div>
             <SubtotalRow label="Labor (raw)" value={fmtCost(summary.laborTotal)} accent="var(--teal)" />
             <SubtotalRow label="Above 12 ft" value={fmtCost(summary.heightUplift12)} />
             <SubtotalRow label="Above 20 ft" value={fmtCost(summary.heightUplift20)} />
@@ -178,11 +184,15 @@ function Phase3({ output }) {
           </div>
         </div>
 
-        <TopCostDrivers output={output} />
+        {hasDrivers && (
+          <div className="tray">
+            <TopCostDrivers output={output} />
+          </div>
+        )}
       </div>
 
-      <div className="section-block">
-        <div className="section-label">Per-area breakdown</div>
+      <div className="tray">
+        <div className="tray-hdr">Per-area breakdown</div>
         {hasAreas ? (
           <div className="tbl-wrap sticky-col">
             <table>
@@ -210,9 +220,9 @@ function Phase4({ output }) {
   const mu = output.state.markupInputs;
   return (
     <>
-      <div className="section-block pricing-breakdown">
-        <div className="section-label">Pricing breakdown</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '4px 20px 12px' }}>
+      <div className="tray">
+        <div className="tray-hdr">Pricing breakdown</div>
+        <div>
           <SubtotalRow label="Direct cost total" value={fmtCost(markupResult.directCostTotal)} accent="var(--teal)" />
           <SubtotalRow label={'Company overhead (' + fmtPct(mu.overheadPct) + ')'} value={fmtCost(markupResult.overhead)} />
           <SubtotalRow label={'Risk / contingency (' + fmtPct(mu.contingencyPct) + ')'} value={fmtCost(markupResult.contingency)} />
