@@ -1293,3 +1293,82 @@ silently absorbed.
   check a deploy preview involving drafts; a visual/UI walkthrough,
   however read-only it looks, is not. Not blocking merge, flagged for
   awareness.
+
+## Migration Phase 3: port calculator.js, agent-payload.js, history-analytics.js to src/ (in progress)
+
+Follows Phase 2 (data-storage restructure, PRs #77/#78). Ports the
+three pure-logic files still living as classic `<script>`-tag globals
+(`js/calculator.js`, `js/agent-payload.js`, `js/history-analytics.js`)
+into real ES modules under `src/state/`. All three were already
+isomorphic (a `typeof module !== 'undefined'` guard around
+`module.exports`, already imported that way by their own Vitest tests)
+— the port is packaging only, no math/logic change. `js/ui.js`,
+`js/agent.js`, `js/history.js` stay classic scripts this phase and
+cannot literally `import` anything, so each ported module also gets a
+`window.X` bridge. Three steps, checkpoint after each. Out of scope,
+untouched: `js/ui.js`, `js/agent.js`, `js/history.js`, `js/forms.js`,
+`js/state.js`, `js/autosave.js`, `js/drafts.js`, `js/rate-templates.js`.
+
+**Path/naming decision (confirmed with Eric, deviating from the
+originating brief's `src/lib/` suggestion):** `src/state/` — the
+established convention for pure-logic-plus-Vitest-test files
+(`expectedValue.js`, `gcScorecard.js`, `validation.js`); `src/lib/` has
+no precedent anywhere in this repo. New files are camelCase
+(`agentPayload.js`, `historyAnalytics.js`), matching every existing
+`src/state/*.js` file, not the old hyphenated `js/` names.
+
+**Bridge convention (confirmed with Eric, a deliberate new file rather
+than extending `src/state/bridges.js`):** `src/state/legacyBridges.js`
+— flat, unconditional `window.X = fn` assignments, imported once,
+top-level, from `src/main.jsx` (not called from a mount effect).
+`bridges.js`'s `registerBridges(dispatch)`/`register*Reader(fn)` shapes
+both exist because they need something from the React tree (a
+`dispatch` reference, or a page component's live state) at call time —
+none of calculator/agent-payload/history-analytics's functions do, so
+forcing them into either shape would be the awkward fit, not the
+natural one.
+
+**Step 3A (port calculator.js) complete.** New `src/state/calculator.js`
+— verbatim port of all 9 exports (`calculateWallCosts`,
+`calculateCeilingCosts`, `calculateLogistics`, `disposalMonthsFor`,
+`applyLaborBurden`, `buildCostSummary`, `applyMarkup`,
+`computeWeightedWastePct`, `applyRateEscalation`), guard dropped, plain
+`export function`. `src/state/legacyBridges.js` (new) bridges all 9
+onto `window` for `js/ui.js`'s `calculateOnly()`/`submitBid()`.
+`js/calculator.js` deleted; its `<script>` tag removed from
+`index.html`. `tests/unit/calculator.test.js` / `tests/unit/fieldRegistry.test.js`
+(the latter's `readFileSync` completeness check against
+`js/calculator.js`'s raw source) both updated to the new import path —
+no assertion changed in either.
+
+**Load-order verified with evidence, not assumed by analogy to the
+documented `dirigo:shell-ready` fix (`js/forms.js`'s `_initApp()`):**
+traced every caller of the 4 functions `js/ui.js` actually invokes
+(`calculateWallCosts`/`calculateCeilingCosts`/`buildCostSummary`/
+`applyMarkup`, both inside `calculateOnly()` and `submitBid()`) —
+reachable only via the debounced form-change/state-watcher trigger
+(`window.scheduleRecalc`, wired from `js/forms.js`'s
+`_handleFormChange()` and `AppShell.jsx`'s `state.bid` watcher),
+explicit navigation (`window.goto`), or the Finalize modal's confirm
+click — never at script-load/top-level time. `js/ui.js` has no
+`dirigo:shell-ready` listener at all (grep-confirmed), unlike
+`js/forms.js`'s DOM-touching init code, which needed the gate for a
+different reason (it manipulates DOM directly at init; `js/ui.js`'s
+calculator calls are pure functions invoked reactively). `index.html`
+loads every classic `<script>` before the React module bundle
+(`main.jsx`, always last), so `legacyBridges.js`'s assignments are
+guaranteed to exist before any of those user-triggered call sites can
+possibly fire.
+
+**Verified:** 309/309 Vitest (unchanged baseline). Local `netlify dev`
+hand-check via a real "Load Demo" walkthrough to Cost Summary — Direct
+cost total `$148,216` / Final bid price `$192,680`, byte-identical to
+the golden values already pinned in the height-adders brief above,
+confirming the port produced no numeric drift. Full Playwright suite
+**200 passed / 4 skipped / 0 failed** — identical to the pre-change
+baseline, zero spec changes needed. `vite build` clean;
+`copy-classic-script-sources` correctly no longer copies a
+(now-deleted) `js/calculator.js` into `dist/js/`, no build failure.
+Mobile 390px check on Cost Summary — no horizontal overflow, layout
+unchanged. **Pending before merge: read-only Netlify deploy-preview
+verification**, per the standing standard.
