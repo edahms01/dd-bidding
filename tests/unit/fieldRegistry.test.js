@@ -24,7 +24,7 @@ import {
 // don't have commodity-price risk…") is not *consumed*, and would be a false
 // pass for the calculator-consumption check.
 const calcSrc = readFileSync(
-  fileURLToPath(new URL('../../js/calculator.js', import.meta.url)),
+  fileURLToPath(new URL('../../src/state/calculator.js', import.meta.url)),
   'utf8',
 )
   .replace(/\/\*[\s\S]*?\*\//g, '')

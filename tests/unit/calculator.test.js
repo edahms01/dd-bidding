@@ -8,7 +8,7 @@ import {
   applyMarkup,
   computeWeightedWastePct,
   applyRateEscalation
-} from '../../js/calculator.js';
+} from '../../src/state/calculator.js';
 import seedData from '../../data/seed.json';
 
 function sampleRates(overrides = {}) {
