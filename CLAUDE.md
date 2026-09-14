@@ -1062,7 +1062,30 @@ get/setJSON-by-id pattern (that file itself untouched, reference only).
   shapes plus GET-by-id plus the seed/clear round-trip all confirmed
   directly). Full Playwright suite **200 passed / 4 skipped / 0 failed**
   — identical to the pre-change baseline, **zero spec changes**, exactly
-  as expected since this step is invisible to the client. **Pending
-  before merge:** deploy-preview (read-only — GET only, no write against
-  the shared prod Blobs store) + mobile 390px check, own PR, per the
-  standing standard.
+  as expected since this step is invisible to the client.
+- **Real checkpoint finding, deploy-preview read-only check (PR #77):**
+  the shared prod/preview `bids` store wasn't actually empty — it still
+  held a legacy `'all'`-keyed array blob (5 demo seed bids left over from
+  Phase F's preview testing, not customer data). `readAllRecords()`'s
+  `list()`-then-fetch-each was including that one key as a record whose
+  value is itself an array, silently corrupting every reader: Bid History
+  showed "1 bid" rendered blank, Insights read "0 of 15 decided," **no
+  console error**. Fixed at the code level — `readAllRecords()` now skips
+  any listed key whose value isn't a plain record object, same treatment
+  as a null/racing-delete read. Confirmed fixed on the updated preview
+  (GET-all returns `[]` cleanly; Bid History/Insights render correctly,
+  no console errors) and via a new Vitest regression case reproducing the
+  exact bug. **Eric's call: leave the stale key in the store** — the code
+  fix already neutralizes it permanently (inert, harmless, zero functional
+  impact), and there's no upside worth a write to the shared prod store
+  for pure cosmetic cleanup. Noted for any future revisit: `dev-seed-bids.js`
+  wholesale-replace also silently skips this class of legacy key now (it
+  goes through the same `readAllRecords()`), so it stays invisible-but-
+  present rather than ever getting swept up by a normal seed cycle. If it
+  is ever removed, the correct mechanism is a single targeted
+  `store.delete('all')` — **not** `dev-clear-bids` (a full `store.deleteAll()`
+  wipe of the entire store, only safe to reach for when nothing else of
+  value is in it, which is not a property to assume by default).
+- **Deploy-preview + mobile 390px, done:** `deploy-preview-77--bid-iq.netlify.app`
+  — Bid History and Insights both checked at 390×844 (read-only, no
+  writes), no console errors, correct empty-state rendering post-fix.
