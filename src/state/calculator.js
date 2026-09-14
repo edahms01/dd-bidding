@@ -6,9 +6,14 @@
 // Future: moves to a backend API endpoint unchanged. The function
 //         signatures are the stable API contract between the data
 //         layer and the render layer.
+//
+// Migration Phase 3, Step 3A: ported from js/calculator.js (a classic
+// <script>-tag global) to a real ES module. Still called as a bare
+// global from js/ui.js (calculateOnly()/submitBid(), not yet
+// converted) via the window bridge in src/state/legacyBridges.js.
 // ─────────────────────────────────────────────────────────────────────
 
-function calculateWallCosts(walls, assemblies, rates, conditions) {
+export function calculateWallCosts(walls, assemblies, rates, conditions) {
   const asmMap = Object.fromEntries(assemblies.map(a => [a.id, a]));
 
   return walls.map(w => {
@@ -53,7 +58,7 @@ function calculateWallCosts(walls, assemblies, rates, conditions) {
   });
 }
 
-function calculateCeilingCosts(ceilings, assemblies, rates, conditions) {
+export function calculateCeilingCosts(ceilings, assemblies, rates, conditions) {
   const asmMap = Object.fromEntries(assemblies.map(a => [a.id, a]));
 
   return ceilings.map(c => {
@@ -91,7 +96,7 @@ function calculateCeilingCosts(ceilings, assemblies, rates, conditions) {
 }
 
 // burdenRate and supervisionRate are percentages (e.g. 32 means 32%)
-function applyLaborBurden(laborSubtotal, burdenRate, supervisionRate) {
+export function applyLaborBurden(laborSubtotal, burdenRate, supervisionRate) {
   const burden      = laborSubtotal * (burdenRate     / 100);
   const supervision = laborSubtotal * (supervisionRate / 100);
   return {
@@ -105,11 +110,11 @@ function applyLaborBurden(laborSubtotal, burdenRate, supervisionRate) {
 // Job duration (weeks) → whole months for the per-month waste-disposal
 // rate. 4 weeks/month is a deliberate simplification (not the calendar
 // 4.33); minimum 1 month, mirroring liftWeeks' Math.max(1, ...) floor.
-function disposalMonthsFor(durationWeeks) {
+export function disposalMonthsFor(durationWeeks) {
   return Math.max(1, Math.ceil((durationWeeks || 0) / 4));
 }
 
-function calculateLogistics(conditions, rates) {
+export function calculateLogistics(conditions, rates) {
   const deliveryCost   = conditions.trips * rates.delivery;
   const liftWeeks      = conditions.sfAbove12 > 0 ? Math.max(1, conditions.durationWeeks) : 0;
   const liftCost       = liftWeeks * rates.lift;
@@ -135,7 +140,7 @@ function calculateLogistics(conditions, rates) {
 // outweigh a small high-waste run in the displayed blend). Falls back
 // to fallbackPct when there's no board material to weight against
 // (every row errored, or zero net SF everywhere) to avoid a 0/0 divide.
-function computeWeightedWastePct(rows, fallbackPct) {
+export function computeWeightedWastePct(rows, fallbackPct) {
   let base = 0, waste = 0;
   rows.forEach(r => {
     const b = r.boardMaterialBase || 0;
@@ -146,7 +151,7 @@ function computeWeightedWastePct(rows, fallbackPct) {
   return base > 0 ? (waste / base) * 100 : fallbackPct;
 }
 
-function buildCostSummary(
+export function buildCostSummary(
   wallCosts, ceilingCosts, logistics, fallbackWastePct,
   burdenPct, superPct, adder12Pct, adder20Pct, sfAbove12, sfAbove20
 ) {
@@ -207,7 +212,7 @@ function buildCostSummary(
 // per-material-rate-line now, resolved by applyRateEscalation() below,
 // before calculateWallCosts()/calculateCeilingCosts() ever run. There is
 // no whole-job escalation figure left to apply here.
-function applyMarkup(summary, markupInputs) {
+export function applyMarkup(summary, markupInputs) {
   const overhead    = summary.directCostTotal * (markupInputs.overheadPct    / 100);
   const contingency = summary.directCostTotal * (markupInputs.contingencyPct / 100);
   const profit      = summary.directCostTotal * (markupInputs.profitPct      / 100);
@@ -231,7 +236,7 @@ function applyMarkup(summary, markupInputs) {
 // logistics (delivery/disposal/lift) don't have commodity-price risk the
 // way material rates do; escalating them would be conceptually confused,
 // not just out of scope. Does not mutate its input rates object.
-function applyRateEscalation(rates, rateEscalation) {
+export function applyRateEscalation(rates, rateEscalation) {
   const esc = rateEscalation || {};
   const scaled = (base, pct) => (pct ? base * (1 + pct / 100) : base);
 
@@ -246,13 +251,5 @@ function applyRateEscalation(rates, rateEscalation) {
     tape:   scaled(rates.tape,   esc.tape),
     insul:  scaled(rates.insul,  esc.insul),
     fasten: scaled(rates.fasten, esc.fasten)
-  };
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    calculateWallCosts, calculateCeilingCosts, calculateLogistics, disposalMonthsFor,
-    applyLaborBurden, buildCostSummary, applyMarkup, computeWeightedWastePct,
-    applyRateEscalation
   };
 }
