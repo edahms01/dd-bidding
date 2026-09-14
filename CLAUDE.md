@@ -1497,3 +1497,114 @@ throughout, per scope. One real bug (Step 3C's missed
 failure and fixed before merge, not discovered after the fact — the
 brief's "investigate, then verify empirically" discipline holding up
 exactly as intended on a case a static caller trace alone had missed.
+
+## Migration Phase 4: remove remaining legacy fallback rendering in js/ui.js (complete)
+
+Follows Phase 3. The last thing standing in `js/ui.js` from before the
+React conversion: five spots, each `if (window.__renderX) { ...bridge...;
+return; }` (or the equivalent if/else) falling through to hand-built
+`innerHTML` strings — `renderOutput()` → `_renderOutputLegacy()`,
+`renderAgentTab()` → `_renderAgentTabLegacy()`, `_renderAgentResult()`'s
+own inline legacy branch, and `submitBid()`'s error-path and
+success-path panels (found during plan review — same pattern, same
+`registerBridges()` guarantee, not in the originating brief's initial
+three). Plan: `/Users/eric/.claude/plans/new-brief-for-dirigo-giggly-bear.md`.
+One step, one PR.
+
+**Bridge-ordering re-verified, not trusted from the brief.**
+`registerBridges(dispatch)` (`src/AppShell.jsx:188`) and
+`dirigo:shell-ready`'s dispatch (`:228`) are both in AppShell's one mount
+effect, bridges first — every React-rendered button that reaches
+`calculateOnly()`/`submitBid()`/`runBidAgent()` is gated correctly.
+**One caveat found, not a blocker:** the static `#dev-toolbar` "Load
+Demo" button predates AppShell mounting and isn't actually mediated by
+`shell-ready` the way the ordering assumption implies —
+`loadSeedData()`'s `await window.__draftsBootPromise` is a no-op on
+`undefined` if `_initApp()` hasn't run yet. In practice this never bites
+(the several real `await fetch(...)` calls before `runCalculation()`
+outlast React's synchronous mount) — a timing coincidence, not a
+guarantee, pre-existing and unchanged by this phase (a hit today throws
+inside the deleted `_renderOutputLegacy()`'s unguarded DOM write; after
+this phase it throws calling `window.__renderOutput` as `undefined` —
+same failure class, different line).
+
+**Per-helper trace, re-derived after `submitBid()` entered scope:**
+`fmtPct`/`areaRow`/`groupHead`/`subtotalRow`/`statusPill`/`flagDot`/
+`winLikelihoodPill`/`OPT_COLORS` had zero callers outside the deleted
+bodies — deleted. `fmtCost` and `escapeHtml` both looked keep-worthy at
+first (each had one caller left, `submitBid()`'s success branch,
+`:517`) — but once that branch entered scope too, `fmtCost` lost its
+last reason to exist (repo-wide grep confirmed zero other callers; every
+`src/**/*.jsx` needing a dollar formatter has its own local `fmtCost`,
+not a call into this one) and was deleted. `escapeHtml` was kept anyway
+— not for an internal caller (it has none left either), but because
+`tests/unit/ui.test.js` imports and tests it directly, exactly per the
+file's own `:827-832`-era comment documenting that as the reason it's
+exported. Losing every internal caller isn't the same claim as losing
+every reason to exist.
+
+**`_renderAgentResult()` inlined, not kept as a named function.** Once
+its legacy branch is gone it's two lines with an unused `page` param and
+one surviving caller (`runAgentIfNeeded()`'s `.then()`) — inlined there;
+the `if (page)` guard at that call site is left exactly as it was
+(outside this phase's stated scope, even though dispatching to React
+state doesn't strictly need the DOM element to exist).
+
+**Removed:** `fmtPct()`, `areaRow()`, `groupHead()`, `subtotalRow()`,
+`statusPill()`, `flagDot()`, `winLikelihoodPill()`, `OPT_COLORS`,
+`fmtCost()`, `_renderOutputLegacy()`, `_renderAgentTabLegacy()`,
+`_renderAgentResult()` (inlined, name removed). `submitBid()`'s legacy
+success-panel markup also removed a `View bid history →` button wired
+to the already-dead `goto('history')` (no `history` section since Phase
+C) — confirmed dead, not merely soon-to-be, before deleting.
+
+**Real regression found and fixed by the Playwright suite — the exact
+reason it's the stated regression gate here, not Vitest.** First full
+run: 3 failures, all `page.evaluate()` calls in e2e specs invoking the
+just-deleted classic-script globals directly as a test-injection
+technique (`_renderAgentResult(pageEl, fakeResult)` in
+`agent-expected-value.spec.js` and `agent-response-escaping.spec.js`;
+`fmtCost(...)` in `rate-escalation.spec.js`) — a caller class a static
+grep of `src`/`js`/`tests/unit` doesn't surface, since these specs
+`eval` arbitrary JS directly in the browser context. Fixed: the two
+`_renderAgentResult()` calls now call `window.__renderAgentTab(...)`
+directly (the same bridge dispatch `_renderAgentResult()` was always
+just forwarding to in a real browser — one layer closer to what
+actually happens, not a different mechanism);
+`agent-response-escaping.spec.js`'s header comment updated too (it had
+described `_renderAgentResult()` as "the render boundary" being
+proven safe — the real boundary was always React's JSX text-content
+escaping in `AgentPage.jsx`, since the bridge branch is what every real
+browser run has always taken). `rate-escalation.spec.js`'s `fmtCost`
+call was just building a comparison string, not exercising production
+code — inlined verbatim (`'$' + Math.round(n).toLocaleString()`).
+Re-ran the full suite after: identical to baseline.
+
+**Verified:** 309/309 Vitest (unchanged). `vite build` clean. Full
+Playwright suite **200 passed / 4 skipped / 0 failed** — identical to
+the pre-change baseline, after fixing the 3 specs above. Local `netlify
+dev` hand-check with real UI clicks (not just curl): Cost Summary shows
+real numbers (Direct cost total `$148,216`, matching the golden value
+already pinned from Phase 3A's own hand-check — confirms this phase's
+dispatch-collapse produced no numeric drift); Bid Strategy renders a
+real agent analysis; revisiting Bid Strategy after Cost Summary shows
+byte-identical cached content (`_lastAgentResult` short-circuit
+verified, not assumed); a real Finalize through to success — modal
+closes, lands on Home, `#bid-submit-toast` shows "Bid submitted:
+$284,500 logged to history ✓" — no console errors throughout. The
+failure-path panel (`submitBid()`'s error branch) is exercised directly
+by `bid-storage-error-handling.spec.js`, already green in the full
+Playwright rerun above; not separately hand-clicked. Mobile 390px check
+on Cost Summary and Bid Strategy (via `window.loadSeedData()` directly —
+`#dev-toolbar` is `display:none` below 768px) — `document.body.scrollWidth`
+390 on both, no console errors. No CSS/JSX touched by this phase, so
+this is a confirmation, not a new risk surface.
+
+`_selectedBidOption` (`js/ui.js:23`) is now write-only at its own
+declaration — its only reader/writer was the deleted
+`_renderAgentResult()` legacy branch. Flagged, not deleted: removing it
+wasn't part of this phase's approved scope, and it deserves its own
+quick caller-check rather than a snap deletion mid-PR.
+
+**Pending before merge:** read-only Netlify deploy-preview verification,
+per the standing standard.

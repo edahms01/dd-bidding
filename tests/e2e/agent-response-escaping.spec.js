@@ -1,26 +1,30 @@
 import { test, expect } from '@playwright/test';
 import { clearAll } from './helpers.js';
 
-// Cleanup pass: _renderAgentResult() interpolates agent-returned text
-// (reasoning, signals, risk flags, historical notes, option label/
-// rationale) into innerHTML the same way the brief's named user-input
-// spots do — same escapeHtml() fix applies here too (see the scoping
-// decision in the plan/close-out for this pass).
+// Cleanup pass: AgentPage.jsx renders agent-returned text (reasoning,
+// signals, risk flags, historical notes, option label/rationale) as
+// plain JSX text content, which auto-escapes — this spec proves that
+// holds regardless of what the agent returns.
 //
 // DEMO_MODE is a hardcoded top-level `const` in js/agent.js (true), so
 // there's no live response to inject markup into via page.route without
 // either a real Anthropic call or a `const`-redeclaration collision
 // across <script> tags (this codebase's top-level let/const share one
 // global lexical scope across plain <script src> files). Instead this
-// calls _renderAgentResult() directly — a bare top-level function
-// reachable from page.evaluate() the same way this suite already reads
-// other bare globals (hasUnsavedChanges, getHistorySummary) — with a
-// crafted result object standing in for whatever a live Anthropic
-// response or a compromised/buggy upstream could return.
+// calls window.__renderAgentTab (src/state/bridges.js) directly — the
+// same dispatch js/ui.js's renderAgentTab()/runAgentIfNeeded() make —
+// with a crafted result object standing in for whatever a live
+// Anthropic response or a compromised/buggy upstream could return.
+// (Migration Phase 4: js/ui.js's own _renderAgentResult() wrapper this
+// spec used to call is deleted — it was already just a thin dispatch to
+// this same bridge in every real browser context, so calling the bridge
+// directly is the same injection, one layer closer to what actually
+// happens.)
 //
 // What this proves and what it doesn't: this confirms the render
-// boundary (_renderAgentResult()) is safe regardless of what reaches it.
-// It does NOT exercise parseAgentResponse()'s JSON.parse() path
+// boundary (React's JSX text-content escaping in AgentPage.jsx) is safe
+// regardless of what reaches it. It does NOT exercise
+// parseAgentResponse()'s JSON.parse() path
 // (netlify/functions/lib/bid-agent-response.js) — it starts from an
 // already-parsed JS object, so it says nothing about how malformed or
 // malicious JSON from the live API would be parsed. Those are two
@@ -60,8 +64,7 @@ test('agent-returned text with markup-like content renders as literal text in ev
   };
 
   await page.evaluate((result) => {
-    const pageEl = document.getElementById('page-agent');
-    _renderAgentResult(pageEl, result);
+    window.__renderAgentTab({ cachedResult: result, loading: false, historyUnavailable: false, generatedAt: null });
   }, fakeResult);
 
   const agentPage = page.locator('#page-agent');
