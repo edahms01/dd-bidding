@@ -969,3 +969,100 @@ port, remaining legacy fallback rendering removal) — not started here.
 - **Files:** `src/pages/MarketReadPage.jsx`, `docs/dirigo-ux-decisions.md` §6.14, `CLAUDE.md`. **Not touched:** any spec (all pass unchanged), `calculator.js`, `golden-export.json`, `css/*`.
 - **Verified:** 273/273 Vitest; full Playwright 200 passed / 4 skipped / 0 failed; both named specs (`contingency-not-prefilled-from-confidence`, `tab-confirm-send-to-agent-gate`) pass individually unchanged; `vite build` clean; visually confirmed on a real local render (desktop + 390px, confidence buttons clicked for real). **Pending before merge:** genuine Netlify deploy-preview (not local `netlify dev`) — new tray renders correctly at desktop and 390px, confidence buttons still style correctly inside it, no overflow, golden-export no-diff, preview stays read-only (confidence clicks are safe to exercise for real — local UI-only dispatch, no persistence).
 - **Closes out the tray rollout across every originally-scoped tab:** Rates/Site Conditions/Market Read/Insights (§6.10), Cost Summary (§6.11), Project (§6.12), Bid Strategy (§6.13), Market Read cleanup (§6.14). Assemblies/Walls/Ceilings remain the deliberate exclusion — row-table takeoff pages, not tray candidates.
+
+## Migration Phase 2: data-storage restructure (bids + drafts) (in progress)
+
+Follows Phase 1 (dead code / logging / AI retry, PRs #74/#75/#76). Fixes
+the two real storage gaps: bids stored as one array under a single Blobs
+key (no atomicity, whole-dataset read-modify-write on every request),
+and drafts with zero server-side persistence (`localStorage` only).
+Plan: `/Users/eric/.claude/plans/new-brief-for-dirigo-cryptic-abelson.md`.
+Two steps, checkpoint after each: **(1) 2A bids storage restructure,
+server-only → stop; (2) 2B server-side draft storage + client async
+refactor.** No data migration anywhere in this phase (no production
+users/data exist yet, confirmed by Eric). Out of scope, untouched:
+`calculator.js`, `agent-payload.js`, `history-analytics.js`, the
+remaining legacy fallback rendering in `js/ui.js`, the old `<script>`-tag
+loading mechanism, and — despite living in the same files this phase
+touches — the already-shipped legacy migration path (`js/forms.js`'s
+`_runLegacyMigrationIfNeeded`/`LEGACY_BID_KEY`, `js/drafts.js`'s
+`migrateLegacyBidToDrafts`), a different, prior "Phase 2."
+
+**Step 2A (bids storage restructure, server-only, zero client changes)
+complete.** `netlify/functions/bids.js` + `lib/bids-core.js` restructured
+from one Blobs array under key `'all'` to one Blobs record per bid,
+keyed by its own `bid_id` — mirrors `lib/bid-agent-jobs.js`'s
+get/setJSON-by-id pattern (that file itself untouched, reference only).
+
+- **New `netlify/functions/lib/blob-collection.js`** — `readAllRecords(store)`:
+  `store.list()` then `Promise.all()`-fetches each key, returns
+  `{ [key]: record }`. The first use of `store.list()` anywhere in this
+  codebase (confirmed via grep — `bid-agent-jobs.js` never lists); kept
+  as a small shared module since Step 2B's `drafts-core.js` will need
+  the identical mechanic. Confirmed against the installed
+  `@netlify/blobs@11.0.3` type defs before relying on it: non-paginated
+  `list()` returns `{ blobs: [{key, etag}], directories: [] }` in one
+  call; `store.delete(key)` and `store.deleteAll()` both exist.
+- **`lib/bids-core.js`** — `stampNewBid()` unchanged. `mergePatch(bidsArray,
+  id, patch)` → `mergeBidPatch(record, patch)` (plain merge, no array
+  scan). `removeBid(bidsArray, id)` **dropped** — deletion is now
+  `store.delete(bid_id)` directly, no array to filter, so a pure wrapper
+  would be dead weight. New I/O helpers (`readBid`/`writeBid`/
+  `deleteBidRecord`/`readAllBids`, store passed in as first param — same
+  shape as `bid-agent-jobs.js`'s `readJob`/`writeJob`, testable with a
+  hand-rolled `fakeStore()`). `readAllBids()` sorts newest-`bid_id`-first
+  (the id embeds a fixed-width `Date.now()` prefix, so lexicographic
+  descending sort is chronological) to match the old array's insertion
+  order — belt-and-suspenders, since `BidsPage.jsx` already re-sorts
+  client-side.
+- **`bids.js`** — GET (no `bid_id`) now calls `readAllBids(store)`
+  instead of one `store.get(ALL_KEY)`. POST is one `writeBid()`, no read.
+  PATCH is one `readBid()` + `mergeBidPatch()` + one `writeBid()` instead
+  of a full-array read/scan/write. DELETE is one `deleteBidRecord()`, no
+  read at all (matches the prior idempotent-delete semantics — deleting
+  a nonexistent id already silently succeeded; `store.delete()` on a
+  missing key is likewise a no-op). Added a `GET ?bid_id=X` single-record
+  path — additive, not part of `js/history.js`'s 4 call shapes, added
+  for symmetry with PATCH/DELETE and any future direct caller.
+- **`dev-seed-bids.js` / `dev-clear-bids.js`** — also in scope (found
+  during investigation, not in the brief's original file list): both
+  wrote straight to the same `bids`/`'all'` key, bypassing `bids-core.js`
+  entirely, and every Playwright spec's `loadSeed()`/`clearAll()` goes
+  through them. `dev-seed-bids.js` now wipes any pre-existing per-bid
+  records first (`readAllRecords()` + delete each), then writes each
+  seed bid as its own record keyed by its own `bid_id` — wholesale
+  replace, matching the established "Load Demo replaces, never appends"
+  convention (Phase C Step 4, applied to drafts) so a repeat seed load
+  never accumulates orphan records. `dev-clear-bids.js` is now a single
+  `store.deleteAll()`.
+- **Client contract unchanged, confirmed with real request/response
+  JSON against local `netlify dev`:** `js/history.js`'s 4 calls
+  (`getAllBids`/`saveBid`/`updateBid`/`deleteBid`) — POST create, GET
+  all, PATCH `?bid_id=X`, DELETE `?bid_id=X` — produce byte-identical
+  shapes. Full walkthrough: clear → GET all `[]` → POST → GET all (1
+  record) → PATCH an outcome → GET all (patch applied) → PATCH a
+  nonexistent id (404) → DELETE → GET all `[]` → DELETE again
+  (idempotent, 200 `{ok:true}`). Seed round-trip: `loadSeedData()`'s
+  5 seed bids land with `bid_id`s intact (`seed-1..seed-5`), a second
+  seed load still shows exactly 5 (no accumulation), clear empties it.
+- **Flagged, not silently resolved (per the brief's instruction):**
+  GET-all is now 1 `list()` + N parallel `get()`s instead of 1 `get()`.
+  At this app's real volume (single company, one project at a time —
+  dozens to low hundreds of bids) this is sub-second and not worth a
+  hand-maintained index (index drift on a partial write is a worse
+  failure mode than a slightly slower read). Revisit only if bid volume
+  ever grows enough to make this visibly slow.
+- **Tests:** `tests/unit/bids-core.test.js` rewritten for
+  `mergeBidPatch`/`isValidBidId`/the I/O helpers (dropped `mergePatch`/
+  `removeBid`'s array-shaped cases). New `tests/unit/blob-collection.test.js`
+  (empty store, multi-key, a key that races a delete and resolves `null`
+  — confirmed skipped, not included as a null entry).
+- **Verified:** 299/299 Vitest (291 prior + 8 net new). Local `netlify
+  dev` hand-check per above (curl, not the browser UI — the 4 call
+  shapes plus GET-by-id plus the seed/clear round-trip all confirmed
+  directly). Full Playwright suite **200 passed / 4 skipped / 0 failed**
+  — identical to the pre-change baseline, **zero spec changes**, exactly
+  as expected since this step is invisible to the client. **Pending
+  before merge:** deploy-preview (read-only — GET only, no write against
+  the shared prod Blobs store) + mobile 390px check, own PR, per the
+  standing standard.
