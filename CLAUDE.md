@@ -1372,3 +1372,35 @@ baseline, zero spec changes needed. `vite build` clean;
 Mobile 390px check on Cost Summary — no horizontal overflow, layout
 unchanged. **Pending before merge: read-only Netlify deploy-preview
 verification**, per the standing standard.
+
+**Step 3B (port agent-payload.js) complete.** New
+`src/state/agentPayload.js` — verbatim port of all 7 exports (`omit`,
+`buildAgentPayload`, `AGENT_PROJECT_DENYLIST`,
+`AGENT_CONDITIONS_DENYLIST`, `AGENT_ASSEMBLY_DENYLIST`,
+`AGENT_WALL_DENYLIST`, `AGENT_CEILING_DENYLIST`), guard dropped, plain
+`export`. `src/state/legacyBridges.js` extended with all 7 as window
+bridges for `js/agent.js`'s `runBidAgent()`. `js/agent-payload.js`
+deleted; its `<script>` tag removed from `index.html`.
+`tests/unit/agent-payload.test.js` / `tests/unit/fieldRegistry.test.js`
+(a **second, separate** import fix in the latter — its
+`agent-consumption` describe block imports the denylist constants
+directly, a different reference than Step 3A's `readFileSync` check)
+both updated to the new import path.
+
+**Verified:** 309/309 Vitest (unchanged). Real local `netlify dev`
+payload-shape check: called `window.buildAgentPayload(window.collectFormData(),
+summaryStub, markupStub, [])` after a seed load, once on this branch
+and once on a clean `main` checkout of the pre-port code, and diffed
+the two captured JSON payloads — **byte-identical**, confirming the
+port produced no shape drift on the payload that feeds the AI
+directly. Full Playwright suite: 199 passed / 1 failed / 4 skipped —
+the 1 failure (`tab-confirm-revert-on-edit.spec.js`'s third test,
+`Cannot accept dialog which is already handled!`) is the pre-existing
+documented flake (a rate-template dialog-listener race, unrelated to
+this change) — reproduced the same failure signature on a clean `main`
+checkout, then reran it and got a clean pass there too, consistent
+with its documented ~1/3 flake rate rather than a regression. Clean
+`vite build`, `dist/js/agent-payload.js` correctly absent. Mobile
+390px check on Bid Strategy (with a cached agent result showing) — no
+horizontal overflow, console clean. **Pending before merge: read-only
+Netlify deploy-preview verification**, per the standing standard.
