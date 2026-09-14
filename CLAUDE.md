@@ -1089,3 +1089,188 @@ get/setJSON-by-id pattern (that file itself untouched, reference only).
 - **Deploy-preview + mobile 390px, done:** `deploy-preview-77--bid-iq.netlify.app`
   — Bid History and Insights both checked at 390×844 (read-only, no
   writes), no console errors, correct empty-state rendering post-fix.
+
+**Step 2B (server-side draft storage + client async refactor) complete.**
+Server becomes the sole source of truth for drafts — no dual-write to
+`localStorage` as a cache, matching how bids already work. New
+`netlify/functions/drafts.js` + `lib/drafts-core.js` mirror
+`lib/bid-agent-jobs.js`'s shape (the brief's designated reference) rather
+than `bids-core.js`'s CRUD-verb shape — the client always sends a
+*complete* record and owns id generation, so there's no server-side
+stamping/partial-merge need. Verbs: `GET` (list, or `?id=X` single),
+`PUT ?id=X` (upsert — covers create/autosave/import-overwrite
+identically), `DELETE ?id=X`.
+
+- **`js/forms.js`'s data layer** — `getAllDrafts()` (was sync/localStorage)
+  is now `async`, fetching the real endpoint. A module-level in-memory
+  mirror, `_draftsCache`, replaces the old bulk `dirigo_drafts`
+  localStorage map — reset every page load, never persisted, updated by
+  every successful read/write, with `window.__getDraftsCacheSync` as the
+  read-direction bridge for React consumers (classic-script readers
+  — `js/state.js`'s `openDraftCount`, `js/ui.js`'s pipeline hint — use
+  `_draftsCache` as a bare identifier directly, same cross-file sharing
+  `activeDraftId` already relied on; no bridge needed there).
+  `dirigo_active_draft_id` stays local-only, deliberately (per-*browser*
+  state, not per-bid data — moving it server-side would add a network
+  round-trip to several currently-instant reads for no functional gain).
+  `dirigo_drafts` itself is repurposed as an inert marker only — it no
+  longer holds real draft data, just whether the one-time legacy
+  migration has already run (see below).
+- **The 6 lifecycle call sites** (`_createAndActivateBlankDraft`,
+  `createDraft`, `switchToDraft`, `duplicateDraft`, `deleteDraft`,
+  `clearFinalizedDraft`) are all `async` now, going through new
+  `_writeDraft(id, record)`/`_deleteDraftRemote(id)`/`_readDraftRemote(id)`
+  helpers (PUT/DELETE/single-id-GET, mirroring `js/history.js`'s fetch
+  shape). `handleImportFile()` (a 7th real call site the original file
+  audit missed) also switched from the old bulk save to `_writeDraft()`.
+- **`_autosave()`** is `async`/network-bound now; the `_debouncedAutosave
+  = debounce(_autosave, AUTOSAVE_DEBOUNCE_MS)` wrapper is unchanged, so
+  it still fires at most once per 700ms of inactivity regardless of the
+  network call's own duration (verified: 17 keystrokes in a real hand-
+  check produced exactly 1 outgoing PUT). Failure UX (Open Question 2,
+  approved as recommended): the indicator's `'error'` copy changed from
+  "Save failed. Check storage" to "Save failed. Check your connection";
+  `hasUnsavedChanges` stays `true` on failure (unchanged), so the next
+  keystroke or the next `_flushAndSwitch()` retries — no new automatic
+  timer-based retry mechanism.
+- **Boot invariant** ("workflow view never shown without an active
+  draft") — `resumeActiveDraft()` is `async`, exposes
+  `state.ui.draftBootStatus: 'loading'|'ready'|'error'` via
+  `window.__setDraftBootStatus` (`bridges.js`). Every navigation entry
+  point into the workflow (`createDraft`, `switchToDraft`, `_initApp`'s
+  own boot call) is chained through a captured `window.__draftsBootPromise`
+  so no code path can act on draft state before boot settles. `'error'`
+  (boot's own fetch **and** its blank-draft fallback both failed) renders
+  a small persistent retry banner in `AppShell.jsx` — the one genuinely
+  new failure surface this step introduces, since the old synchronous
+  version could never fail at all.
+- **`useDraftsList(refetchKey)`** (new `src/state/useDraftsList.js`) —
+  mirrors `BidsPage.jsx`'s pre-existing `bidsStatus` tri-state, the
+  precedent the plan pointed at. One network fetch on mount **and**
+  whenever `refetchKey` changes; every mutation elsewhere fires
+  `dirigo:drafts-changed`, which every mounted hook instance picks up
+  from the shared cache with no extra round-trip. Callers: `AppShell.jsx`'s
+  always-visible nav list (no key — fetch once, cache/event keeps it
+  current, no added loading state per the plan since the fetch is fast);
+  `OpenBidMenu` (`open` as the key — refetches on each open, matching the
+  old refresh-on-open behavior); `BidsPage.jsx`/`HomePage.jsx` (`active`
+  as the key — matches their pre-existing "reload on every becomes-active
+  transition" contract, needed for real tests that mutate drafts out from
+  under a mounted page and expect the next visit to show current data).
+- **`js/drafts.js`'s pure functions** — untouched, confirmed. They never
+  touched storage directly.
+
+**Real bugs found via actual testing, not assumed safe on paper (per the
+project's own standing discipline) — the checkpoint's most important
+finding is that the first full-suite run this step, uncleaned, gave 93
+passed/107 failed, and every one of the fixes below was needed to reach
+zero failures, not just the ~13 specs originally anticipated:**
+
+1. **`data/seed.js`'s `loadSeedData()` called the now-deleted
+   `_saveDraftsMap()`** — a hard `ReferenceError` aborting seed loading
+   partway through for nearly every spec. `data/seed.js` was a real
+   draft-storage call site the original file audit missed entirely (same
+   class of gap as Step 2A's `dev-seed-bids.js`/`dev-clear-bids.js`
+   finding). Fixed: `loadSeedData()` now wipes existing drafts via a new
+   `netlify/functions/dev-clear-drafts.js` (mirrors `dev-clear-bids.js`,
+   `store.deleteAll()`) then writes the one seed draft through
+   `_writeDraft()` — matching the "Load Demo replaces, never appends"
+   convention now that drafts, like bids, are a shared server-side store.
+2. **`clearSeedData()` never cleared server-side drafts at all** — it only
+   removed local marker keys. Since drafts are now a *shared* store (same
+   as bids, and — unlike the old per-browser-context localStorage — this
+   matters enormously for Playwright, where the whole suite runs against
+   one shared local Blobs emulator instance across every test), this
+   alone would have let drafts accumulate across the entire suite run.
+   Fixed: `clearSeedData()` now also calls `dev-clear-drafts` (parallel
+   with `dev-clear-bids`, both awaited before `location.reload()`).
+3. **`_flushAndSwitch()` awaiting `_autosave()` before returning turned a
+   same-tick synchronous guarantee into a several-millisecond gap** —
+   found via real Playwright instrumentation (not theorized): the old
+   fully-synchronous `_flushAndSwitch()`/`resetFormFields()` pair ran
+   within the same call stack as a click handler; making it `async` and
+   awaited pushed `resetFormFields()`/`populateForm()` behind a real
+   network round trip, a ~17ms window in which a fast `fill()` (and, in
+   principle, a very fast real user) landing in the gap got silently
+   wiped once the deferred reset finally ran. Reproduced directly: 17
+   instrumented keystrokes right after clicking "+ New Bid" vanished
+   entirely, with the new draft persisting blank. Fixed: `_flushAndSwitch()`
+   no longer awaits internally — it triggers `_autosave()` (which itself
+   captures `collectFormData()` synchronously before its own first
+   `await`, so the outgoing draft's data is still captured correctly) and
+   returns the promise for the caller to await *after* doing its own
+   synchronous DOM work (`resetFormFields()`/`populateForm()`), restoring
+   the same-tick guarantee the old code had. `createDraft()`/
+   `switchToDraft()` both restructured to this shape.
+4. **`loadSeedData()`'s own `dev-clear-drafts` call was a raw `fetch()`,
+   bypassing `_draftsCache` invalidation** — the server-side wipe never
+   touched the client's in-memory mirror, so `_writeDraft()`'s
+   merge-spread added the new seed draft *on top of* the stale
+   pre-clear cache instead of replacing it. Found via a real
+   `openDraftCount` mismatch in `golden-export-parity.spec.js` (server
+   held 1 draft, client cache showed 2). Fixed: `loadSeedData()` resets
+   `_draftsCache = {}` explicitly right after the clear succeeds.
+5. **Boot's own async `resumeActiveDraft()` can race a caller that acts on
+   the app immediately after `page.goto('/')`, with no intervening wait**
+   — `window.goto` becoming a function only confirms React mounted, not
+   that `js/forms.js`'s own draft-storage boot sequence has settled.
+   Found via two real, reproduced failures
+   (`mobile-layout.spec.js`'s bid-summary test calling `loadSeedData()`
+   right after `goto()`; `html-escaping.spec.js`/`new-bid-creates-draft.spec.js`
+   filling the form immediately after `clearAll()`). Fixed in two places:
+   `loadSeedData()` now awaits `window.__draftsBootPromise` as its first
+   line; `tests/e2e/helpers.js`'s shared `clearAll()` now also waits for
+   it before returning — closing this race for every spec that uses the
+   helper, not just the ones already found.
+6. **Several specs read/wrote `dirigo_drafts` raw via `localStorage`** —
+   now hard failures (or, worse, *silent vacuous passes*, since the key
+   is a constant `'{}'` after boot) rather than flaky ones, exactly as
+   the plan anticipated. Fixed: `legacy-migration.spec.js`,
+   `tab-confirm-old-draft-migration.spec.js`, `delete-draft.spec.js`,
+   `finalize-clears-draft.spec.js`, `finalize-custom-override.spec.js`,
+   `bid-decision-gate.spec.js`, `open-bids-nav.spec.js` (this last one
+   also had a genuine missing-`await` bug — `Object.keys(window.getAllDrafts())`
+   on the now-async function silently counted `0` instead of throwing)
+   all rewritten to read via `window.getAllDrafts()` (or a direct PUT to
+   the real endpoint for fixture injection) instead of the raw key.
+   `legacy-migration.spec.js` additionally needed an explicit
+   `dev-clear-drafts` call in its own setup — wiping the local
+   `dirigo_drafts` marker no longer cascades to deleting the orphan blank
+   draft `clearAll()`'s own boot sequence creates server-side, the way
+   removing that one bulk localStorage key used to wipe everything at
+   once.
+
+**Confirmed pre-existing, not introduced here:** `tab-confirm-revert-on-edit.spec.js`'s
+third test intermittently fails (`Cannot accept dialog which is already
+handled!`, ~1/3 runs in a repeated local check) — a rate-template dialog-
+listener race unrelated to draft storage. Not touched, flagged rather than
+silently absorbed.
+
+- **`ACTIVE_DRAFT_KEY` decision, confirmed as planned:** stays
+  local-only. **Open Questions 1 & 2:** both resolved exactly as
+  recommended in the plan and pre-approved by Eric at plan review — no
+  further confirmation needed at this checkpoint.
+- **Tests:** new `tests/unit/drafts-core.test.js` (`fakeStore()`
+  convention, `.list()`/`.delete()` — `isValidDraftId`, `readDraft`/
+  `writeDraft`/`deleteDraftRecord` round-trips, `readAllDrafts`).
+  `tests/unit/drafts.test.js` (js/drafts.js's pure functions) untouched —
+  no signature changes there, confirmed.
+- **Verified:** 309/309 Vitest (300 prior + 9 net new). Local `netlify
+  dev` hand-check, real UI clicks (not just curl): create a draft, type
+  17 keystrokes into a field and confirm **exactly 1** outgoing PUT
+  (instrumented `window.fetch`) after the debounce — not per keystroke;
+  create a second draft immediately after the first (the exact race
+  class found and fixed above) and confirm the typed name survives;
+  switch between two drafts via the real Bid History "Open" buttons;
+  duplicate one; delete one (confirm removal, no orphan); finalize one
+  via the real Finalize modal (confirm the draft is deleted server-side,
+  the new bid appears in the bids store, Home shows a fresh blank draft,
+  no console errors); reload mid-session and confirm the active draft
+  resumes with the correct in-progress data. Full Playwright suite
+  **200 passed / 0 failed / 4 skipped** on a clean local Blobs store —
+  identical to the pre-Step-2B baseline, zero net spec regressions
+  (every touched spec's *behavior contract* preserved, only its draft-
+  storage read/write mechanics updated to match the new architecture).
+  **Pending before merge:** deploy-preview (read-only — the new `drafts`
+  endpoint is just as shared/site-wide as `bids`, same standing rule) +
+  mobile 390px check, own PR, per the standing standard.

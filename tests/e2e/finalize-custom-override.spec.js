@@ -72,8 +72,12 @@ test('finalizing with a custom override amount clears the draft and creates a Bi
   await page.click('#finalize-confirm-btn');
   await page.waitForTimeout(300);
 
-  const stillPresent = await page.evaluate((id) => {
-    const drafts = JSON.parse(localStorage.getItem('dirigo_drafts') || '{}');
+  // Migration Phase 2 Step 2B: drafts are server-side — dirigo_drafts no
+  // longer holds real data (it's just the legacy-migration marker), so
+  // this reads the real endpoint instead of a raw localStorage check
+  // that would now vacuously always read false.
+  const stillPresent = await page.evaluate(async (id) => {
+    const drafts = await window.getAllDrafts();
     return !!drafts[id];
   }, activeIdBefore);
   expect(stillPresent).toBe(false);

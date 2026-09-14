@@ -16,10 +16,19 @@ test('a pre-feature draft (no tabConfirmations) loads clean with every tab uncon
   await page.waitForTimeout(1600);
 
   // Rewrite every stored draft to look like it predates the feature.
-  await page.evaluate(() => {
-    const drafts = JSON.parse(localStorage.getItem('dirigo_drafts') || '{}');
-    for (const id of Object.keys(drafts)) delete drafts[id].tabConfirmations;
-    localStorage.setItem('dirigo_drafts', JSON.stringify(drafts));
+  // Migration Phase 2 Step 2B: drafts are server-side now — fetch each
+  // one, strip tabConfirmations, PUT it back (the same upsert path
+  // window.forms.js's normal draft writes use), instead of a raw
+  // localStorage rewrite (which no longer touches real draft data at
+  // all — dirigo_drafts is just the legacy-migration marker now).
+  await page.evaluate(async () => {
+    const drafts = await window.getAllDrafts();
+    for (const [id, record] of Object.entries(drafts)) {
+      const { tabConfirmations, ...rest } = record;
+      await fetch('/.netlify/functions/drafts?id=' + encodeURIComponent(id), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rest)
+      });
+    }
   });
 
   await page.reload();

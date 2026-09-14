@@ -25,7 +25,8 @@ test('lists every open draft, newest first, and marks the active one', async ({ 
 
   // One row per draft, most-recently-modified first.
   await expect.poll(() => navRowLabels(page)).toEqual(['Gamma', 'Beta', 'Alpha']);
-  expect(await page.evaluate(() => Object.keys(window.getAllDrafts()).length)).toBe(3);
+  // Migration Phase 2 Step 2B: getAllDrafts() is now async.
+  expect(await page.evaluate(async () => Object.keys(await window.getAllDrafts()).length)).toBe(3);
 
   // The section label shows (and is a real .section-label, per the brief).
   // Two .section-label headers now live in .nav-items ("Open bids" and

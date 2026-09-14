@@ -16,8 +16,11 @@ test('finalizing a bid removes its source draft and the same data appears correc
   await page.click('#finalize-confirm-btn');
   await page.waitForTimeout(300);
 
-  const stillPresent = await page.evaluate((id) => {
-    const drafts = JSON.parse(localStorage.getItem('dirigo_drafts') || '{}');
+  // Migration Phase 2 Step 2B: drafts are server-side — read via the
+  // real endpoint instead of a raw localStorage check (dirigo_drafts no
+  // longer holds real draft data).
+  const stillPresent = await page.evaluate(async (id) => {
+    const drafts = await window.getAllDrafts();
     return !!drafts[id];
   }, activeIdBefore);
   expect(stillPresent).toBe(false);

@@ -21,8 +21,11 @@ test('deleting a draft prompts for confirmation, then removes it from the list a
   await expect(page.locator('#page-bids tbody')).not.toContainText('QA To Delete');
   await expect(page.locator('#page-bids tbody')).toContainText('QA To Keep');
 
-  const stillInStorage = await page.evaluate(() => {
-    const drafts = JSON.parse(localStorage.getItem('dirigo_drafts') || '{}');
+  // Migration Phase 2 Step 2B: drafts are server-side — read via the
+  // real endpoint instead of a raw localStorage check (dirigo_drafts no
+  // longer holds real draft data).
+  const stillInStorage = await page.evaluate(async () => {
+    const drafts = await window.getAllDrafts();
     return Object.values(drafts).some(d => d.project?.name === 'QA To Delete');
   });
   expect(stillInStorage).toBe(false);
@@ -40,9 +43,12 @@ test('deleting the only active draft replaces it immediately — never leaves a 
   await page.locator('tr', { hasText: 'QA Only Draft' }).locator('button:has-text("×")').click();
   await page.waitForTimeout(200);
 
-  const { activeId, hasRecord } = await page.evaluate(() => {
+  // Migration Phase 2 Step 2B: drafts are server-side — the active id
+  // itself stays local-only (per the migration plan), but the draft map
+  // it points into is read via the real endpoint now.
+  const { activeId, hasRecord } = await page.evaluate(async () => {
     const activeId = localStorage.getItem('dirigo_active_draft_id');
-    const drafts   = JSON.parse(localStorage.getItem('dirigo_drafts') || '{}');
+    const drafts   = await window.getAllDrafts();
     return { activeId, hasRecord: !!(activeId && drafts[activeId]) };
   });
   expect(activeId).toBeTruthy();
