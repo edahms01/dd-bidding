@@ -18,10 +18,6 @@
 // caller(s) convert to real imports and no longer need the global.
 // ─────────────────────────────────────────────────────────────────────
 
-// js/ui.js's calculateOnly()/submitBid() call these as bare globals.
-// Both are reachable only via user-triggered paths (debounced form-change/
-// state-watcher, explicit navigation, Finalize-confirm click) — never at
-// script-load time — so there's no load-order race with this assignment.
 import {
   calculateWallCosts,
   calculateCeilingCosts,
@@ -34,6 +30,20 @@ import {
   applyRateEscalation
 } from './calculator.js';
 
+import {
+  omit,
+  buildAgentPayload,
+  AGENT_PROJECT_DENYLIST,
+  AGENT_CONDITIONS_DENYLIST,
+  AGENT_ASSEMBLY_DENYLIST,
+  AGENT_WALL_DENYLIST,
+  AGENT_CEILING_DENYLIST
+} from './agentPayload.js';
+
+// js/ui.js's calculateOnly()/submitBid() call these as bare globals.
+// Both are reachable only via user-triggered paths (debounced form-change/
+// state-watcher, explicit navigation, Finalize-confirm click) — never at
+// script-load time — so there's no load-order race with this assignment.
 window.calculateWallCosts = calculateWallCosts;
 window.calculateCeilingCosts = calculateCeilingCosts;
 window.calculateLogistics = calculateLogistics;
@@ -43,3 +53,16 @@ window.buildCostSummary = buildCostSummary;
 window.applyMarkup = applyMarkup;
 window.computeWeightedWastePct = computeWeightedWastePct;
 window.applyRateEscalation = applyRateEscalation;
+
+// js/agent.js's runBidAgent() calls buildAgentPayload as a bare global,
+// only when DEMO_MODE is false (production only) — still user-triggered
+// (Send to Agent / Re-run agent), never at script-load time. agent.js
+// loads after agent-payload.js in index.html's classic-script chain,
+// and both load before the React module bundle that owns this bridge.
+window.omit = omit;
+window.buildAgentPayload = buildAgentPayload;
+window.AGENT_PROJECT_DENYLIST = AGENT_PROJECT_DENYLIST;
+window.AGENT_CONDITIONS_DENYLIST = AGENT_CONDITIONS_DENYLIST;
+window.AGENT_ASSEMBLY_DENYLIST = AGENT_ASSEMBLY_DENYLIST;
+window.AGENT_WALL_DENYLIST = AGENT_WALL_DENYLIST;
+window.AGENT_CEILING_DENYLIST = AGENT_CEILING_DENYLIST;

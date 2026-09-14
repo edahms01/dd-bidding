@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────
-// agent-payload.js — builds the bid-agent request payload.
+// agentPayload.js — builds the bid-agent request payload.
 //
 // Split out of js/agent.js's runBidAgent() so it's unit-testable in
 // isolation (agent.js has no module.exports and can't be imported under
-// Vitest). Classic <script>, loaded immediately before js/agent.js;
-// buildAgentPayload resolves as a plain global there, same as every
-// other js/*.js function.
+// Vitest). buildAgentPayload is called as a plain global from js/agent.js
+// (still a classic script, out of scope this phase) via the window
+// bridge in src/state/legacyBridges.js.
 //
 // project / conditions / assemblies / walls / ceilings are sent whole,
 // minus a denylist, rather than hand-picked key by key — so a new field
@@ -17,9 +17,12 @@
 // `state` here is the collectFormData() shape (js/state.js): flat
 // state.project / state.conditions / state.intelligence, NOT the React
 // store's nested state.bid.*.
+//
+// Migration Phase 3, Step 3B: ported from js/agent-payload.js (a classic
+// <script>-tag global) to a real ES module.
 // ─────────────────────────────────────────────────────────────────────
 
-function omit(obj, denyKeys) {
+export function omit(obj, denyKeys) {
   const out = {};
   for (const k of Object.keys(obj || {})) {
     if (!denyKeys.includes(k)) out[k] = obj[k];
@@ -30,18 +33,18 @@ function omit(obj, denyKeys) {
 // Per Eric (2026-09-07): no fields are deliberately withheld from the
 // agent today. These exist so a *future* decision to withhold something
 // has one obvious place to go. Start empty.
-const AGENT_PROJECT_DENYLIST = [];
-const AGENT_CONDITIONS_DENYLIST = [];
+export const AGENT_PROJECT_DENYLIST = [];
+export const AGENT_CONDITIONS_DENYLIST = [];
 // Row-shape internal bookkeeping only: _key is React's list-reconciliation
 // key (store.jsx freshRowKey()), _num the assembly id-prefix counter.
 // The collectFormData() rows this function actually receives carry
 // neither today — these are insurance against a future serialize-from-
 // the-React-store path where blankAssemblyRow() does stamp both.
-const AGENT_ASSEMBLY_DENYLIST = ['_key', '_num'];
-const AGENT_WALL_DENYLIST     = ['_key'];
-const AGENT_CEILING_DENYLIST  = ['_key'];
+export const AGENT_ASSEMBLY_DENYLIST = ['_key', '_num'];
+export const AGENT_WALL_DENYLIST     = ['_key'];
+export const AGENT_CEILING_DENYLIST  = ['_key'];
 
-function buildAgentPayload(state, summary, markupResult, bidHistory) {
+export function buildAgentPayload(state, summary, markupResult, bidHistory) {
   return {
     project: omit(state.project, AGENT_PROJECT_DENYLIST),
     // costs stays a deliberately-computed summary (rounded / formatted),
@@ -64,17 +67,5 @@ function buildAgentPayload(state, summary, markupResult, bidHistory) {
     // No `schema` key — the server-side function attaches the forced
     // recommendation tool (Track A). Same request for the dual-demo live
     // button and the real product path — same model, same everything.
-  };
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    omit,
-    buildAgentPayload,
-    AGENT_PROJECT_DENYLIST,
-    AGENT_CONDITIONS_DENYLIST,
-    AGENT_ASSEMBLY_DENYLIST,
-    AGENT_WALL_DENYLIST,
-    AGENT_CEILING_DENYLIST
   };
 }
