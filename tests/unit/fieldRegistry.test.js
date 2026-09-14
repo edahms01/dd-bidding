@@ -18,7 +18,7 @@ import {
   AGENT_ASSEMBLY_DENYLIST,
   AGENT_WALL_DENYLIST,
   AGENT_CEILING_DENYLIST,
-} from '../../js/agent-payload.js';
+} from '../../src/state/agentPayload.js';
 
 // Comments stripped: a field named only in a comment ("delivery/disposal/lift
 // don't have commodity-price risk…") is not *consumed*, and would be a false

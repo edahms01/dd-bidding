@@ -7,7 +7,7 @@ import {
   AGENT_ASSEMBLY_DENYLIST,
   AGENT_WALL_DENYLIST,
   AGENT_CEILING_DENYLIST,
-} from '../../js/agent-payload.js';
+} from '../../src/state/agentPayload.js';
 
 // Mirrors the key sets js/state.js collectFormData() actually returns for
 // its `project` and `conditions` slices (checked against that function,
