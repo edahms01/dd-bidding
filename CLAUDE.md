@@ -99,7 +99,7 @@ The Rates/History conversion surfaced two classes of bug that are **structural t
 
 `js/tabs.js`'s own `goto`/`showHistory`/`showDashboard`/`toggleNav` are still defined (classic scripts still declare them as globals) but are **shadowed** — the bridges above overwrite them on `window` once the React module script runs, which is always after every classic script has finished. `_activateWorkflow`/`_navSetActive`/`_chevronSvg` and the collapse-restoring IIFE at the bottom of `js/tabs.js` are now dead code (the IIFE runs before React mounts, finds nothing to act on, and no-ops harmlessly — nav-collapsed restoration happens via `store.jsx`'s `initialState` reading the same localStorage key instead). Left in place rather than deleted, on the same "don't touch what isn't broken" reasoning as everything else below — slated for removal alongside the rest of `tabs.js` when it's no longer needed at all.
 
-**Dead code from this spike — mostly removed at the A2 legacy-removal close-out (PR `a2-legacy-code-removal`, 2026-09-10).** Removed then: `js/tabs.js` in its entirety; `js/ui.js`'s `renderHistory()`/`toggleUpdate()`/`saveUpdate()`/`deleteBidRecord()`/`renderDashboard()`/`duplicateDraftAndRefresh()`/`confirmDeleteDraft()`, the five dead finalize-modal functions (`_initFinalizeModal()`/`_showFinalizeModal()`/`_modalSelectRow()`/`_modalCustomInput()`/`_finalizeBid()`) plus `_closeFinalizeModal()`'s body (the *name* stays — `bridges.js` shadows `window._closeFinalizeModal` and the Escape-key listener calls it bare), and `_selectBidOption()`; `src/pages/LegacyPage.jsx`; the classic rate-template UI chain (`js/ui.js`'s `renderRateTemplateSelect()`/`saveRateTemplateFromForm()`/`loadSelectedRateTemplate()`/`deleteSelectedRateTemplate()` + `_rateTemplatesCache`, `js/forms.js`'s `applyRateTemplate()`) at a later cleanup (`dead-classic-rate-template-removal`, 2026-09-10). **Still dead, still in place** (a separate follow-up, deliberately out of that pass's scope): `js/forms.js`'s `setConf()`, reachable only from `populateForm()`'s and `resetFormFields()`'s non-browser fallback branches (`ConditionsPage.jsx`'s confidence buttons dispatch directly; the `onclick="setConf(...)"` markup is gone). Left because removing it means editing the `populateForm()`/`resetFormFields()` fallback bodies, which the close-out kept out of scope.
+**Dead code from this spike — mostly removed at the A2 legacy-removal close-out (PR `a2-legacy-code-removal`, 2026-09-10).** Removed then: `js/tabs.js` in its entirety; `js/ui.js`'s `renderHistory()`/`toggleUpdate()`/`saveUpdate()`/`deleteBidRecord()`/`renderDashboard()`/`duplicateDraftAndRefresh()`/`confirmDeleteDraft()`, the five dead finalize-modal functions (`_initFinalizeModal()`/`_showFinalizeModal()`/`_modalSelectRow()`/`_modalCustomInput()`/`_finalizeBid()`) plus `_closeFinalizeModal()`'s body (the *name* stays — `bridges.js` shadows `window._closeFinalizeModal` and the Escape-key listener calls it bare), and `_selectBidOption()`; `src/pages/LegacyPage.jsx`; the classic rate-template UI chain (`js/ui.js`'s `renderRateTemplateSelect()`/`saveRateTemplateFromForm()`/`loadSelectedRateTemplate()`/`deleteSelectedRateTemplate()` + `_rateTemplatesCache`, `js/forms.js`'s `applyRateTemplate()`) at a later cleanup (`dead-classic-rate-template-removal`, 2026-09-10). **Not dead — corrected 2026-09-13, Phase 1 Step 1A.** `js/forms.js`'s `setConf()` was previously described here as reachable only from `populateForm()`'s/`resetFormFields()`'s non-browser fallback branches (`ConditionsPage.jsx`'s confidence buttons dispatch directly; the `onclick="setConf(...)"` markup is gone). That was wrong: both call sites (`populateForm()`, `resetFormFields()`) run **unconditionally**, not behind a `window.__hydrateX` guard the way `addAsm()`/`addWall()`/`addCeil()` were — `setConf()` writes `STATE.conf`, the real pre-mount confidence-fallback bookkeeping `js/state.js:148` reads (`window.__getConfidence()`'s fallback when the reader isn't registered). Confirmed via Phase 1's dead-code audit (`docs/` — see Phase 1 section below) before relying on the old claim.
 
 `_selectBidOption()` (`js/ui.js`) is now fully dead too — `AgentPage.jsx`'s cards dispatch `SELECT_AGENT_OPTION` directly on click instead. Found, not assumed, before porting: the function had three DOM-manipulation blocks, but only the first (`[data-bid-opt]`, the actual cards) ever did anything — the other two referenced `input[name="agent-bid-option"]` and `getElementById('finalize-row-' + t)`, neither of which exists anywhere in current markup (the modal uses `name="finalize-modal-option"` and `data-modal-opt`, not these). Silently no-oping for a while, not a behavior bug — the two dead blocks were not reproduced in `AgentPage.jsx`, since faithfully porting dead code isn't faithful to anything real. `renderAgentTab()`/`_renderAgentResult()` are *not* dead — see the bridges list, real callers still need them by name.
 
@@ -798,6 +798,54 @@ Real 390px audit of `src/pages/AgentPage.jsx`'s post-Phase-E surfaces (the Signa
 - **Untouched, confirmed:** `.agent-cards-scroll` (scoped everywhere as `#page-agent .agent-cards-scroll`, never through `.section-block`, so the container swap is safe against `agent-mobile.spec.js`'s 4 references), `OptionCard`, `.win-likelihood-pill-btn`, `.win-attr`, `.ev-tip`/`.ev-tip-pop`, `AgentStalenessWarning`, `WhatIfSlider` comment — all their own "choice card" language, same reasoning as Cost Summary's Final bid price. `css/responsive.css`'s `.agent-section-toggle{min-height:44px}` mobile floor untouched and still clears easily (natural toggle height now 46px at both desktop and 390px). `data-open`/click handler/open-closed logic: zero behavior change.
 - **Files:** `css/components.css`, `src/pages/AgentPage.jsx`, `docs/dirigo-ux-decisions.md` §6.13, `CLAUDE.md`. **Not touched:** any spec (all pass unchanged), `calculator.js`, `golden-export.json`, `css/responsive.css`.
 - **Verified:** 273/273 Vitest; full Playwright 200 passed / 4 skipped / 0 failed; `agent-mobile.spec.js` + `agent-response-escaping.spec.js` (plus `agent-expected-value`/`agent-override-reason`/`agent-staleness`) pass individually unchanged; `vite build` clean; visually confirmed on a real local render (desktop + 390px, open + closed states) before finalizing the eyeball-tuned values. **Pending before merge:** genuine Netlify deploy-preview (not local `netlify dev`) — all three accordions + the two new trays read token-aligned at desktop and 390px, tap-target height holds, no overflow from the larger title text, golden-export no-diff, preview stays read-only.
+
+## Phase 1: Foundation cleanup (dead code + monitoring + AI retry) (in progress)
+
+Lowest-risk slice of the larger legacy-retirement migration (retire `js/*.js`,
+bring the backend up to real-SaaS-grade practices). Plan: `/Users/eric/.claude/plans/new-brief-for-dirigo-shimmering-valley.md`.
+Build order, 3 checkpoints, two commits per step (production, then test/docs):
+**(1) 1A dead-code deletion → stop; (2) 1B error logging/alerting → stop;
+(3) 1C AI retry logic.** Out of scope, untouched: `calculator.js`,
+`agent-payload.js`, `history-analytics.js`, any data-storage code.
+
+**Step 1A (delete confirmed-dead legacy code) complete.** Full 11-file audit
+of `js/` (every top-level fn/const traced for callers in `src/`, other `js/`
+files, `index.html`) found exactly 8 dead items, all previously-undetected:
+
+- `js/forms.js` lines 10-87: `asmCount`, `updateAsmId()`, `addAsm()`,
+  `addWall()`, `calcWall()`, `addCeil()`, `calcCeil()` — unreachable.
+  `window.__hydrateAssemblies`/`__hydrateWalls`/`__hydrateCeilings` are
+  registered unconditionally at `AppShell` mount, before `populateForm()`
+  can ever run — the file's own comment already called the `else` branch
+  that called these "UNREACHABLE legacy fallback." Deleted outright; the
+  three `if (window.__hydrateX) {...} else {...}` guards in `populateForm()`
+  collapsed to unconditional `window.__hydrateX?.(...)` calls, matching
+  this same function's existing idiom for every other bridge (`__hydrateMarkup`
+  etc.).
+- `js/ui.js`: `_lastCalcState` — write-only, zero reads anywhere. Deleted.
+- **Confirmed still live, untouched:** `_renderOutputLegacy`/
+  `_renderAgentTabLegacy` (`js/ui.js` — called internally by `renderOutput()`/
+  `renderAgentTab()`, real bridge-gated fallback functions, different in
+  kind from the `addAsm` family); `STATE` (`js/state.js` — genuinely live
+  pre-mount confidence fallback, just not referenced from `src/`).
+- **`setConf()` (`js/forms.js`) — CLAUDE.md correction, not a deletion.**
+  This file previously described it as dead (reachable only from a
+  non-browser fallback branch). Grep evidence during this audit showed
+  both its call sites (`populateForm()`, `resetFormFields()`) run
+  unconditionally — it's real, live code writing `STATE.conf`. See the
+  corrected note further up this file (in the A2 "Dead code from this
+  spike" section) for the full explanation.
+- **Regression check:** `grep -rn` for all 8 symbols across `tests/`, `js/`,
+  `src/`, `index.html`, `data/` — zero test files invoke any of them (two
+  `.spec.js` files mention `addAsm()`/`calcWall()` only in prose comments
+  about unrelated live behavior, left untouched as historical lineage).
+- **Verified:** 273/273 Vitest unchanged; full Playwright suite **200
+  passed / 4 skipped / 0 failed** (unchanged from pre-change baseline);
+  local `netlify dev` hand-check (full Project→Assemblies→Walls→Ceilings→
+  Cost Summary workflow pass, add/delete a row on all three tables) —
+  zero console errors, row counts correct after each add/delete.
+  **Pending before merge:** read-only deploy-preview verification, mobile
+  390px check.
 
 ## Market Read onto the tray standard — closes out the rollout (2026-09-11, standalone brief)
 
