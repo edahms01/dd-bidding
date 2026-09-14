@@ -17,6 +17,7 @@ import { flushSync } from 'react-dom';
 import { useStore } from './state/store.jsx';
 import { registerBridges, registerTabConfirmationsReader, registerDemoConfirmAllTabs } from './state/bridges.js';
 import { parseHash, canonicalHash } from './state/router.js';
+import { useDraftsList } from './state/useDraftsList.js';
 import { stepStatus, GATED_TABS, tabEligible, ownedSliceJSON } from './state/stepStatus.js';
 import HomePage from './pages/HomePage.jsx';
 import ProjectPage from './pages/ProjectPage.jsx';
@@ -76,19 +77,21 @@ function fmtWhen(ts) {
   return d.toLocaleDateString();
 }
 
-// Shared source + sort for both "open bids" surfaces — the header's
-// OpenBidMenu combobox and the left-nav "Open bids" list. One
-// definition, not reimplemented per surface. "Open" = every draft in
-// dirigo_drafts (work-in-progress, not yet submitted); a finalized bid
-// is removed from that map (js/forms.js clearFinalizedDraft), so the
-// map is exactly the in-progress set — no further filtering. Sorted
-// most-recently-changed first. Backend is the existing localStorage
-// draft store: window.getAllDrafts() + window.switchToDraft(), the same
-// pair BidsPage already uses for its Open buttons.
-function sortedOpenDrafts() {
-  let map = {};
-  try { map = window.getAllDrafts ? window.getAllDrafts() : {}; } catch (e) { map = {}; }
-  return Object.values(map).sort(
+// Shared sort for both "open bids" surfaces — the header's OpenBidMenu
+// combobox and the left-nav "Open bids" list. One definition, not
+// reimplemented per surface. "Open" = every draft the drafts store
+// holds (work-in-progress, not yet submitted); a finalized bid is
+// deleted from that store (js/forms.js's clearFinalizedDraft()), so the
+// set is exactly the in-progress one — no further filtering. Sorted
+// most-recently-changed first.
+//
+// Migration Phase 2 Step 2B: the draft list itself now comes from
+// useDraftsList() (src/state/useDraftsList.js) — drafts moved
+// server-side, so listing them is a network fetch (with a shared
+// in-memory cache + change event), not a synchronous localStorage read.
+// This function is now pure sort only, called with that hook's array.
+function sortedOpenDrafts(drafts) {
+  return [...drafts].sort(
     (a, b) => new Date(b.lastModifiedAt || b.createdAt || 0) - new Date(a.lastModifiedAt || a.createdAt || 0)
   );
 }
@@ -97,12 +100,9 @@ function sortedOpenDrafts() {
 // the chosen one.
 function OpenBidMenu() {
   const [open, setOpen] = useState(false);
-  const [drafts, setDrafts] = useState([]);
+  const { drafts: rawDrafts, status: draftsStatus } = useDraftsList(open);
+  const drafts = sortedOpenDrafts(rawDrafts);
   const ref = useRef(null);
-
-  function refresh() {
-    setDrafts(sortedOpenDrafts());
-  }
 
   useEffect(() => {
     if (!open) return;
@@ -122,13 +122,15 @@ function OpenBidMenu() {
         className="btn btn-ghost btn-sm"
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => { if (!open) refresh(); setOpen((o) => !o); }}
+        onClick={() => setOpen((o) => !o)}
       >
         Open Bid <span aria-hidden="true" style={{ fontSize: 9, marginLeft: 2 }}>▾</span>
       </button>
       {open && (
         <div className="open-bid-dropdown" role="listbox">
-          {drafts.length === 0 ? (
+          {draftsStatus === 'loading' ? (
+            <div className="open-bid-empty">Loading…</div>
+          ) : drafts.length === 0 ? (
             <div className="open-bid-empty">No saved bids yet</div>
           ) : (
             drafts.map((d) => (
@@ -153,15 +155,18 @@ function OpenBidMenu() {
 
 export default function AppShell() {
   const [state, dispatch] = useStore();
-  const { activeSection, activeTab, navCollapsed, navDrawerOpen } = state.ui;
+  const { activeSection, activeTab, navCollapsed, navDrawerOpen, draftBootStatus } = state.ui;
   const closeDrawer = () => dispatch({ type: 'SET_NAV_DRAWER', value: false });
 
-  // The "Open bids" nav list re-reads the draft store on every render
-  // (cheap — one localStorage read + small JSON.parse; AppShell already
-  // re-renders on every dispatch), so a new/switched/renamed draft shows
-  // once autosave has flushed — same freshness model as OpenBidMenu.
+  // The "Open bids" nav list — Migration Phase 2 Step 2B: drafts moved
+  // server-side, so this is useDraftsList()'s shared fetch + in-memory
+  // cache now, not a synchronous localStorage read on every render. No
+  // added loading state here on purpose (fast enough not to need one,
+  // per the plan) — the list is simply empty until the hook's one fetch
+  // resolves, same as it would read on a fresh install today.
   const navLabelsVisible = !navCollapsed || navDrawerOpen;
-  const openDrafts = sortedOpenDrafts();
+  const { drafts: openDraftsRaw } = useDraftsList();
+  const openDrafts = sortedOpenDrafts(openDraftsRaw);
   let activeDraftId = null;
   try { activeDraftId = localStorage.getItem('dirigo_active_draft_id'); } catch (e) { /* private mode */ }
 
@@ -288,10 +293,21 @@ export default function AppShell() {
       // #/bids/<draftId> — open that draft, same as the row's Open
       // button (switchToDraft -> _flushAndSwitch, then it lands on
       // #/<step>). Unknown id just shows the list.
+      //
+      // Migration Phase 2 Step 2B: getAllDrafts() is now async (a
+      // network fetch), so this resolves via .then() rather than a
+      // synchronous lookup — the effect itself isn't async, it just
+      // returns immediately after kicking this off, same as before.
+      // The existence check + list-fallback is preserved exactly: an
+      // unknown/deleted id still falls through to showing the Bids list
+      // instead of silently doing nothing.
       if (parsed.section === 'bids' && parsed.rest[0] && window.switchToDraft) {
         const id = parsed.rest[0];
-        const drafts = window.getAllDrafts ? window.getAllDrafts() : {};
-        if (drafts[id]) { window.switchToDraft(id); return; }
+        window.getAllDrafts?.().then((drafts) => {
+          if (drafts[id]) { window.switchToDraft(id); return; }
+          if (stateRef.current.activeSection !== 'bids') dispatch({ type: 'GOTO_SECTION', section: 'bids' });
+        }).catch(() => {});
+        return;
       }
       if (cur.activeSection !== parsed.section) {
         dispatch({ type: 'GOTO_SECTION', section: parsed.section });
@@ -610,6 +626,32 @@ export default function AppShell() {
               the step-bar slot carries the Bids filter toolbar instead
               of going blank. */}
           {activeSection === 'bids' && <BidsToolbar />}
+
+          {/* Migration Phase 2 Step 2B — the one genuinely new failure
+              surface this step introduces: boot's draft-storage fetch
+              (and its own blank-draft fallback) both failed, so there's
+              no active draft to work with at all. A retry re-runs the
+              same boot sequence; every navigation entry point into the
+              workflow already awaits window.__draftsBootPromise, so
+              nothing silently proceeds into an editable form with
+              nowhere to save while this is showing. */}
+          {draftBootStatus === 'error' && (
+            <div style={{
+              background: 'rgba(232,92,74,.08)', border: '1px solid rgba(232,92,74,.35)',
+              borderRadius: 'var(--rl)', margin: '16px 24px 0', padding: '10px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              fontSize: 13, color: 'var(--danger)'
+            }}>
+              <span>Couldn't load your bids. Check your connection and retry.</span>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  dispatch({ type: 'SET_FIELD', path: ['ui', 'draftBootStatus'], value: 'loading' });
+                  window.__draftsBootPromise = window.resumeActiveDraft?.();
+                }}
+              >Retry</button>
+            </div>
+          )}
 
           <div className="body">
             <HomePage active={activeSection === 'home'} />

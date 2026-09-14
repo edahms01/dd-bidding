@@ -218,8 +218,15 @@ function collectFormData() {
     // Computed count of *other* open drafts, alongside (not replacing) the
     // subjective pipelinePressure dropdown above — the UI shows this as a
     // hint next to the dropdown so the estimator sees it while still making
-    // their own call. getAllDrafts()/activeDraftId are js/forms.js globals.
-    openDraftCount:     getOpenDraftCount(getAllDrafts(), activeDraftId)
+    // their own call. Step 2B: getAllDrafts() became async (a network
+    // call) once drafts moved server-side, but collectFormData() is
+    // called synchronously from calculator/agent-payload paths that are
+    // out of scope for that migration — so this reads _draftsCache
+    // directly instead, the same in-memory mirror getAllDrafts() keeps
+    // warm. _draftsCache/activeDraftId are js/forms.js globals (bare
+    // identifiers — classic scripts share one global lexical
+    // environment, same as this file's pre-existing activeDraftId read).
+    openDraftCount:     getOpenDraftCount(_draftsCache, activeDraftId)
   };
 
   // 3.3: wallsMode/ceilingsMode are a page-level toggle, not a form

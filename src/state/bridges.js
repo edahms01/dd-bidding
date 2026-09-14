@@ -205,6 +205,12 @@ export function registerBridges(dispatch) {
   // surviving a draft switch is actively data-corrupting (could
   // resurrect a row from the wrong draft), not a cosmetic quirk.
   window.__resetRowUndo = () => _dispatch({ type: 'SET_FIELD', path: ['ui', 'rowUndo'], value: null });
+
+  // ── Draft boot status (Migration Phase 2 Step 2B) — js/forms.js's
+  // resumeActiveDraft() sets this once boot's draft-storage fetch (and
+  // its blank-draft fallback, if needed) settles. See store.jsx's
+  // initialState.ui.draftBootStatus for the full reasoning.
+  window.__setDraftBootStatus = (status) => _dispatch({ type: 'SET_FIELD', path: ['ui', 'draftBootStatus'], value: status });
 }
 
 // ── Confidence read accessor ──

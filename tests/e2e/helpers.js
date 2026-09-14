@@ -36,6 +36,24 @@ export async function clearAll(page) {
   await page.waitForFunction(() => typeof window.goto === 'function');
   await page.evaluate(() => window.goto('project'));
   await page.locator('#page-project').waitFor({ state: 'visible' });
+
+  // Migration Phase 2 Step 2B: draft storage moved server-side, so boot's
+  // own resumeActiveDraft() (js/forms.js's _initApp(), which sets
+  // window.__draftsBootPromise) is now a real network round trip, not an
+  // instant synchronous localStorage read. window.goto becoming a
+  // function only confirms React has mounted — it says nothing about
+  // whether forms.js's own async boot sequence has finished. A spec that
+  // acts on the form immediately after clearAll() returns (many do, with
+  // no intervening wait) could otherwise race boot's own blank-draft
+  // creation: if resumeActiveDraft() is still in flight, its own (later-
+  // firing) resetFormFields()/setActiveDraftId() can silently clobber
+  // whatever the test just typed or land it under the wrong draft id.
+  // Found via real, reproduced failures (html-escaping.spec.js,
+  // mobile-layout.spec.js's bid-summary test), not assumed — waiting
+  // here once, in the shared helper, closes this class of race for every
+  // spec that calls clearAll(), not just the ones already found.
+  await page.waitForFunction(() => window.__draftsBootPromise !== undefined);
+  await page.evaluate(() => window.__draftsBootPromise);
 }
 
 export async function loadSeed(page) {

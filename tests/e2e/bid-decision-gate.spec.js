@@ -63,8 +63,13 @@ test('the gate writes nothing — no draft change, no bid record, no new localSt
   await openGate(page);
   await page.waitForTimeout(1200); // let boot-time draft autosave settle before snapshotting
 
-  const before = await page.evaluate(() => ({
-    drafts: localStorage.getItem('dirigo_drafts'),
+  // Migration Phase 2 Step 2B: drafts are server-side — dirigo_drafts no
+  // longer holds real data (it's just the legacy-migration marker, a
+  // constant '{}' after boot), so comparing it before/after would always
+  // vacuously pass regardless of real behavior. Compares the actual
+  // active draft's stored record via the real endpoint instead.
+  const before = await page.evaluate(async () => ({
+    drafts: JSON.stringify(await window.getAllDrafts()),
     keys: Object.keys(localStorage).sort()
   }));
 
@@ -73,8 +78,8 @@ test('the gate writes nothing — no draft change, no bid record, no new localSt
   }
   await page.waitForTimeout(900); // well past any autosave debounce
 
-  const after = await page.evaluate(() => ({
-    drafts: localStorage.getItem('dirigo_drafts'),
+  const after = await page.evaluate(async () => ({
+    drafts: JSON.stringify(await window.getAllDrafts()),
     keys: Object.keys(localStorage).sort()
   }));
   expect(after.drafts).toBe(before.drafts); // gate selects don't touch the active draft
