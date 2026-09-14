@@ -7,85 +7,6 @@
 //         calculations move to the calculation engine in state.js.
 // ─────────────────────────────────────────────────────────────────────
 
-// ── ASSEMBLY ROWS ─────────────────────────────────────────────────────
-
-let asmCount = 0;
-
-function updateAsmId(sel, num) {
-  const idInput = sel.closest('tr').querySelector('.asm-id');
-  const prefix  = sel.value === 'Ceiling' ? 'C' : 'W';
-  const newAuto = prefix + num;
-  if (idInput.value === idInput.dataset.auto) { idInput.value = newAuto; }
-  idInput.dataset.auto = newAuto;
-}
-
-function addAsm() {
-  asmCount++;
-  const num = asmCount;
-  const id  = 'W' + num;
-  const tr  = document.createElement('tr');
-  tr.innerHTML = `
-    <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>
-    <td><input type="text" value="${id}" data-auto="${id}" class="asm-id" style="width:52px"></td>
-    <td><select style="width:78px" onchange="updateAsmId(this,${num})"><option>Wall</option><option>Ceiling</option></select></td>
-    <td><select style="width:76px"><option>1-5/8"</option><option>2-1/2"</option><option>3-5/8"</option><option>4"</option><option>6"</option></select></td>
-    <td><select style="width:64px"><option>16"</option><option>24"</option><option>12"</option></select></td>
-    <td><select style="width:54px"><option>1</option><option>2</option><option>3</option></select></td>
-    <td><select style="width:100px"><option>Standard</option><option>Type-X</option><option>Moisture</option><option>Impact</option></select></td>
-    <td><select style="width:68px"><option>None</option><option>1-hr</option><option>2-hr</option></select></td>
-    <td><select style="width:58px"><option>No</option><option>Yes</option></select></td>
-    <td><select style="width:54px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></td>
-    <td><input type="number" min="0" class="asm-waste" style="width:56px"></td>
-    <td><input type="text" style="width:110px"></td>`;
-  document.getElementById('asm-body').appendChild(tr);
-}
-
-// ── WALL ROWS ─────────────────────────────────────────────────────────
-
-function addWall() {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" placeholder="Floor 3 / North" style="width:120px"></td>
-    <td><input type="text" placeholder="W1" style="width:52px"></td>
-    <td><input type="number" min="0" placeholder="10" style="width:64px"></td>
-    <td><input type="number" min="0" placeholder="0" style="width:72px" class="wlf"></td>
-    <td><input type="number" min="0" placeholder="0" style="width:80px" class="wgsf" oninput="calcWall(this)"></td>
-    <td><input type="number" min="0" placeholder="0" style="width:80px" class="wded" oninput="calcWall(this)"></td>
-    <td><span class="calc-cell wnet">-</span></td>
-    <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
-  document.getElementById('wall-body').appendChild(tr);
-}
-
-function calcWall(el) {
-  const tr = el.closest('tr');
-  const g  = parseFloat(tr.querySelector('.wgsf').value) || 0;
-  const d  = parseFloat(tr.querySelector('.wded').value) || 0;
-  tr.querySelector('.wnet').textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '-';
-}
-
-// ── CEILING ROWS ──────────────────────────────────────────────────────
-
-function addCeil() {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" placeholder="Floor 3 / Lobby" style="width:120px"></td>
-    <td><input type="text" placeholder="C1" style="width:52px"></td>
-    <td><input type="number" min="0" placeholder="12" style="width:64px"></td>
-    <td><input type="number" min="0" placeholder="0" style="width:72px" class="cgsf" oninput="calcCeil(this)"></td>
-    <td><input type="number" min="0" placeholder="0" style="width:72px"></td>
-    <td><input type="number" min="0" placeholder="0" style="width:80px" class="cded" oninput="calcCeil(this)"></td>
-    <td><span class="calc-cell cnet">-</span></td>
-    <td><button class="del-btn" onclick="this.closest('tr').remove()">×</button></td>`;
-  document.getElementById('ceil-body').appendChild(tr);
-}
-
-function calcCeil(el) {
-  const tr = el.closest('tr');
-  const g  = parseFloat(tr.querySelector('.cgsf').value) || 0;
-  const d  = parseFloat(tr.querySelector('.cded').value) || 0;
-  tr.querySelector('.cnet').textContent = g > 0 ? Math.max(0, g - d).toLocaleString() : '-';
-}
-
 // ── POPULATE FORM ─────────────────────────────────────────────────────
 // Inverse of collectFormData() — reads a state object and writes values
 // back into all form DOM elements. Used by loadSeedData() and
@@ -294,124 +215,25 @@ function populateForm(state) {
   window.__hydrateTabConfirmations?.(state.tabConfirmations);
 
   // ── Assemblies (AssembliesPage is now React-owned) ──
-  // window.__hydrateAssemblies dispatches into the reducer instead of
-  // rebuilding #asm-body's children directly — that rebuild is what
-  // addAsm()/populateForm() used to do together, but AssembliesPage now
-  // owns that same list via .map(), and classic-script code manually
-  // appending/replacing <tr> children there would fight React's own
-  // reconciliation of it (a structural hazard, not the leaf-value one
-  // every other section's fallback handles — see CLAUDE.md's
-  // "Converting a page" checklist and bridges.js's
-  // window.__hydrateAssemblies comment for the full reasoning, and why
-  // this can't use the same "plain write + dispatch" shape as Project/
-  // Conditions/Rates above). Falls back to the old addAsm()-based
-  // rebuild only when the bridge isn't registered (Vitest/non-browser
-  // contexts, or before AppShell has mounted).
-  if (window.__hydrateAssemblies) {
-    // Same guard the original rebuild had (state.assemblies !==
-    // undefined) — every real caller always provides it, but preserve
-    // the "don't touch it if genuinely absent" behavior rather than
-    // silently wiping the table to empty on a state object that never
-    // mentions assemblies at all.
-    if (state.assemblies !== undefined) window.__hydrateAssemblies(state.assemblies);
-  } else {
-    // UNREACHABLE legacy fallback. window.__hydrateAssemblies is set
-    // unconditionally at app load (src/state/bridges.js, from AppShell's
-    // mount effect) and no unit test exercises this path, so the `if`
-    // branch above always wins. Left in place, not deleted — but its
-    // positional sels[N] indices below are deliberately NOT maintained
-    // (the stud-spacing <select> removal on 2026-09-08 shifted every
-    // select after studSize down one and this was not updated). Do not
-    // trust these indices; fix them properly if this branch ever becomes
-    // live again.
-    const asmBody = document.getElementById('asm-body');
-    if (asmBody && state.assemblies !== undefined) {
-      asmBody.innerHTML = '';
-      asmCount = 0;
-      (state.assemblies || []).forEach(asm => {
-        addAsm();
-        const tr   = asmBody.lastElementChild;
-        const inps = tr.querySelectorAll('input');
-        const sels = tr.querySelectorAll('select');
-        inps[0].value        = asm.id        || '';
-        inps[0].dataset.auto = asm.id        || '';
-        if (sels[0]) sels[0].value = asm.category   || 'Wall';
-        if (sels[1]) sels[1].value = asm.studSize    || '3-5/8"';
-        if (sels[3]) sels[3].value = String(asm.layers      ?? 1);
-        if (sels[4]) sels[4].value = asm.boardType   || 'Standard';
-        if (sels[5]) sels[5].value = asm.fireRating  || 'None';
-        if (sels[6]) sels[6].value = asm.acoustic    || 'No';
-        if (sels[7]) sels[7].value = String(asm.finishLevel ?? 3);
-        // ?? not || — an explicit 0% override must render as "0", not
-        // fall back to a blank input (which collectFormData() would
-        // then re-read as "not set" on the next pass, silently
-        // reverting it). UI-fixes batch (2026-09-04): Waste % now sits
-        // ahead of Notes in the row (inps[1] is Waste %, inps[2] Notes)
-        // — matches addAsm()'s reordered markup and collectFormData()'s
-        // updated positional read.
-        if (inps[1]) inps[1].value = String(asm.wastePctOverride ?? '');
-        if (inps[2]) inps[2].value = asm.notes       || '';
-      });
-    }
-  }
+  // window.__hydrateAssemblies dispatches into the reducer; AssembliesPage
+  // owns the row list via .map(). Registered unconditionally at app load
+  // (src/state/bridges.js, from AppShell's mount effect), before this
+  // function can ever run — so no fallback is needed or kept (a classic-
+  // script DOM rebuild here would fight React's own reconciliation of that
+  // same list; see CLAUDE.md's "Converting a page" checklist items 7-8 for
+  // the full reasoning, and this file's git history for the removed
+  // addAsm()-based fallback and why it existed).
+  if (state.assemblies !== undefined) window.__hydrateAssemblies?.(state.assemblies);
 
-  // ── Walls (WallsPage is now React-owned) ──
-  // window.__hydrateWalls dispatches into the reducer instead of
-  // rebuilding #wall-body's children directly — same structural
-  // hazard/fix as Assemblies (see CLAUDE.md's "Converting a page"
-  // checklist items 7–8): manually appending/replacing <tr> children
-  // there would fight WallsPage's own .map()-based ownership of that
-  // list, so this can't use the scalar sections' "plain write +
-  // dispatch" shape above. Falls back to the old addWall()-based
-  // rebuild only when the bridge isn't registered (Vitest/non-browser
-  // contexts, or before AppShell has mounted).
-  if (window.__hydrateWalls) {
-    // 3.3: state.wallsMode is undefined for any pre-3.3 draft/import —
-    // LOAD_WALL_ROWS (store.jsx) falls back to the schema default
-    // ('dimensions') itself, not handled here.
-    if (state.walls !== undefined) window.__hydrateWalls(state.walls, state.wallsMode);
-  } else {
-    const wallBody = document.getElementById('wall-body');
-    if (wallBody && state.walls !== undefined) {
-      wallBody.innerHTML = '';
-      (state.walls || []).forEach(w => {
-        addWall();
-        const tr   = wallBody.lastElementChild;
-        const inps = tr.querySelectorAll('input');
-        if (inps[0]) inps[0].value = w.location != null ? w.location : '';
-        if (inps[1]) inps[1].value = w.typeId   != null ? w.typeId   : '';
-        if (inps[2]) inps[2].value = w.height   != null ? w.height   : '';
-        if (inps[3]) inps[3].value = w.lf       != null ? w.lf       : '';
-        if (inps[4]) inps[4].value = w.grossSF  != null ? w.grossSF  : '';
-        if (inps[5]) inps[5].value = w.openings != null ? w.openings : '';
-        const gsf = tr.querySelector('.wgsf');
-        if (gsf) calcWall(gsf);
-      });
-    }
-  }
+  // ── Walls (WallsPage is now React-owned) ── same shape/reasoning as
+  // Assemblies above.
+  // 3.3: state.wallsMode is undefined for any pre-3.3 draft/import —
+  // LOAD_WALL_ROWS (store.jsx) falls back to the schema default
+  // ('dimensions') itself, not handled here.
+  if (state.walls !== undefined) window.__hydrateWalls?.(state.walls, state.wallsMode);
 
   // ── Ceilings (CeilingsPage is now React-owned) ── same shape as Walls above.
-  if (window.__hydrateCeilings) {
-    if (state.ceilings !== undefined) window.__hydrateCeilings(state.ceilings, state.ceilingsMode);
-  } else {
-    const ceilBody = document.getElementById('ceil-body');
-    if (ceilBody && state.ceilings !== undefined) {
-      ceilBody.innerHTML = '';
-      (state.ceilings || []).forEach(ceil => {
-        addCeil();
-        const tr   = ceilBody.lastElementChild;
-        const inps = tr.querySelectorAll('input');
-        if (inps[0]) inps[0].value = ceil.location != null ? ceil.location : '';
-        if (inps[1]) inps[1].value = ceil.typeId   != null ? ceil.typeId   : '';
-        if (inps[2]) inps[2].value = ceil.height   != null ? ceil.height   : '';
-        if (inps[3]) inps[3].value = ceil.grossSF  != null ? ceil.grossSF  : '';
-        if (inps[4]) inps[4].value = ceil.soffitLF != null ? ceil.soffitLF : '';
-        if (inps[5]) inps[5].value = ceil.openings != null ? ceil.openings : '';
-        const gsf = tr.querySelector('.cgsf');
-        if (gsf) calcCeil(gsf);
-      });
-    }
-  }
+  if (state.ceilings !== undefined) window.__hydrateCeilings?.(state.ceilings, state.ceilingsMode);
 }
 
 // ── DRAFTS DATA LAYER ────────────────────────────────────────────────

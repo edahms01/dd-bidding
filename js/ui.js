@@ -11,7 +11,6 @@
 
 let _agentResult       = null;
 let _agentLoading      = false;
-let _lastCalcState     = null;
 let _lastCalcSum       = null;
 let _lastCalcMarkup    = null;
 // Phase E, Step 2 — the calc fingerprint the agent last ran against:
@@ -361,7 +360,6 @@ function calculateOnly() {
   const markupResult = applyMarkup(summary, state.markupInputs);
   renderOutput(state, wallCosts, ceilCosts, summary, markupResult);
 
-  _lastCalcState  = state;
   _lastCalcSum    = summary;
   _lastCalcMarkup = markupResult;
 
