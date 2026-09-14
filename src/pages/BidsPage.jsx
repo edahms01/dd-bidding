@@ -21,6 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { Fragment, useEffect, useState } from 'react';
 import { useStore } from '../state/store.jsx';
+import { useDraftsList } from '../state/useDraftsList.js';
 import BidUpdateRow from '../components/BidUpdateRow.jsx';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
@@ -82,7 +83,14 @@ function applyFilters(rows, f) {
 export default function BidsPage({ active }) {
   const [state] = useStore();
   const f = state.ui.bidsFilters;
-  const [drafts, setDrafts] = useState([]);
+  // Migration Phase 2 Step 2B: drafts moved server-side — useDraftsList()
+  // (mirrors this page's own pre-existing bidsStatus tri-state pattern,
+  // the precedent this migration was told to follow) replaces the old
+  // synchronous window.getAllDrafts() read + local loadDrafts() reload.
+  // handleDuplicate/handleDeleteDraft no longer need to manually reload
+  // afterward — the hook's 'dirigo:drafts-changed' listener picks up the
+  // already-updated shared cache automatically.
+  const { drafts, status: draftsStatus } = useDraftsList(active);
   const [bids, setBids] = useState([]);
   const [bidsStatus, setBidsStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [openUpdateId, setOpenUpdateId] = useState(null);
@@ -90,9 +98,6 @@ export default function BidsPage({ active }) {
   let activeDraftId = null;
   try { activeDraftId = localStorage.getItem('dirigo_active_draft_id'); } catch (e) { /* private mode */ }
 
-  function loadDrafts() {
-    setDrafts(Object.values(window.getAllDrafts()));
-  }
   async function loadBids() {
     setBidsStatus('loading');
     try {
@@ -104,7 +109,7 @@ export default function BidsPage({ active }) {
   }
 
   useEffect(() => {
-    if (active) { loadDrafts(); loadBids(); }
+    if (active) loadBids();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
@@ -115,11 +120,14 @@ export default function BidsPage({ active }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleDuplicate(id) { window.duplicateDraft(id); loadDrafts(); }
-  function handleDeleteDraft(id) {
+  async function handleDuplicate(id) {
+    try { await window.duplicateDraft(id); }
+    catch (e) { alert('Failed to duplicate draft. Check your connection and try again.'); }
+  }
+  async function handleDeleteDraft(id) {
     if (!confirm('Delete this draft? This cannot be undone.')) return;
-    window.deleteDraft(id);
-    loadDrafts();
+    try { await window.deleteDraft(id); }
+    catch (e) { alert('Failed to delete draft. Check your connection and try again.'); }
   }
   async function handleDeleteBid(id) {
     if (!confirm('Delete this bid record? This cannot be undone.')) return;
@@ -158,6 +166,11 @@ export default function BidsPage({ active }) {
           Couldn't load submitted bids. Check your connection; drafts below are still current.
         </div>
       )}
+      {draftsStatus === 'error' && (
+        <div className="empty-state" style={{ color: 'var(--danger)' }}>
+          Couldn't load drafts. Check your connection; submitted bids below are still current.
+        </div>
+      )}
 
       <div className="totals-bar" style={{ marginBottom: 24 }}>
         <div className="total-item"><div className="total-val">{submitted.length}</div><div className="total-lbl">Bids</div></div>
@@ -180,7 +193,7 @@ export default function BidsPage({ active }) {
           <table>
             <thead><tr><th>Project</th><th>GC</th><th>Building type</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {rows.length === 0 && bidsStatus === 'loading' ? (
+              {rows.length === 0 && (bidsStatus === 'loading' || draftsStatus === 'loading') ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>Loading…</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--text3)' }}>No bids yet. Start one with “New Bid”.</td></tr>

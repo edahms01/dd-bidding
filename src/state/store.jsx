@@ -98,6 +98,18 @@ export const initialState = {
     // which of the 8 workflow tabs, only meaningful when
     // activeSection === 'workflow'.
     activeTab: 'project',
+    // Migration Phase 2 Step 2B — drafts moved server-side, so boot's
+    // "resume the active draft" step is now a network call instead of a
+    // synchronous localStorage lookup. 'loading' | 'ready' | 'error'.
+    // Set via window.__setDraftBootStatus (bridges.js) from
+    // js/forms.js's resumeActiveDraft(). 'error' (the boot fetch AND its
+    // blank-draft fallback both failed) is the one genuinely new failure
+    // surface this step introduces — AppShell renders a small persistent
+    // retry banner for it. Every navigation entry point into the
+    // workflow awaits window.__draftsBootPromise before proceeding, so
+    // this status never blocks navigation on the common (fast) path —
+    // it exists for the retry banner and isn't otherwise gated on.
+    draftBootStatus: 'loading',
     navCollapsed: !!localStorage.getItem('dirigo_nav_collapsed'),
     // Phase D — mobile off-canvas nav drawer. Distinct from navCollapsed
     // (the desktop 200px<->48px width toggle, which persists): this is

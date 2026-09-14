@@ -79,7 +79,10 @@ function _resetAgentCache() {
 function _renderPipelineHint() {
   const el = document.getElementById('pipeline-count-hint');
   if (!el) return;
-  const count = getOpenDraftCount(getAllDrafts(), activeDraftId);
+  // Step 2B: _draftsCache (js/forms.js) instead of an async getAllDrafts()
+  // — this runs synchronously on every tab visit, same reasoning as
+  // js/state.js's openDraftCount read.
+  const count = getOpenDraftCount(_draftsCache, activeDraftId);
   el.textContent = count > 0
     ? count + (count === 1 ? ' other bid' : ' other bids') + ' currently open'
     : 'No other bids currently open';
@@ -492,9 +495,12 @@ async function submitBid(finalizeSelection) {
     throw e; // let FinalizeModal.jsx's handleConfirm() catch re-enable the confirm button
   }
 
-  // The finalized draft now lives permanently in dirigo_bids — clear it out
-  // of dirigo_drafts so "New Bid" never shows stale, already-submitted data.
-  clearFinalizedDraft();
+  // The finalized draft now lives permanently in the bids store — clear it
+  // out of the drafts store so "New Bid"/Home never shows stale,
+  // already-submitted data. Step 2B: now a network call — awaited so the
+  // Home-nav dispatch that follows (FinalizeModal.jsx) doesn't race the
+  // delete.
+  await clearFinalizedDraft();
 
   if (window.__setSubmitResult) {
     window.__setSubmitResult({ status: 'success', saved });

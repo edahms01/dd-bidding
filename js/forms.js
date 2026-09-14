@@ -236,32 +236,75 @@ function populateForm(state) {
   if (state.ceilings !== undefined) window.__hydrateCeilings?.(state.ceilings, state.ceilingsMode);
 }
 
-// ── DRAFTS DATA LAYER ────────────────────────────────────────────────
-// dirigo_drafts: { [id]: draftRecord }, draftRecord shaped by
-// buildDraftRecord() in js/drafts.js. dirigo_active_draft_id: which one
-// is currently open in the workflow form. activeDraftId mirrors that
-// key in memory (same pattern as hasUnsavedChanges below).
+// ── DRAFTS DATA LAYER (Migration Phase 2, Step 2B) ──────────────────
+// Server is now the SOLE source of truth for drafts — no dual-write to
+// localStorage as a "cache," no sync-conflict logic. _draftsCache is a
+// plain in-memory mirror, reset every page load (never persisted): every
+// successful read/write updates it, and every mutation fires
+// 'dirigo:drafts-changed' so React consumers (useDraftsList(), see
+// src/state/useDraftsList.js) can stay in sync without polling.
+//
+// dirigo_active_draft_id stays local-only, deliberately — it's per-
+// *browser* state ("which draft is this tab looking at"), not per-bid
+// data; see the migration plan for the full reasoning. activeDraftId
+// mirrors that key in memory (same pattern as hasUnsavedChanges below).
 
-const DRAFTS_KEY       = 'dirigo_drafts';
 const ACTIVE_DRAFT_KEY = 'dirigo_active_draft_id';
 const LEGACY_BID_KEY   = 'dirigo_current_bid';
+// Repurposed as an inert "has the one-time legacy migration already run"
+// marker only — see _runLegacyMigrationIfNeeded() below. Drafts
+// themselves no longer live under this key.
+const DRAFTS_KEY = 'dirigo_drafts';
+
+const DRAFTS_ENDPOINT = '/.netlify/functions/drafts';
 
 let activeDraftId = null;
+let _draftsCache  = {};
 
-function getAllDrafts() {
-  try {
-    return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '{}');
-  } catch (e) {
-    return {};
-  }
+// Read-direction bridge for React/module-scope consumers (useDraftsList()
+// and js/state.js's/js/ui.js's own bare-identifier reads don't need this
+// — classic scripts share one global lexical environment, so a plain
+// `let` here is already visible to them directly, same as activeDraftId
+// always has been). React runs as an ES module (Vite), which does NOT
+// share that environment, so it needs the same window.__getX() bridge
+// shape every other React-facing accessor in this app uses.
+window.__getDraftsCacheSync = () => _draftsCache;
+
+async function getAllDrafts() {
+  const res = await fetch(DRAFTS_ENDPOINT, { cache: 'no-store' });
+  if (!res.ok) throw new Error('getAllDrafts failed: ' + res.status);
+  const map = await res.json();
+  _draftsCache = map;
+  window.dispatchEvent(new CustomEvent('dirigo:drafts-changed'));
+  return map;
 }
 
-function _saveDraftsMap(map) {
-  try {
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(map));
-  } catch (e) {
-    _setIndicator('error');
-  }
+async function _readDraftRemote(id) {
+  const res = await fetch(DRAFTS_ENDPOINT + '?id=' + encodeURIComponent(id), { cache: 'no-store' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('readDraft failed: ' + res.status);
+  return res.json();
+}
+
+async function _writeDraft(id, record) {
+  const res = await fetch(DRAFTS_ENDPOINT + '?id=' + encodeURIComponent(id), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, cache: 'no-store', body: JSON.stringify(record)
+  });
+  if (!res.ok) throw new Error('draft save failed: ' + res.status);
+  const saved = await res.json();
+  // Optimistic in-memory update from the response — no extra round-trip.
+  _draftsCache = { ..._draftsCache, [id]: saved };
+  window.dispatchEvent(new CustomEvent('dirigo:drafts-changed'));
+  return saved;
+}
+
+async function _deleteDraftRemote(id) {
+  const res = await fetch(DRAFTS_ENDPOINT + '?id=' + encodeURIComponent(id), { method: 'DELETE', cache: 'no-store' });
+  if (!res.ok) throw new Error('draft delete failed: ' + res.status);
+  const next = { ..._draftsCache };
+  delete next[id];
+  _draftsCache = next;
+  window.dispatchEvent(new CustomEvent('dirigo:drafts-changed'));
 }
 
 function setActiveDraftId(id) {
@@ -275,12 +318,20 @@ function _generateDraftId() {
 }
 
 // ── LEGACY MIGRATION ─────────────────────────────────────────────────
-// One-time: wraps a pre-Phase-2 dirigo_current_bid value into a draft.
-// Must run exactly once — migrateLegacyBidToDrafts() itself no-ops
-// (returns null) whenever dirigo_drafts already exists, so a corrupt or
-// already-migrated state can never be double-wrapped.
-
-function _runLegacyMigrationIfNeeded() {
+// Out of scope for Step 2B — explicitly not to be redesigned. One-time:
+// wraps a pre-Phase-2 dirigo_current_bid value into a draft.
+// migrateLegacyBidToDrafts() itself (js/drafts.js) and the
+// draftsAlreadyExist exactly-once guard are untouched, pure logic.
+//
+// The one necessary adaptation: this function's WRITE step used to be a
+// bulk localStorage map save (_saveDraftsMap()), which no longer exists
+// — drafts have no functional localStorage persistence at all now, only
+// the server does. The migrated draft (if any) is written through the
+// same server-backed _writeDraft() every other mutation in this file
+// now uses. DRAFTS_KEY stays as the exactly-once marker only — its
+// content is never read as real draft data again, so writing an inert
+// '{}' into it after migration is enough to keep the guard working.
+async function _runLegacyMigrationIfNeeded() {
   const draftsAlreadyExist = localStorage.getItem(DRAFTS_KEY) !== null;
   let currentBidState = null;
   try {
@@ -297,9 +348,12 @@ function _runLegacyMigrationIfNeeded() {
   });
   if (result === null) return; // already migrated — no-op
 
-  _saveDraftsMap(result.drafts);
+  if (result.activeDraftId) {
+    await _writeDraft(result.activeDraftId, result.drafts[result.activeDraftId]);
+  }
   setActiveDraftId(result.activeDraftId);
   localStorage.removeItem(LEGACY_BID_KEY);
+  localStorage.setItem(DRAFTS_KEY, '{}'); // marker only — see comment above
 }
 
 // ── RESUME ACTIVE DRAFT ──────────────────────────────────────────────
@@ -307,24 +361,37 @@ function _runLegacyMigrationIfNeeded() {
 // If none exists yet (fresh install) or the referenced record is
 // missing (corrupt state), _createAndActivateBlankDraft() creates one
 // on the spot rather than leaving activeDraftId null under an editable
-// form — that state would make _autosave() (which no longer has, or
-// needs, a no-op guard) write into dirigo_drafts[null] the moment
-// someone typed a single character on their very first visit.
+// form.
+//
+// Now async — "does the draft exist" is a network call, not a
+// synchronous map lookup. Every navigation entry point into the
+// workflow (createDraft(), switchToDraft(), AppShell's #/bids/<id> hash
+// route) awaits the captured window.__draftsBootPromise (set by
+// _initApp() below) before doing anything else, so no code path can
+// navigate into the workflow with an unresolved activeDraftId — the
+// invariant holds even though boot is no longer instant. Exposes
+// state.ui.draftBootStatus ('loading'|'ready'|'error') via the
+// window.__setDraftBootStatus bridge (src/state/bridges.js) — 'error'
+// is the one genuinely new failure surface this step introduces, since
+// today's synchronous version could never fail at all.
+async function resumeActiveDraft() {
+  const id = localStorage.getItem(ACTIVE_DRAFT_KEY);
+  try {
+    const drafts = await getAllDrafts(); // warms _draftsCache for every sync reader in one shot
+    const record = id ? drafts[id] : null;
 
-function resumeActiveDraft() {
-  const id      = localStorage.getItem(ACTIVE_DRAFT_KEY);
-  const drafts  = getAllDrafts();
-  const record  = id ? drafts[id] : null;
-
-  if (!record) {
-    _createAndActivateBlankDraft();
-    return;
+    if (!record) {
+      await _createAndActivateBlankDraft();
+    } else {
+      activeDraftId = id;
+      populateForm(migrateSchema(record));
+      hasUnsavedChanges = false;
+      _setIndicator('saved', new Date(record.lastModifiedAt));
+    }
+    window.__setDraftBootStatus?.('ready');
+  } catch (e) {
+    window.__setDraftBootStatus?.('error');
   }
-
-  activeDraftId = id;
-  populateForm(migrateSchema(record));
-  hasUnsavedChanges = false;
-  _setIndicator('saved', new Date(record.lastModifiedAt));
 }
 
 // ── RESET FORM FIELDS ────────────────────────────────────────────────
@@ -430,15 +497,33 @@ function resetFormFields() {
 
 // Shared guard for every path about to hand the visible form to a
 // *different existing* draft: flushes the outgoing draft's pending
-// autosave synchronously — not via the debounced wrapper, and not a
-// confirm() interrupt — so no keystroke is ever lost (resolves the
-// mid-debounce-switch edge case the same way import-overwrite is
-// already gated by hasUnsavedChanges, just as a flush instead of a
-// prompt, since there's nothing external to validate here). Also
-// resets Tab 8's cached agent result so it can't leak across drafts.
+// autosave — not via the debounced wrapper, and not a confirm()
+// interrupt — so no keystroke is ever lost (resolves the mid-debounce-
+// switch edge case the same way import-overwrite is already gated by
+// hasUnsavedChanges, just as a flush instead of a prompt, since there's
+// nothing external to validate here). Also resets Tab 8's cached agent
+// result so it can't leak across drafts.
+//
+// Deliberately NOT async, and deliberately NOT awaited by its callers
+// before they do their own DOM work (resetFormFields()/populateForm()) —
+// found via a real Playwright race, not assumed: an earlier version
+// awaited _autosave() here before returning, which pushed the caller's
+// DOM-mutating step behind a real network round trip. That turned what
+// used to be a same-tick synchronous guarantee (the old sync
+// _flushAndSwitch()) into a several-millisecond gap — long enough for a
+// fast fill() (or, in principle, a fast typist) landing in that window
+// to get silently wiped once the deferred reset/populate finally ran.
+// _autosave() itself calls collectFormData() synchronously before its
+// own first internal await, so calling it here — without awaiting —
+// still correctly captures the OUTGOING draft's current data before the
+// caller's very next (synchronous) line changes the DOM. Callers await
+// the returned promise afterward, once their own synchronous DOM work is
+// done, to preserve the "outgoing edit is sent before we're finished
+// switching" ordering guarantee (bids-open-draft-switch-race.spec.js).
 function _flushAndSwitch() {
-  if (hasUnsavedChanges) _autosave();
+  const flushed = hasUnsavedChanges ? _autosave() : Promise.resolve();
   _resetAgentCache();
+  return flushed;
 }
 
 // The only place any code path creates/activates a blank draft — the
@@ -448,13 +533,11 @@ function _flushAndSwitch() {
 // itself (rather than trusting every caller to remember the pairing) —
 // idempotent, so the redundant call from _flushAndSwitch() in the
 // createDraft() path is harmless. Does not navigate.
-function _createAndActivateBlankDraft({ announce } = {}) {
+async function _createAndActivateBlankDraft({ announce } = {}) {
   resetFormFields();
   const id  = _generateDraftId();
   const now = new Date().toISOString();
-  const drafts = getAllDrafts();
-  drafts[id] = buildDraftRecord(collectFormData(), id, now, now);
-  _saveDraftsMap(drafts);
+  await _writeDraft(id, buildDraftRecord(collectFormData(), id, now, now));
   setActiveDraftId(id);
   hasUnsavedChanges = false;
   _setIndicator('idle');
@@ -463,67 +546,88 @@ function _createAndActivateBlankDraft({ announce } = {}) {
   return id;
 }
 
-function createDraft() {
-  _flushAndSwitch();
-  _createAndActivateBlankDraft();
+async function createDraft() {
+  await window.__draftsBootPromise;
+  // _flushAndSwitch() is called (not awaited) immediately before
+  // _createAndActivateBlankDraft() so its resetFormFields() — and this
+  // function's own new-draft setup — runs in the same synchronous tick
+  // as this line, not deferred behind the outgoing draft's network
+  // flush. Both promises are awaited below, after the DOM work is
+  // already done. See _flushAndSwitch()'s own comment for the race this
+  // ordering fixes.
+  const flush = _flushAndSwitch();
+  const created = _createAndActivateBlankDraft();
+  await flush;
+  await created;
   goto('project');
 }
 
-function switchToDraft(id) {
-  const drafts = getAllDrafts();
-  const record = drafts[id];
+async function switchToDraft(id) {
+  await window.__draftsBootPromise;
+  // Existence check first (matches the prior sync-map-lookup order) —
+  // a single-id GET, not a full-list fetch, since only this one record
+  // is needed. If it's gone (stale UI, deleted elsewhere), bail before
+  // flushing the outgoing draft's autosave for nothing. Unavoidably
+  // async (we need the incoming draft's data before populating) — but
+  // an edit landing on the OUTGOING draft during this wait isn't lost:
+  // _flushAndSwitch() below captures collectFormData() synchronously
+  // at call time, after this read resolves, so it picks up anything
+  // typed in the meantime.
+  const record = await _readDraftRemote(id);
   if (!record) return;
 
-  _flushAndSwitch();
+  // Same ordering fix as createDraft() above — trigger the flush, then
+  // do the synchronous DOM work (populateForm) immediately, then await.
+  const flush = _flushAndSwitch();
   populateForm(migrateSchema(record));
   setActiveDraftId(id);
   hasUnsavedChanges = false;
   _setIndicator('saved', new Date(record.lastModifiedAt));
+  await flush;
   goto('project');
 }
 
-function duplicateDraft(id) {
-  const drafts = getAllDrafts();
-  const source = drafts[id];
+async function duplicateDraft(id) {
+  const source = await _readDraftRemote(id);
   if (!source) return;
 
   const newId = _generateDraftId();
-  drafts[newId] = cloneDraftForDuplicate(source, newId, new Date().toISOString());
-  _saveDraftsMap(drafts);
+  await _writeDraft(newId, cloneDraftForDuplicate(source, newId, new Date().toISOString()));
 }
 
 // Dialog-free by design so it stays directly unit-testable — the
-// confirm() from the brief lives in the Dashboard's UI-layer wrapper
-// (confirmDeleteDraft(), js/ui.js), not here.
-function deleteDraft(id) {
-  const drafts = getAllDrafts();
-  const result = removeDraftAndClearActiveIfNeeded(drafts, id, activeDraftId);
-  _saveDraftsMap(result.drafts);
+// confirm() from the brief lives in BidsPage.jsx's UI-layer wrapper, not
+// here.
+async function deleteDraft(id) {
+  // Pure decision (does this removal clear activeDraftId) runs against
+  // the current in-memory cache — no network read needed just to decide
+  // that.
+  const result = removeDraftAndClearActiveIfNeeded(_draftsCache, id, activeDraftId);
+  await _deleteDraftRemote(id);
   // Invariant: never leave activeDraftId null. removeDraftAndClearActiveIfNeeded()
   // only returns null here when the deleted draft was the active one (or there
   // already wasn't one, which shouldn't happen post-init) — either way, replace
   // it immediately rather than leaving a draftless editable form.
-  if (result.activeDraftId === null) _createAndActivateBlankDraft({ announce: true });
+  if (result.activeDraftId === null) await _createAndActivateBlankDraft({ announce: true });
 }
 
 // Called by submitBid() (js/ui.js) right after saveBid() succeeds — the
-// finalized draft now lives permanently in dirigo_bids, so it's removed
-// from dirigo_drafts and immediately replaced with a fresh blank active
-// draft (never a bare null — same invariant as deleteDraft() above).
-// The Tab 7 "Bid submitted ✓" confirmation screen currently on-screen
-// is untouched; resetFormFields() only affects Tabs 1–6 underneath it.
+// finalized draft now lives permanently in the bids store, so it's
+// deleted from the drafts store and immediately replaced with a fresh
+// blank active draft (never a bare null — same invariant as
+// deleteDraft() above). The Tab 7 "Bid submitted ✓" confirmation screen
+// currently on-screen is untouched; resetFormFields() only affects Tabs
+// 1–6 underneath it.
 //
 // announce:false, unlike deleteDraft() — post-finalize FinalizeModal.jsx
 // navigates the user to Home, not this blank draft, so a "Started a new
 // bid" toast would announce something they didn't ask for and would
 // collide with BidSubmitToast at the same screen corner. deleteDraft()
 // keeps announce:true — that path does land the user on the blank draft.
-function clearFinalizedDraft() {
+async function clearFinalizedDraft() {
   if (!activeDraftId) return;
-  const drafts = getAllDrafts();
-  delete drafts[activeDraftId];
-  _saveDraftsMap(drafts);
-  _createAndActivateBlankDraft({ announce: false });
+  await _deleteDraftRemote(activeDraftId);
+  await _createAndActivateBlankDraft({ announce: false });
 }
 
 // ── CONFIDENCE ────────────────────────────────────────────────────────
@@ -562,7 +666,10 @@ function _setIndicator(status, when) {
     const t = (when || new Date()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     el.textContent = 'Saved ✓ ' + t;
   } else if (status === 'error') {
-    el.textContent = 'Save failed. Check storage';
+    // Copy updated for Step 2B — a failed save is now (almost always) a
+    // network/function failure, not a browser-storage failure, so the
+    // old "Check storage" text would be actively misleading.
+    el.textContent = 'Save failed. Check your connection';
   } else {
     el.textContent = '';
   }
@@ -593,12 +700,21 @@ function _showFormToast(message, kind) {
   }, isError ? 5000 : 3000);
 }
 
-function _autosave() {
+// Now async — a network write. The debounce wrapper below is unchanged:
+// it wraps this whole function, so it still fires at most once per
+// 700ms of inactivity regardless of how long the network call itself
+// takes. On failure, hasUnsavedChanges deliberately stays true (only
+// cleared on success, same as before) — this gives two free retry paths
+// with no new mechanism: the next keystroke re-arms the debounce, and
+// _flushAndSwitch() (a draft switch, or the beforeunload guard) retries
+// directly. No automatic timer-based retry — avoids hammering a down
+// network or double-writing a save that actually succeeded server-side
+// but timed out on the response (Open Question 2, plan-approved).
+async function _autosave() {
   try {
-    const drafts = getAllDrafts();
-    drafts[activeDraftId] = buildDraftRecord(collectFormData(), activeDraftId,
-      drafts[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
-    _saveDraftsMap(drafts);
+    const record = buildDraftRecord(collectFormData(), activeDraftId,
+      _draftsCache[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
+    await _writeDraft(activeDraftId, record);
     hasUnsavedChanges = false;
     _setIndicator('saved');
   } catch (e) {
@@ -659,7 +775,7 @@ function handleImportFile(event) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     const result = validateImportPayload(reader.result);
     if (!result.valid) {
       _showFormToast('Import failed: ' + result.error, 'error');
@@ -677,15 +793,13 @@ function handleImportFile(event) {
     try {
       // Imports replace the currently active draft's contents (same
       // semantics as before Phase 2 — "import overwrites the current
-      // bid" — just repointed at dirigo_drafts[activeDraftId] instead
-      // of the old flat dirigo_current_bid key). The invariant that the
-      // workflow view is never shown without an active draft means
-      // activeDraftId is always set here, regardless of which view the
-      // Import button was clicked from.
-      const drafts = getAllDrafts();
-      drafts[activeDraftId] = buildDraftRecord(migrated, activeDraftId,
-        drafts[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
-      _saveDraftsMap(drafts);
+      // bid" — just now a server write instead of a bulk localStorage
+      // map save). The invariant that the workflow view is never shown
+      // without an active draft means activeDraftId is always set here,
+      // regardless of which view the Import button was clicked from.
+      const record = buildDraftRecord(migrated, activeDraftId,
+        _draftsCache[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
+      await _writeDraft(activeDraftId, record);
       hasUnsavedChanges = false;
       _setIndicator('saved');
       _showFormToast('Bid imported ✓', 'success');
@@ -755,8 +869,18 @@ function _initApp() {
   // bug above; 'dirigo:shell-ready' already fires late enough (after
   // every classic script, including ui.js, has loaded) that this concern
   // is satisfied by construction, not by accident.
-  _runLegacyMigrationIfNeeded();
-  resumeActiveDraft();
+  // Both now async (Step 2B — draft storage is a network call). Captured
+  // on window so createDraft()/switchToDraft() (any navigation entry
+  // point into the workflow) can await it before doing anything else —
+  // the mechanism that keeps the "never editable with nowhere to save"
+  // invariant holding once "does the draft exist" is no longer a
+  // synchronous lookup. _runLegacyMigrationIfNeeded() must finish first
+  // (its own await) — it can be the thing that actually creates the
+  // draft resumeActiveDraft() then resolves.
+  window.__draftsBootPromise = (async () => {
+    await _runLegacyMigrationIfNeeded();
+    await resumeActiveDraft();
+  })();
 
   // Delegated on .workflow-area (so rows added later are covered without
   // rebinding), but Phase C put non-workflow UI inside that container

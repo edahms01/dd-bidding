@@ -14,8 +14,8 @@
 // (switchToDraft -> goto('project')). There is no per-draft last-tab
 // memory anywhere in the app and this brief does not add one.
 // ─────────────────────────────────────────────────────────────────────
-import { useEffect, useState } from 'react';
 import { useStore } from '../state/store.jsx';
+import { useDraftsList } from '../state/useDraftsList.js';
 
 // Relative timestamp — same shape as AppShell.jsx's fmtWhen (kept local
 // rather than exported/shared for one caller).
@@ -33,24 +33,25 @@ function fmtWhen(ts) {
   return d.toLocaleDateString();
 }
 
-// Newest-first, capped at 3. Same source + sort as AppShell.jsx's
+// Newest-first, capped at 3. Same sort as AppShell.jsx's
 // sortedOpenDrafts() / BidsPage's draft list.
-function recentDrafts() {
-  let map = {};
-  try { map = window.getAllDrafts ? window.getAllDrafts() : {}; } catch (e) { map = {}; }
-  return Object.values(map)
+function recentOf(drafts) {
+  return [...drafts]
     .sort((a, b) => new Date(b.lastModifiedAt || b.createdAt || 0) - new Date(a.lastModifiedAt || a.createdAt || 0))
     .slice(0, 3);
 }
 
 export default function HomePage({ active }) {
   const [, dispatch] = useStore();
-  const [drafts, setDrafts] = useState([]);
-
-  // Refetch on every becomes-active transition so a draft created or
-  // renamed elsewhere shows current data on return (same pattern as
-  // BidsPage's loadDrafts()).
-  useEffect(() => { if (active) setDrafts(recentDrafts()); }, [active]);
+  // Migration Phase 2 Step 2B: drafts moved server-side —
+  // useDraftsList() replaces the old synchronous window.getAllDrafts()
+  // read. While status === 'loading' this just shows the existing
+  // "No bids yet" empty state briefly rather than adding a new loading
+  // state — the fetch resolves fast, and Home is deliberately
+  // lightweight (per the Home-launcher brief), not worth its own
+  // spinner for a fraction of a second (plan-approved tradeoff).
+  const { drafts: allDrafts } = useDraftsList(active);
+  const drafts = active ? recentOf(allDrafts) : [];
 
   return (
     <div className={'page' + (active ? ' active' : '')} id="page-home" data-noautosave>
