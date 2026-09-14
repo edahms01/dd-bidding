@@ -1,16 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────
 // InsightsPage.jsx — Phase F, 8.1. Renders the estimating analytics
-// js/history-analytics.js has computed and unit-tested since Tier 1/2
-// but never surfaced: the margin-outcome curve, seasonality, and
-// competitor loss patterns. Read-only — no inputs, nothing persisted,
-// no bid record touched.
+// src/state/historyAnalytics.js has computed and unit-tested since
+// Tier 1/2 but never surfaced: the margin-outcome curve, seasonality,
+// and competitor loss patterns. Read-only — no inputs, nothing
+// persisted, no bid record touched.
 //
 // Consumes existing exports only (docs/dirigo-ux-decisions.md §8, Phase
-// F brief non-goal): the three compute* functions are classic-script
-// globals (js/history-analytics.js is a non-module <script> in
-// index.html, loaded before main.jsx), reached here as window.*, the
-// same way js/history.js already calls them. Their "not enough data"
-// gates (MIN_BIDS_FOR_MARGIN_CURVE = 15 decided bids;
+// F brief non-goal): the three compute* functions are imported directly
+// from src/state/historyAnalytics.js (Migration Phase 3, Step 3C — was
+// window.* before that port; js/history.js still calls the window
+// bridge, unchanged). Their "not enough data" gates
+// (MIN_BIDS_FOR_MARGIN_CURVE = 15 decided bids;
 // MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2) are honoured as-is — no new
 // thresholds invented here.
 //
@@ -31,6 +31,11 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store.jsx';
 import GcScorecard from '../components/GcScorecard.jsx';
+import {
+  computeMarginOutcomeCurve,
+  computeSeasonality,
+  computeCompetitorPatterns
+} from '../state/historyAnalytics.js';
 
 // Proportional-width bar row: label | track | value. `pct` drives the
 // fill width (clamped 0–100); `value` is the text to its right.
@@ -48,7 +53,7 @@ function BarRow({ label, pct, value }) {
 }
 
 function MarginCurve({ bids }) {
-  const curve = window.computeMarginOutcomeCurve(bids);
+  const curve = computeMarginOutcomeCurve(bids);
   if (!curve.available) {
     return (
       <div className="empty-state">
@@ -72,7 +77,7 @@ function MarginCurve({ bids }) {
 }
 
 function Seasonality({ bids }) {
-  const quarters = window.computeSeasonality(bids);
+  const quarters = computeSeasonality(bids);
   if (quarters.length === 0) {
     return <div className="empty-state">No decided bids with a bid date yet.</div>;
   }
@@ -95,7 +100,7 @@ function Seasonality({ bids }) {
 }
 
 function CompetitorPatterns({ bids }) {
-  const rows = window.computeCompetitorPatterns(bids);
+  const rows = computeCompetitorPatterns(bids);
   if (rows.length === 0) {
     return <div className="empty-state">No losses recorded against a named competitor yet.</div>;
   }

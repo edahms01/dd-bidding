@@ -1404,3 +1404,96 @@ with its documented ~1/3 flake rate rather than a regression. Clean
 390px check on Bid Strategy (with a cached agent result showing) — no
 horizontal overflow, console clean. **Pending before merge: read-only
 Netlify deploy-preview verification**, per the standing standard.
+
+**Step 3C (port history-analytics.js) complete — Migration Phase 3
+done, all three steps shipped.** New `src/state/historyAnalytics.js` —
+verbatim port of all 6 exports (`MIN_BIDS_FOR_MARGIN_CURVE`,
+`computeMarginOutcomeCurve`, `computeSeasonality`,
+`MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE`, `computeCompetitorPatterns`,
+`computeCostVariances`), guard dropped, plain `export`.
+`src/state/legacyBridges.js` extended with 4 of the 6
+(`computeMarginOutcomeCurve`/`computeSeasonality`/
+`computeCompetitorPatterns`/`MIN_BIDS_FOR_MARGIN_CURVE`) for
+`js/history.js`'s `getHistorySummary()` and `js/ui.js`'s
+`_launchBidAgent()` catch-block fallback (both still classic scripts,
+out of scope). `computeCostVariances` and
+`MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE` have no classic-script caller
+(grep-confirmed against the whole repo) and are deliberately not
+bridged — a bridge for either would be dead on arrival.
+`js/history-analytics.js` deleted; its `<script>` tag removed from
+`index.html`.
+
+**The one real caller-side change this step:** `InsightsPage.jsx` and
+`BidUpdateRow.jsx` switch from `window.computeX(...)` to real `import`
+statements from `src/state/historyAnalytics.js` — the one place a
+genuine, provable improvement lands this phase. Every empty-state gate
+(the margin-curve `{available, count, minRequired}` object, the
+seasonality/competitor-patterns empty-array shapes, the per-row
+`avgUndercutPct` null case) preserved verbatim — mechanism change
+only, confirmed by a real hand-check below, not by code inspection
+alone. `js/history.js` keeps calling the window-bridge version
+unchanged, per the brief's constraint.
+
+**Real gap found via a genuine test failure, not assumed clean —
+worth recording at length since the original caller trace missed it:**
+a repo-wide grep before this step named `js/history.js`'s three calls
+and the two React components as the only callers of anything in
+`history-analytics.js`. That grep was incomplete. `js/ui.js`'s
+`_launchBidAgent()` catch-block fallback (its own comment: "Same shape
+`computeMarginOutcomeCurve([])`/... returns for zero bids") builds its
+fallback object with `MIN_BIDS_FOR_MARGIN_CURVE` referenced as a bare
+global too — a real caller, not covered by any of the three bridged
+functions. First full Playwright run surfaced this immediately and
+concretely: `agent-history-fallback.spec.js` failed with a console
+`ReferenceError: MIN_BIDS_FOR_MARGIN_CURVE is not defined` at
+`js/ui.js:422`. Fixed by adding the constant to the bridge; reran a
+full repo-wide grep for every export name afterward (`js/`, `src/`,
+`tests/`, `index.html`, `data/`) to confirm nothing else was missed —
+clean.
+
+**Verified:** 309/309 Vitest (unchanged, after the fix). Real local
+`netlify dev` hand-check of Insights and the Bid History Update row,
+both required data shapes:
+- **Zero bids** (Clear all data): margin curve shows "Not enough
+  decided bids yet: 0 of 15", seasonality shows its empty-state line,
+  competitor patterns shows its empty-state line — all three gates
+  render correctly with nothing to compute over.
+- **Some data** (Load Demo, 5 seed bids, 4 decided): margin curve
+  still correctly gated ("4 of 15" — 5 seed bids isn't enough to clear
+  the threshold, expected), seasonality renders two real quarters
+  (2025-Q4, 2026-Q1, both 50% won · 1/2) with the "limited history"
+  note, competitor patterns renders two real rows both showing the
+  `avgUndercutPct: null` → `-` gate (each competitor has only 1
+  recorded loss, below `MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2`), GC
+  scorecard renders 5 real rows.
+- **BidUpdateRow**: opened the "Westbrook College" Won bid's Update
+  row, entered real actual labor ($35,000) / material ($12,000) costs,
+  saved, then fetched the persisted record directly
+  (`GET /.netlify/functions/bids`) — `actual_cost: 47000` (the sum),
+  `cost_variance: -167800`, matching the documented legacy-fallback
+  formula exactly (`actual_cost - direct_cost` = `47000 - 214800`, no
+  `estimated_labor_cost`/`estimated_material_cost` baseline on this
+  seed record) — confirms the ported `computeCostVariances()` still
+  produces byte-identical legacy null-handling.
+
+Full Playwright suite: 200 passed / 4 skipped / 0 failed (after the
+`MIN_BIDS_FOR_MARGIN_CURVE` fix — including the
+`tab-confirm-revert-on-edit.spec.js` flake passing clean this run).
+Clean `vite build`, `dist/js/history-analytics.js` correctly absent.
+Mobile 390px check on both Insights and the expanded BidUpdateRow — no
+horizontal page-level overflow (the Competitor loss patterns table's
+own internal `.tbl-wrap` scroll is expected/documented, not a
+regression), console clean. **Pending before merge: read-only Netlify
+deploy-preview verification**, per the standing standard.
+
+**Phase 3 close-out.** All three files (`calculator.js`,
+`agent-payload.js`, `history-analytics.js`) are now real ES modules
+under `src/state/`, each still reaching every remaining classic-script
+caller via `src/state/legacyBridges.js` with zero changes to `js/ui.js`,
+`js/agent.js`, or `js/history.js`. `js/forms.js`, `js/state.js`,
+`js/autosave.js`, `js/drafts.js`, `js/rate-templates.js` untouched
+throughout, per scope. One real bug (Step 3C's missed
+`MIN_BIDS_FOR_MARGIN_CURVE` caller) was found by a genuine test
+failure and fixed before merge, not discovered after the fact — the
+brief's "investigate, then verify empirically" discipline holding up
+exactly as intended on a case a static caller trace alone had missed.

@@ -40,6 +40,21 @@ import {
   AGENT_CEILING_DENYLIST
 } from './agentPayload.js';
 
+// computeCostVariances is deliberately NOT imported here — its only
+// caller is src/components/BidUpdateRow.jsx, which imports it directly
+// (Migration Phase 3, Step 3C). A bridge for it would be dead on
+// arrival. MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE has no classic-script
+// caller either (grep-confirmed) and is likewise not bridged.
+// MIN_BIDS_FOR_MARGIN_CURVE IS bridged — js/ui.js's _launchBidAgent()
+// catch-block fallback references it as a bare global (a real caller
+// missed on first pass; caught by agent-history-fallback.spec.js).
+import {
+  MIN_BIDS_FOR_MARGIN_CURVE,
+  computeMarginOutcomeCurve,
+  computeSeasonality,
+  computeCompetitorPatterns
+} from './historyAnalytics.js';
+
 // js/ui.js's calculateOnly()/submitBid() call these as bare globals.
 // Both are reachable only via user-triggered paths (debounced form-change/
 // state-watcher, explicit navigation, Finalize-confirm click) — never at
@@ -66,3 +81,16 @@ window.AGENT_CONDITIONS_DENYLIST = AGENT_CONDITIONS_DENYLIST;
 window.AGENT_ASSEMBLY_DENYLIST = AGENT_ASSEMBLY_DENYLIST;
 window.AGENT_WALL_DENYLIST = AGENT_WALL_DENYLIST;
 window.AGENT_CEILING_DENYLIST = AGENT_CEILING_DENYLIST;
+
+// js/history.js's getHistorySummary() calls these three as bare globals
+// (both its zero-bids and real-data branches) — js/history.js stays a
+// classic script this phase, out of scope. computeCostVariances has no
+// classic-script caller (see the import comment above) and is
+// deliberately not bridged.
+window.computeMarginOutcomeCurve = computeMarginOutcomeCurve;
+window.computeSeasonality = computeSeasonality;
+window.computeCompetitorPatterns = computeCompetitorPatterns;
+
+// js/ui.js's _launchBidAgent() references this bare, in its
+// catch-block fallback shape for a history-fetch failure.
+window.MIN_BIDS_FOR_MARGIN_CURVE = MIN_BIDS_FOR_MARGIN_CURVE;
