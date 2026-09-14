@@ -76,7 +76,13 @@ test('escalation on one board type changes only that material, survives a rate t
       state.rates.burdenPct, state.rates.superPct,
       state.rates.adder12Pct, state.rates.adder20Pct,
       state.conditions.sfAbove12, state.conditions.sfAbove20);
-    return fmtCost(summary.materialTotal);
+    // fmtCost() (js/ui.js) was deleted in Migration Phase 4 — its last
+    // caller was submitBid()'s own now-deleted legacy fallback panel, so
+    // it's no longer a reachable global. Inlined here verbatim (it was a
+    // one-line '$' + Math.round(n).toLocaleString() formatter) since this
+    // is just building a comparison string, not exercising production
+    // rendering code.
+    return '$' + Math.round(summary.materialTotal).toLocaleString();
   });
   await expect(page.locator('#output-phase3')).toContainText(expectedMaterialsText);
 

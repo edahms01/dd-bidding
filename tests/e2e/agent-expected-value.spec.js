@@ -85,16 +85,23 @@ test('an option with no factors renders no attribution panel and does not crash 
 
   // Stand in a fallback-shaped result (agent unreachable) — options carry
   // no `factors`. The pill still renders and toggles; the panel stays empty.
+  // _renderAgentResult() (js/ui.js) was deleted in Migration Phase 4 — it
+  // was already just a thin dispatch to window.__renderAgentTab in every
+  // real browser context (the bridge is always registered by the time a
+  // test can click into the app), so calling the bridge directly is the
+  // same injection, one layer closer to what actually happens.
   await page.evaluate(() => {
-    const pageEl = document.getElementById('page-agent');
-    _renderAgentResult(pageEl, {
-      reasoning: 'Agent unavailable.',
-      options: [
-        { type: 'competitive', label: 'Competitive', bidAmount: 250000, margin: 20, winLikelihood: 'High', rationale: 'x' },
-        { type: 'recommended', label: 'Recommended', bidAmount: 260000, margin: 24, winLikelihood: 'Medium', rationale: 'x' },
-        { type: 'ambitious', label: 'Ambitious', bidAmount: 270000, margin: 30, winLikelihood: 'Low–Medium', rationale: 'x' }
-      ],
-      signals: [], riskFlags: [], historicalNotes: []
+    window.__renderAgentTab({
+      cachedResult: {
+        reasoning: 'Agent unavailable.',
+        options: [
+          { type: 'competitive', label: 'Competitive', bidAmount: 250000, margin: 20, winLikelihood: 'High', rationale: 'x' },
+          { type: 'recommended', label: 'Recommended', bidAmount: 260000, margin: 24, winLikelihood: 'Medium', rationale: 'x' },
+          { type: 'ambitious', label: 'Ambitious', bidAmount: 270000, margin: 30, winLikelihood: 'Low–Medium', rationale: 'x' }
+        ],
+        signals: [], riskFlags: [], historicalNotes: []
+      },
+      loading: false, historyUnavailable: false, generatedAt: null
     });
   });
 
