@@ -21,7 +21,8 @@
 const { connectLambda, getStore } = require('@netlify/blobs');
 const { buildAnthropicRequest }   = require('./lib/bid-agent-request.js');
 const { parseAgentResponse }      = require('./lib/bid-agent-response.js');
-const { logError }                = require('./lib/log.js');
+const { logError, notifyTerminalFailure } = require('./lib/log.js');
+const { callAnthropicWithRetry, MAX_ATTEMPTS } = require('./lib/bid-agent-call.js');
 const {
   STORE_NAME, isValidJobId, pendingRecord, doneRecord, errorRecord, writeJob
 } = require('./lib/bid-agent-jobs.js');
@@ -31,6 +32,7 @@ const DONE = { statusCode: 202 };
 exports.handler = async (event) => {
   connectLambda(event); // required before getStore() in Lambda-compat mode
   const store = getStore(STORE_NAME);
+  const errorsStore = getStore('errors');
 
   let jobId;
   try {
@@ -55,24 +57,45 @@ exports.handler = async (event) => {
     }
 
     const anthropicReq = buildAnthropicRequest(businessData);
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
-      headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(anthropicReq)
+    // Retries only transient/retryable failures (timeouts, 5xx, 429) —
+    // 400/401/etc fail on attempt 1 with no delay, identical to the
+    // pre-1C single-attempt behavior. See lib/bid-agent-call.js's header
+    // for why this wraps fetch + the status check only, not the parse
+    // step below.
+    const result = await callAnthropicWithRetry(fetch, anthropicReq, apiKey, {
+      log: {
+        retrying: (attempt, reason, delayMs) => logError('bid-agent-background',
+          { jobId, attempt: `${attempt}/${MAX_ATTEMPTS}`, retrying_in: `${delayMs}ms` }, reason)
+      }
     });
 
-    if (!resp.ok) {
-      const err  = await resp.json().catch(() => ({}));
-      const kind = err && err.error && (err.error.type || err.error);
-      logError('bid-agent-background', { jobId }, 'Anthropic HTTP ' + resp.status + ' ' + JSON.stringify(err).slice(0, 300));
-      await writeJob(store, jobId, errorRecord('HTTP ' + resp.status + (kind ? ' (' + kind + ')' : '')));
+    if (!result.ok) {
+      let message, logDetail;
+      if (result.resp) {
+        const errBody = await result.resp.json().catch(() => ({}));
+        const kind = errBody && errBody.error && (errBody.error.type || errBody.error);
+        message   = 'HTTP ' + result.resp.status + (kind ? ' (' + kind + ')' : '');
+        logDetail = 'Anthropic HTTP ' + result.resp.status + ' ' + JSON.stringify(errBody).slice(0, 300);
+      } else {
+        message   = (result.err && result.err.message) || 'network error';
+        logDetail = message;
+      }
+
+      const context = { jobId, attempts: `${result.attempts}/${MAX_ATTEMPTS}` };
+      if (result.attempts === MAX_ATTEMPTS) {
+        // All retry attempts exhausted — the one bid-agent-background.js
+        // terminal-failure case that notifies (Step 1B's classification).
+        await notifyTerminalFailure(errorsStore, 'bid-agent-background', context, new Error(logDetail));
+      } else {
+        // Non-retryable status (400/401/etc), failed on attempt 1 — same
+        // single-attempt behavior as before 1C, log-only.
+        logError('bid-agent-background', context, logDetail);
+      }
+      await writeJob(store, jobId, errorRecord(message));
       return DONE;
     }
 
+    const resp   = result.resp;
     const data   = await resp.json();
     const parsed = parseAgentResponse(data);
     if (!parsed.ok) {
