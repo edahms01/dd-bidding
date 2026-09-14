@@ -44,4 +44,14 @@ describe('readAllRecords', () => {
 
     expect(await readAllRecords(store)).toEqual({ a: { v: 1 } });
   });
+
+  it('skips a key whose value is not a plain record (e.g. a legacy array-shaped blob) instead of including it as-is', async () => {
+    // Reproduces the real bug found on the deploy-preview check: a
+    // pre-migration 'all'-keyed array blob left in the shared store.
+    const store = fakeStore();
+    await store.setJSON('a', { v: 1 });
+    await store.setJSON('all', [{ v: 'legacy-1' }, { v: 'legacy-2' }]);
+
+    expect(await readAllRecords(store)).toEqual({ a: { v: 1 } });
+  });
 });
