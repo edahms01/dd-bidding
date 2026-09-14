@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { stampNewBid, mergePatch, removeBid } from '../../netlify/functions/lib/bids-core.js';
+import {
+  stampNewBid, mergeBidPatch, isValidBidId, readBid, writeBid, deleteBidRecord, readAllBids
+} from '../../netlify/functions/lib/bids-core.js';
+
+// Minimal in-memory stand-in for a Netlify Blobs store — same shape as
+// bid-agent-jobs.test.js's fakeStore(), extended with list()/delete()
+// for the restructured per-record bids store.
+function fakeStore() {
+  const m = new Map();
+  return {
+    _m: m,
+    get: async (k, opts) => {
+      if (!m.has(k)) return null;
+      return (opts && opts.type === 'json') ? m.get(k) : JSON.stringify(m.get(k));
+    },
+    setJSON: async (k, v) => { m.set(k, JSON.parse(JSON.stringify(v))); },
+    delete: async (k) => { m.delete(k); },
+    list: async () => ({ blobs: Array.from(m.keys()).map((key) => ({ key, etag: 'fake' })), directories: [] })
+  };
+}
 
 describe('stampNewBid', () => {
   it('assigns a bid_id and date_submitted without dropping existing fields', () => {
@@ -25,45 +44,78 @@ describe('stampNewBid', () => {
   });
 });
 
-describe('mergePatch', () => {
-  it('merges a patch into the matching record and returns it', () => {
-    const bids = [{ bid_id: 'a', outcome: 'pending' }, { bid_id: 'b', outcome: 'pending' }];
-    const { bids: next, updated } = mergePatch(bids, 'a', { outcome: 'won' });
+describe('mergeBidPatch', () => {
+  it('merges a patch into the record and returns the result', () => {
+    const existing = { bid_id: 'a', outcome: 'pending' };
+    const updated  = mergeBidPatch(existing, { outcome: 'won' });
 
     expect(updated).toEqual({ bid_id: 'a', outcome: 'won' });
-    expect(next.find(b => b.bid_id === 'a').outcome).toBe('won');
-    expect(next.find(b => b.bid_id === 'b').outcome).toBe('pending');
   });
 
-  it('returns updated: null and the array unchanged when bid_id has no match', () => {
-    const bids = [{ bid_id: 'a', outcome: 'pending' }];
-    const { bids: next, updated } = mergePatch(bids, 'nope', { outcome: 'won' });
-
-    expect(updated).toBeNull();
-    expect(next).toEqual(bids);
-  });
-
-  it('does not mutate the input array or its records', () => {
-    const bids = [{ bid_id: 'a', outcome: 'pending' }];
-    mergePatch(bids, 'a', { outcome: 'won' });
-    expect(bids[0].outcome).toBe('pending');
+  it('does not mutate the existing record or the patch', () => {
+    const existing = { bid_id: 'a', outcome: 'pending' };
+    const patch    = { outcome: 'won' };
+    mergeBidPatch(existing, patch);
+    expect(existing).toEqual({ bid_id: 'a', outcome: 'pending' });
+    expect(patch).toEqual({ outcome: 'won' });
   });
 });
 
-describe('removeBid', () => {
-  it('filters out the matching record', () => {
-    const bids = [{ bid_id: 'a' }, { bid_id: 'b' }];
-    expect(removeBid(bids, 'a')).toEqual([{ bid_id: 'b' }]);
+describe('isValidBidId', () => {
+  it('accepts server-generated ids', () => {
+    expect(isValidBidId('bid_1789370578138_ab3f9')).toBe(true);
   });
 
-  it('returns the array unchanged when bid_id has no match', () => {
-    const bids = [{ bid_id: 'a' }];
-    expect(removeBid(bids, 'nope')).toEqual(bids);
+  it('accepts seed fixture ids', () => {
+    expect(isValidBidId('seed-1')).toBe(true);
   });
 
-  it('does not mutate the input array', () => {
-    const bids = [{ bid_id: 'a' }, { bid_id: 'b' }];
-    removeBid(bids, 'a');
-    expect(bids).toEqual([{ bid_id: 'a' }, { bid_id: 'b' }]);
+  it('rejects junk', () => {
+    expect(isValidBidId('')).toBe(false);
+    expect(isValidBidId(null)).toBe(false);
+    expect(isValidBidId(undefined)).toBe(false);
+    expect(isValidBidId(42)).toBe(false);
+    expect(isValidBidId('has spaces')).toBe(false);
+    expect(isValidBidId('x'.repeat(200))).toBe(false);
+  });
+});
+
+describe('readBid / writeBid / deleteBidRecord', () => {
+  it('writeBid then readBid round-trips the record', async () => {
+    const store = fakeStore();
+    await writeBid(store, 'bid_1', { bid_id: 'bid_1', project_name: 'A' });
+    expect(await readBid(store, 'bid_1')).toEqual({ bid_id: 'bid_1', project_name: 'A' });
+  });
+
+  it('readBid returns null for an absent key', async () => {
+    expect(await readBid(fakeStore(), 'nope')).toBeNull();
+  });
+
+  it('deleteBidRecord removes the record', async () => {
+    const store = fakeStore();
+    await writeBid(store, 'bid_1', { bid_id: 'bid_1' });
+    await deleteBidRecord(store, 'bid_1');
+    expect(await readBid(store, 'bid_1')).toBeNull();
+  });
+
+  it('deleteBidRecord on a missing key is a harmless no-op', async () => {
+    const store = fakeStore();
+    await expect(deleteBidRecord(store, 'nope')).resolves.toBeUndefined();
+  });
+});
+
+describe('readAllBids', () => {
+  it('returns an empty array for an empty store', async () => {
+    expect(await readAllBids(fakeStore())).toEqual([]);
+  });
+
+  it('returns every record, newest bid_id first', async () => {
+    const store = fakeStore();
+    await writeBid(store, 'bid_100', { bid_id: 'bid_100' });
+    await writeBid(store, 'bid_300', { bid_id: 'bid_300' });
+    await writeBid(store, 'bid_200', { bid_id: 'bid_200' });
+
+    const all = await readAllBids(store);
+    expect(all.map((b) => b.bid_id)).toEqual(['bid_300', 'bid_200', 'bid_100']);
   });
 });
