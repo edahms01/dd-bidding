@@ -897,6 +897,68 @@ baseline — backend-only step, no page under test touched); local
 + mobile 390px check**, per the standing standard (own PR, not folded
 into a later step).
 
+**Step 1C (retry logic for AI generation failures) complete — Phase 1
+done, all three steps shipped.** New `netlify/functions/lib/bid-agent-call.js`
+— `callAnthropicWithRetry()` wraps the Anthropic `fetch` + HTTP-status
+check only, not the response-parse step (a parse failure is a different
+failure axis — malformed model output after a 200 OK, not a transport
+problem — and stays single-attempt on purpose, unchanged from before this
+step). 3 attempts total, 2s then 5s backoff, 60s per-attempt timeout via
+`AbortController` (previously missing entirely — needed for "timeout" to
+be a meaningful retryable bucket; without one a hung request just blocks
+toward the 15-minute background-function ceiling, risking the duplicate-
+billable-call scenario this file's own header already warns about).
+Retries `429` and any `5xx` or network-level failure/timeout; `400`/`401`/
+etc fail on attempt 1 with zero delay, byte-identical `errorRecord`
+message to the pre-1C single-attempt behavior.
+
+`bid-agent-background.js` wired to it, 1B's `logError`/
+`notifyTerminalFailure` plugged into the retry loop's own log hook — each
+retry attempt logs (`attempt=N/3 retrying_in=Xms`); exhausting all 3
+attempts is the one case that notifies (writes to the `errors` Blobs
+store); a non-retryable single-attempt failure stays log-only.
+
+**Verified — real, not simulated:**
+- **Retry/backoff timing** — a local mock HTTP server (not the unit
+  tests' injected fake `sleep`) returning 500/500/200, called through the
+  real `lib/bid-agent-call.js` with its real default `sleep` (genuine
+  `setTimeout`): 2 retry log lines at the correct attempt numbers, total
+  wall-clock elapsed **7024ms** against an expected 7000ms (2000+5000)
+  plus two real HTTP round-trips.
+- **Non-retryable 401** — same mock-server technique, server always
+  returns 401: **1 real fetch call, 1 attempt, 14ms elapsed, retry hook
+  never fired.**
+- **Real `netlify dev` end-to-end integration confirmed working** (missing-
+  jobId → immediate log + 202, same as before); the 401/retryable-failure
+  scenarios above had to be exercised against the lib module directly with
+  a local mock server rather than through the live `netlify dev` endpoint
+  — confirmed again here that `netlify dev` does not inject
+  `ANTHROPIC_API_KEY` from shell env regardless of context, exactly the
+  documented pre-existing constraint (see "Netlify config" above) — not a
+  gap this step introduced.
+- New `tests/unit/bid-agent-call.test.js` (11 cases): `isRetryableStatus`
+  buckets, first-attempt success with zero backoff, retry-then-succeed
+  with correct single backoff, non-retryable 400/401 fail on attempt 1
+  with zero retry, exhaustion on a persistent 429 with the exact
+  `[2000,5000]` backoff sequence, network-failure retry + exhaustion,
+  network-failure-then-recovery, `AbortSignal` present on every attempt,
+  exported-constants sanity.
+- **291/291 Vitest** (280 prior + 11 new); full Playwright suite **200
+  passed / 4 skipped / 0 failed** (unchanged baseline — backend-only
+  step). **Pending before merge: deploy-preview + mobile 390px check**,
+  per the standing standard (this step's own PR). **Real Anthropic-spend
+  note, named plainly per the plan:** a retried call is a second billable
+  request — bounded by the brief's own constraints (no retry on 400/401,
+  capped at 3 attempts), not eliminated.
+
+**Phase 1 close-out.** All three steps (1A dead-code deletion, 1B
+structured logging + `errors` Blobs store, 1C AI retry logic) shipped as
+three separate PRs, two commits each. `calculator.js`, `agent-payload.js`,
+`history-analytics.js`, and all data-storage code stayed untouched
+throughout, per the brief's explicit scope. Sets up the next phase of the
+legacy-retirement migration (data-storage restructure, pricing-engine
+port, remaining legacy fallback rendering removal) — not started here.
+
 ## Market Read onto the tray standard — closes out the rollout (2026-09-11, standalone brief)
 
 `MarketReadPage.jsx`'s Market signals / Competitive signals / Known competitors already used real `.tray`/`.tray-hdr`/`.tray-row`/`.tray-half` correctly — no drift. The one remaining gap: Estimator confidence + Estimator notes still used the bare pre-rollout `.section-label` pattern, plus a redundant bare "Market Intelligence" label adding nothing over the two tray headers right below it. One branch (`market-read-tray-standard`), production + docs commit pair, PR to `main`. **JSX only — no CSS change needed (`.tray`/`.tray-hdr` already exist), no reducer/state/dispatch path touched, `golden-export.json` untouched.** Full rationale: `docs/dirigo-ux-decisions.md` §6.14.
