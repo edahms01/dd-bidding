@@ -6,7 +6,7 @@ import {
   MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE,
   computeCompetitorPatterns,
   computeCostVariances
-} from '../../js/history-analytics.js';
+} from '../../src/state/historyAnalytics.js';
 
 function decidedBid(overrides = {}) {
   return {
