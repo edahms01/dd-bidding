@@ -1271,6 +1271,25 @@ silently absorbed.
   identical to the pre-Step-2B baseline, zero net spec regressions
   (every touched spec's *behavior contract* preserved, only its draft-
   storage read/write mechanics updated to match the new architecture).
-  **Pending before merge:** deploy-preview (read-only — the new `drafts`
-  endpoint is just as shared/site-wide as `bids`, same standing rule) +
-  mobile 390px check, own PR, per the standing standard.
+  **Deploy-preview + mobile 390px, done:** `deploy-preview-78--bid-iq.netlify.app`
+  — a `curl` GET against the raw endpoint confirmed empty (`{}`) before
+  any browser touched it; the app then loaded and navigated cleanly at
+  390×844 (Home, drawer, Bid History), no console errors, no horizontal
+  overflow.
+- **New finding, worth flagging plainly rather than glossing over:**
+  opening the app UI in a real browser against a shared-store preview —
+  even just to look, no explicit action taken — is no longer a genuinely
+  zero-write check for drafts, the way it still is for bids. Bids only
+  write on an explicit action (Load Demo, Finalize); drafts now write
+  automatically on cold boot whenever no active draft is cached locally
+  — `resumeActiveDraft()`'s fallback creates one, unconditionally, the
+  same invariant that protects the workflow view locally also fires on a
+  preview. Confirmed directly: this checkpoint's own browser-based mobile
+  check left 2 blank "Untitled bid" records in the shared preview/prod
+  `drafts` store. Harmless (blank, no real data, same "leave inert
+  clutter rather than chase perfect store cleanliness" call Eric already
+  made for Step 2A's stale bids key) — but a real, structural consequence
+  of this migration: a `curl` GET is now the only truly write-free way to
+  check a deploy preview involving drafts; a visual/UI walkthrough,
+  however read-only it looks, is not. Not blocking merge, flagged for
+  awareness.
