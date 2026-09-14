@@ -15,6 +15,7 @@
 
 const { connectLambda, getStore } = require('@netlify/blobs');
 const { stampNewTemplate, removeTemplate } = require('./lib/rate-templates-core.js');
+const { logError } = require('./lib/log.js');
 
 const STORE_NAME = 'rate-templates';
 const ALL_KEY    = 'all';
@@ -66,6 +67,8 @@ exports.handler = async (event) => {
       result = { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
     }
   } catch (err) {
+    const id = event.queryStringParameters?.id;
+    logError('rate-templates', { method, id }, err);
     result = { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal error' }) };
   }
 

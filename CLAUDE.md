@@ -847,6 +847,56 @@ files, `index.html`) found exactly 8 dead items, all previously-undetected:
   **Pending before merge:** read-only deploy-preview verification, mobile
   390px check.
 
+**Step 1B (error logging + errors Blobs store) complete.** New
+`netlify/functions/lib/log.js` — `logError(fnName, context, err)` (a
+plain `[fn] k=v ... error=<message>` console.error line — no structured
+JSON, no log aggregator exists to consume one) and
+`notifyTerminalFailure(store, fnName, context, err)` (same line tagged
+`ALERT=true`, plus a record written to the `errors` Blobs store,
+`getStore('errors')`, same pattern `lib/bid-agent-jobs.js` already uses).
+
+Applied to every `netlify/functions/*.js` handler — before this step only
+`bid-agent-background.js` logged anything (4 ad hoc `console.error`
+calls, no `console.log` anywhere else in the directory). `bids.js`'s
+POST/PATCH failures call `notifyTerminalFailure` (a bid that can't be
+saved is real data-loss risk to the estimator); every other path (`bids`
+GET/DELETE, `rate-templates`, `bid-agent-result`, both `dev-*.js` tools,
+and `bid-agent-background.js`'s own 4 call sites — no retry mechanism
+exists yet to define a terminal "exhaustion" case) is `logError`-only.
+
+**Notification-channel decision (Eric):** the passive Blobs `errors`
+store, not Slack/email — no new dependency, no new secret. No admin
+UI/browse page to read it; out of scope for Phase 1, Eric checks it
+directly via Netlify Blobs when needed.
+
+**Verified — real captured log lines, local `netlify dev`, deliberately
+triggered:**
+```
+[bids] method=PATCH bid_id=test123 ALERT=true error=Expected property name or '}' in JSON at position 1 (line 1 column 2)
+[rate-templates] method=POST error=Expected property name or '}' in JSON at position 1 (line 1 column 2)
+[bid-agent-background] error=missing/invalid jobId
+```
+The `errors` Blobs store write was confirmed with a throwaway debug
+function (read the store, print every record, then deleted — never
+committed): the PATCH failure above produced exactly one record,
+`{"fn":"bids","ts":1789370578138,"context":{"method":"PATCH","bid_id":"test123"},"error":"Expected property name or '}' in JSON at position 1 (line 1 column 2)"}`.
+
+New `tests/unit/log.test.js` (7 cases): line shape with/without context,
+empty-context omits the segment, `undefined`-valued context keys are
+dropped rather than printed as `k=undefined`, a plain string works in
+place of an `Error`, nullish `err` falls back to `"unknown error"`,
+`notifyTerminalFailure` writes the expected record via a mocked store,
+and a failed store write itself doesn't throw (logs a second line,
+resolves normally — the original failure being reported is never
+swallowed by a broken alert path).
+
+**Verified:** 280/280 Vitest (273 prior unchanged + 7 new); full
+Playwright suite **200 passed / 4 skipped / 0 failed** (unchanged
+baseline — backend-only step, no page under test touched); local
+`netlify dev` hand-check per above. **Pending before merge: deploy-preview
++ mobile 390px check**, per the standing standard (own PR, not folded
+into a later step).
+
 ## Market Read onto the tray standard — closes out the rollout (2026-09-11, standalone brief)
 
 `MarketReadPage.jsx`'s Market signals / Competitive signals / Known competitors already used real `.tray`/`.tray-hdr`/`.tray-row`/`.tray-half` correctly — no drift. The one remaining gap: Estimator confidence + Estimator notes still used the bare pre-rollout `.section-label` pattern, plus a redundant bare "Market Intelligence" label adding nothing over the two tray headers right below it. One branch (`market-read-tray-standard`), production + docs commit pair, PR to `main`. **JSX only — no CSS change needed (`.tray`/`.tray-hdr` already exist), no reducer/state/dispatch path touched, `golden-export.json` untouched.** Full rationale: `docs/dirigo-ux-decisions.md` §6.14.

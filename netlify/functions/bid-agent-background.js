@@ -21,6 +21,7 @@
 const { connectLambda, getStore } = require('@netlify/blobs');
 const { buildAnthropicRequest }   = require('./lib/bid-agent-request.js');
 const { parseAgentResponse }      = require('./lib/bid-agent-response.js');
+const { logError }                = require('./lib/log.js');
 const {
   STORE_NAME, isValidJobId, pendingRecord, doneRecord, errorRecord, writeJob
 } = require('./lib/bid-agent-jobs.js');
@@ -37,7 +38,7 @@ exports.handler = async (event) => {
     jobId = payload.jobId;
     if (!isValidJobId(jobId)) {
       // No key to write an error to — just log; the client will time out.
-      console.error('bid-agent-background: missing/invalid jobId');
+      logError('bid-agent-background', {}, 'missing/invalid jobId');
       return DONE;
     }
     const { jobId: _drop, ...businessData } = payload;
@@ -67,7 +68,7 @@ exports.handler = async (event) => {
     if (!resp.ok) {
       const err  = await resp.json().catch(() => ({}));
       const kind = err && err.error && (err.error.type || err.error);
-      console.error('bid-agent-background: Anthropic', resp.status, JSON.stringify(err).slice(0, 300));
+      logError('bid-agent-background', { jobId }, 'Anthropic HTTP ' + resp.status + ' ' + JSON.stringify(err).slice(0, 300));
       await writeJob(store, jobId, errorRecord('HTTP ' + resp.status + (kind ? ' (' + kind + ')' : '')));
       return DONE;
     }
@@ -75,8 +76,8 @@ exports.handler = async (event) => {
     const data   = await resp.json();
     const parsed = parseAgentResponse(data);
     if (!parsed.ok) {
-      console.error('bid-agent-background: parse error', parsed.error, '| stop_reason:', data && data.stop_reason,
-        '| block types:', ((data && data.content) || []).map(b => b && b.type).join(','));
+      logError('bid-agent-background', { jobId, stop_reason: data && data.stop_reason,
+        block_types: ((data && data.content) || []).map(b => b && b.type).join(',') }, 'parse error: ' + parsed.error);
       await writeJob(store, jobId, errorRecord('parse_error — ' + parsed.error));
       return DONE;
     }
@@ -85,7 +86,7 @@ exports.handler = async (event) => {
     return DONE;
 
   } catch (err) {
-    console.error('bid-agent-background: unexpected', err && err.message);
+    logError('bid-agent-background', { jobId }, err);
     try {
       if (jobId && isValidJobId(jobId)) {
         await writeJob(getStore(STORE_NAME), jobId, errorRecord(err && err.message || 'internal error'));

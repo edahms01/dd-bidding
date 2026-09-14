@@ -11,6 +11,7 @@
 
 const { connectLambda, getStore } = require('@netlify/blobs');
 const { STORE_NAME, isValidJobId, readJob } = require('./lib/bid-agent-jobs.js');
+const { logError } = require('./lib/log.js');
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
@@ -31,6 +32,7 @@ exports.handler = async (event) => {
     const rec = await readJob(store, id);
     return { statusCode: 200, headers: NO_STORE, body: JSON.stringify(rec || { status: 'pending' }) };
   } catch (err) {
+    logError('bid-agent-result', { id }, err);
     return { statusCode: 500, headers: NO_STORE, body: JSON.stringify({ error: err.message || 'Internal error' }) };
   }
 };

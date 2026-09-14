@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────
 
 const { connectLambda, getStore } = require('@netlify/blobs');
+const { logError } = require('./lib/log.js');
 
 const STORE_NAME = 'bids';
 const ALL_KEY    = 'all';
@@ -31,6 +32,7 @@ exports.handler = async (event) => {
     await store.setJSON(ALL_KEY, bids); // creates the store implicitly if it doesn't exist yet
     return { statusCode: 200, body: JSON.stringify(bids) };
   } catch (err) {
+    logError('dev-seed-bids', {}, err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal error' }) };
   }
 };

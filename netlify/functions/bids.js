@@ -10,6 +10,7 @@
 
 const { connectLambda, getStore } = require('@netlify/blobs');
 const { stampNewBid, mergePatch, removeBid } = require('./lib/bids-core.js');
+const { logError, notifyTerminalFailure } = require('./lib/log.js');
 
 const STORE_NAME = 'bids';
 const ALL_KEY    = 'all';
@@ -58,6 +59,7 @@ exports.handler = async (event) => {
   connectLambda(event);
 
   const store  = getStore(STORE_NAME);
+  const errorsStore = getStore('errors');
   const method = event.httpMethod;
 
   let result;
@@ -105,6 +107,16 @@ exports.handler = async (event) => {
       result = { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
     }
   } catch (err) {
+    const bid_id = event.queryStringParameters?.bid_id;
+    // POST (new bid can't be saved) / PATCH (an update/outcome-log can't
+    // persist) are real data-loss risk to the estimator — notify. GET/
+    // DELETE failures stay log-only (a read retried, or a delete that
+    // can be retried, not lost data).
+    if (method === 'POST' || method === 'PATCH') {
+      await notifyTerminalFailure(errorsStore, 'bids', { method, bid_id }, err);
+    } else {
+      logError('bids', { method, bid_id }, err);
+    }
     result = { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal error' }) };
   }
 
