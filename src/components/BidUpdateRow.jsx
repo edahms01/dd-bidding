@@ -11,6 +11,7 @@
 // bridged window.toggleUpdate(id).
 // ─────────────────────────────────────────────────────────────────────
 import { useState } from 'react';
+import { computeCostVariances } from '../state/historyAnalytics.js';
 
 export default function BidUpdateRow({ bid, open, onSaved }) {
   const [outcome, setOutcome] = useState(bid.outcome || 'pending');
@@ -26,7 +27,7 @@ export default function BidUpdateRow({ bid, open, onSaved }) {
     try {
       const bids = await window.getAllBids();
       const rec = bids.find((b) => b.bid_id === bid.bid_id);
-      const variances = window.computeCostVariances({
+      const variances = computeCostVariances({
         record: rec,
         actualLabor: isNaN(parsedLabor) ? null : parsedLabor,
         actualMaterial: isNaN(parsedMaterial) ? null : parsedMaterial

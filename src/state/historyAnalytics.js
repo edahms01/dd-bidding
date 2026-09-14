@@ -1,12 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────
-// history-analytics.js — Pure computed statistics over bid history
+// historyAnalytics.js — Pure computed statistics over bid history
 // (Bid Agent Analytics, Tier 1 + Tier 2 data capture). No DOM, no
 // network — operates on the plain array getAllBids() (js/history.js)
-// resolves to. Dual browser-global/CommonJS module, same convention as
-// js/drafts.js, so this is directly importable by the Vitest suite.
+// resolves to.
 //
 // Live pipeline concurrency (the other Tier 1 stat) is NOT here — it's
 // draft data, not bid history. See getOpenDraftCount() in js/drafts.js.
+//
+// Migration Phase 3, Step 3C: ported from js/history-analytics.js (a
+// classic <script>-tag global) to a real ES module. computeMarginOutcomeCurve/
+// computeSeasonality/computeCompetitorPatterns are still called as bare
+// globals from js/history.js's getHistorySummary() (still a classic
+// script, out of scope this phase) via the window bridge in
+// src/state/legacyBridges.js. computeCostVariances has no classic-script
+// caller — src/components/BidUpdateRow.jsx imports it directly (its
+// only caller), so it is deliberately NOT bridged.
 // ─────────────────────────────────────────────────────────────────────
 
 // Below this many *decided* (won/lost) bids, computeMarginOutcomeCurve()
@@ -16,7 +24,7 @@
 // submission count: a dataset with 20 total bids but only 3 decided is
 // exactly the thin-data case this threshold exists to catch, not a
 // dataset that should slip past it because "20 total" reads as plenty.
-const MIN_BIDS_FOR_MARGIN_CURVE = 15;
+export const MIN_BIDS_FOR_MARGIN_CURVE = 15;
 
 function _decidedBidsWithValidMargin(bids) {
   return bids.filter(b =>
@@ -32,7 +40,7 @@ function _decidedBidsWithValidMargin(bids) {
 // returns on zero bids and what _launchBidAgent()'s catch-block fallback
 // uses on a storage failure — one shape for "we don't have enough to
 // say," not three.
-function computeMarginOutcomeCurve(bids) {
+export function computeMarginOutcomeCurve(bids) {
   const eligible = _decidedBidsWithValidMargin(bids);
 
   if (eligible.length < MIN_BIDS_FOR_MARGIN_CURVE) {
@@ -80,7 +88,7 @@ function computeMarginOutcomeCurve(bids) {
 // decided (won/lost) bids count toward a quarter's win rate; a quarter
 // with none simply doesn't appear in the returned array rather than
 // showing as a fabricated zero.
-function computeSeasonality(bids) {
+export function computeSeasonality(bids) {
   const byQuarter = {};
 
   bids.forEach(b => {
@@ -115,7 +123,7 @@ function computeSeasonality(bids) {
 // a competitor lost to 5 times might only have pricing data on 1 of
 // those losses, and the raw timesLost count is still shown (a count is
 // never misleading on its own; an average of 1 value can be).
-const MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2;
+export const MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2;
 
 // Sparse per-competitor array, not a single available:false gate like
 // computeMarginOutcomeCurve() — competitors are independent groups
@@ -124,7 +132,7 @@ const MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2;
 // matching against intelligence.knownCompetitors — both go to the
 // agent as separate fields; AGENT_SYSTEM tells the model to
 // cross-reference them itself.
-function computeCompetitorPatterns(bids) {
+export function computeCompetitorPatterns(bids) {
   const losses = bids.filter(b => b.outcome === 'lost' && b.competitor_who_won);
   const groups = {};
 
@@ -168,7 +176,7 @@ function computeCompetitorPatterns(bids) {
 // variance. Requiring both mirrors the same conservatism already
 // applied to the post-phase branch (cost_variance only sums when both
 // labor_cost_variance and material_cost_variance are present).
-function computeCostVariances({ record, actualLabor, actualMaterial }) {
+export function computeCostVariances({ record, actualLabor, actualMaterial }) {
   const actual_cost = (actualLabor != null && actualMaterial != null)
     ? actualLabor + actualMaterial
     : null;
@@ -196,18 +204,5 @@ function computeCostVariances({ record, actualLabor, actualMaterial }) {
     labor_cost_variance,
     material_cost_variance,
     cost_variance
-  };
-}
-
-// ── EXPORTS (Vitest / Node) ──────────────────────────────────────────
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    MIN_BIDS_FOR_MARGIN_CURVE,
-    computeMarginOutcomeCurve,
-    computeSeasonality,
-    MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE,
-    computeCompetitorPatterns,
-    computeCostVariances
   };
 }
