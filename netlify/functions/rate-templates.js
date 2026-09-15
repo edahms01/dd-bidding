@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────
 // rate-templates.js — Netlify Function: rate template CRUD (Tier 5, Part 1)
-// Backs js/rate-templates.js's getAllRateTemplates/saveRateTemplate/
-// deleteRateTemplate. Single JSON array stored as one Blob (key 'all'),
+// Backs src/state/rateTemplates.js's getAllRateTemplates/saveRateTemplate/
+// deleteRateTemplate (js/rate-templates.js before Migration Phase 5,
+// Bucket 1, Step B). Single JSON array stored as one Blob (key 'all'),
 // same shape and same "single digits, not hundreds" reasoning bids.js
 // (Phase 3) and Tier 3's per-assembly waste used — a company will have
 // a handful of rate templates, not enough to justify one-blob-per-
