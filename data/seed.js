@@ -70,13 +70,17 @@ async function loadSeedData() {
     const clearRes = await fetch('/.netlify/functions/dev-clear-drafts', { method: 'POST' });
     if (!clearRes.ok) throw new Error('dev-clear-drafts failed: ' + clearRes.status);
     // The clear above is a raw fetch, not _deleteDraftRemote() — it
-    // doesn't touch _draftsCache (js/forms.js). Reset it explicitly here
-    // or the client's in-memory mirror keeps every pre-clear entry
-    // (stale, since the server just wiped them all), and _writeDraft()'s
-    // merge-spread below would add the new seed draft on top instead of
-    // replacing — found via a real openDraftCount mismatch in
-    // golden-export-parity.spec.js (server had 1 draft, cache showed 2).
-    _draftsCache = {};
+    // doesn't touch _draftsCache (src/state/forms.js). Reset it
+    // explicitly here or the client's in-memory mirror keeps every
+    // pre-clear entry (stale, since the server just wiped them all), and
+    // _writeDraft()'s merge-spread below would add the new seed draft on
+    // top instead of replacing — found via a real openDraftCount
+    // mismatch in golden-export-parity.spec.js (server had 1 draft,
+    // cache showed 2). Migration Phase 5, Bucket 2, Step 1: forms.js is
+    // a real ES module now, so _draftsCache is a read-only live import
+    // everywhere except forms.js itself — this file (still classic) can
+    // no longer bare-reassign it directly, hence the bridge.
+    window.__resetDraftsCache();
     await _writeDraft(id, buildDraftRecord(seed.project_state, id, now, now));
   } catch (e) {
     alert('Failed to load seed draft. Check your connection and try again.');
