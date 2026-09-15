@@ -1609,3 +1609,172 @@ quick caller-check rather than a snap deletion mid-PR.
 
 **Pending before merge:** read-only Netlify deploy-preview verification,
 per the standing standard.
+
+## Migration Phase 5: retire the last classic `<script>` files (in progress)
+
+Follows Phase 4. The last `js/*.js` classic scripts get ported to real ES
+modules under `src/state/`, same as Phase 3 did for `calculator.js`/
+`agent-payload.js`/`history-analytics.js`. Two buckets. **Bucket 1** (PRs
+#84–87, `autosave.js`+`drafts.js`, `rate-templates.js`, `history.js`,
+`agent.js` — each independent, one file per step) shipped without its own
+CLAUDE.md write-up; that's a real gap in this project's own documentation
+discipline, not a decision — flagged here rather than silently repeated.
+One artifact from it is still load-bearing: `js/debounce.js` was carved out
+of `autosave.js` and deliberately kept as its own tiny classic script
+(`AUTOSAVE_DEBOUNCE_MS`, `debounce()`) because its only two callers
+(`js/forms.js`, `js/ui.js`) called it at classic-script top level — porting
+it alongside `autosave.js` broke `window.__draftsBootPromise` for the whole
+suite (a real, reproduced failure, per the file's own header comment).
+
+**Bucket 2** ports the four remaining files: `state.js`, `debounce.js`,
+`forms.js`, `ui.js`. Unlike every file Bucket 1 touched, these four call
+each other's functions as bare globals — not independent, can't convert
+one at a time without temporary bridges. Plan:
+`/Users/eric/.claude/plans/new-brief-for-dirigo-curried-cascade.md`.
+
+**Step 1 (port `debounce.js` + `state.js` + `forms.js` + `ui.js` together)
+complete.** One PR, not four — Finding 3 below is why splitting further
+wasn't viable.
+
+- **`src/state/debounce.js`** — verbatim port, no other change.
+- **`src/state/formState.js`** — ported from `js/state.js`. Named
+  `formState.js`, not `state.js`: `src/state/store.jsx` already is "the
+  state" (the React reducer); a second file literally named `state.js`
+  next to it would be ambiguous about which one that means. Exports
+  `STATE`, `collectFormData()`, `buildBidRecord()` — same DOM-touching
+  shape as before, no behavior change.
+- **`src/state/forms.js`** / **`src/state/ui.js`** — ported from
+  `js/forms.js`/`js/ui.js`, same filenames (no existing-file collision,
+  no ambiguity, every historical CLAUDE.md reference already uses these
+  names). Every exported function is verbatim — this bucket's own brief
+  explicitly ruled out any React/hooks rewrite.
+- **Real `import`/`export` between all four**, replacing every bare-global
+  cross-reference: `formState.js` imports `_draftsCache`/`activeDraftId`
+  from `forms.js`; `forms.js` imports `collectFormData`/`STATE` from
+  `formState.js` and `calc`/`_resetAgentCache` from `ui.js`; `ui.js`
+  imports `collectFormData`/`buildBidRecord` from `formState.js` and
+  `_draftsCache`/`activeDraftId`/`clearFinalizedDraft` from `forms.js`.
+  A genuine 3-way circular module graph (`formState.js` ↔ `forms.js` ↔
+  `ui.js`), confirmed safe before writing any of it: every cross-reference
+  happens inside a function body, called well after all three modules
+  finish their initial evaluation — none of it is touched at
+  module-top-level, which is the one shape that actually breaks under
+  ESM's live-binding circular-import handling.
+
+**Finding 1 (from the plan, confirmed real): `data/seed.js` is a fifth
+classic-script consumer the original brief didn't name.** It bare-calls
+`populateForm()`, `_generateDraftId()`, `_writeDraft()`,
+`setActiveDraftId()`, `runCalculation()`, `runAgentIfNeeded()`,
+`_resetAgentCache()`, `buildDraftRecord()` — and does `_draftsCache = {}`
+as a **direct reassignment** of `forms.js`'s private variable, which only
+ever worked because classic scripts share one global lexical scope. A real
+ES module export is a read-only live view to every importer — there is no
+bare-reassignment equivalent. Fixed with a new exported
+`_resetDraftsCache()` (`forms.js`), bridged as `window.__resetDraftsCache`
+for `data/seed.js`'s sake (it still bare-calls the rest via existing
+`window.*` bridges, which keep working automatically — a classic script's
+bare identifier lookup falls through to `window` properties regardless of
+whether the property was set by another classic script or a module; only
+a `let`/`const` in *another classic script's own top-level lexical
+scope* was ever invisible that way, which is exactly what broke here).
+`data/seed.js` stays classic this step — **Bucket 2, Step 2 converts it**,
+per Eric's approval at plan review, and deletes this whole temporary
+bridge block.
+
+**Finding 2 (from the plan, confirmed real): `legacyBridges.js`'s ~124
+lines were (almost) entirely deletable, but a new, permanent bridge
+surface took their place.** Every existing entry existed only because
+`forms.js`/`ui.js`/`state.js` were still classic scripts — all deleted
+once those three import each other and `calculator.js`/`historyAnalytics.js`/
+`drafts.js`/`history.js`/`agent.js` directly. But 18 functions these three
+files own are called via `window.X` from real, permanent React
+code (pages/components explicitly not being rewritten to import
+directly — out of scope per this bucket's own non-goal) — confirmed one
+at a time with `grep -rn "window\.<name>\b" src/`, not assumed. These
+don't disappear once the migration finishes; they're the same standing
+kind of bridge `src/state/bridges.js`'s `registerBridges()` already
+provides for `goto()`/the `__hydrateX` family. `legacyBridges.js`'s job
+changed — it didn't go away.
+
+**A third caller class, found only by running the full Playwright suite,
+not by any grep:** five specs called `getHistorySummary()`,
+`calculateWallCosts()`, `applyRateEscalation()`, `calculateCeilingCosts()`,
+`calculateLogistics()`, `buildCostSummary()`, and `hasUnsavedChanges`/
+`_agentHistoryUnavailable` as **bare** identifiers inside
+`page.evaluate()` — reachable pre-Bucket-2 the same way `data/seed.js`'s
+calls were (classic-script `function` declarations become real
+`window`/global-object properties, so bare-callable from any injected
+script, not just other classic scripts). Deleting `calculator.js`'s/
+`history.js`'s bridges here (reasoning: "only `ui.js` needed them")
+missed this — the bridges had been carried, unnoticed, on `ui.js`'s
+coattails. First full suite run: 5 failures. Fixed at both ends, same
+mechanism-only pattern Phase 4 already established for exactly this
+situation (its own `_renderAgentResult()`-deletion fix): the five specs
+(`rate-escalation.spec.js`, `agent-history-fallback.spec.js`,
+`agent-receives-real-history.spec.js`, `competitor-patterns.spec.js`,
+`unsaved-changes-warning.spec.js`) now call `window.<fn>(...)` /
+`window.__getHasUnsavedChanges()` instead of the bare identifier; the six
+calculator/history functions are restored to `legacyBridges.js`
+permanently (a third labeled block, "Playwright test-harness callers
+only" — not React, not migration-temporary); `_agentHistoryUnavailable`
+got a new small read accessor in `ui.js` (`window.__getAgentHistoryUnavailable`,
+same shape as `forms.js`'s pre-existing `window.__getHasUnsavedChanges`),
+since nothing had ever needed to read that one from outside before.
+
+**A second real bug, caught before any test ran, not by one:** every
+top-level `window.*` assignment/`addEventListener` in `forms.js`
+(`window.__getDraftsCacheSync`, `window.__getHasUnsavedChanges`, the
+`beforeunload` listener, the `dirigo:shell-ready` listener) was unguarded
+— safe as a classic script, since nothing ever imported `js/forms.js`
+under Vitest. Once `ui.js` imports `forms.js` for real, and
+`tests/unit/ui.test.js` imports `ui.js` under Vitest's plain `'node'`
+environment (no `window` at all, per `vitest.config.mjs`), that import
+chain now pulls `forms.js` in too — its four unguarded top-level
+statements would throw `ReferenceError: window is not defined` before
+`escapeHtml()` was ever reached. Same class of hazard CLAUDE.md's
+"Converting a page" checklist item 9 already documents for `js/ui.js`
+itself; found here by re-checking that reasoning against `forms.js`
+*before* running anything, not by a failing test. All four wrapped in
+`typeof window !== 'undefined'`, matching the existing guards.
+
+- **`vite.config.mjs`** — `js` dropped from `COPY_DIRS` (the directory is
+  empty and gone now that all four files are real module imports);
+  `data` stays (`data/seed.json` is plain fetched JSON, and — until Step
+  2 — `data/seed.js` is still a classic script needing the raw-copy).
+- **`index.html`** — the four `<script src="js/...">` tags removed.
+  `data/seed.js`'s tag stays (Step 2).
+- **Test import paths:** `tests/unit/ui.test.js` (`escapeHtml`),
+  `tests/unit/debounce.test.js` (`debounce`) — mechanical, no assertion
+  change.
+- **Verified:** 327/327 Vitest (unchanged baseline — the two import-path
+  fixes are the only touch); clean `vite build`, `dist/js/` correctly
+  absent, `dist/data/` correctly present; full Playwright suite **200
+  passed / 0 failed / 4 skipped** — identical to the pre-change baseline,
+  after fixing the 6 real findings above. Encountered and cleared the
+  documented stray-dev-server-on-5173 hazard (CLAUDE.md's own Testing
+  Conventions entry) before the first suite run — a different worktree's
+  orphaned `vite --port 5173` process (~53 minutes idle, reparented to
+  init), not this session's; killed, both ports confirmed clear,
+  suite re-run clean. **Real local `netlify dev` hand-check, real
+  numbers, separate from the automated suite** (first two attempts hung
+  with an empty log/no bound port — a slow cold start, not a real
+  problem; the third came up clean on retry): a scratch Playwright
+  script drove a real browser against it — `clearSeedData()` then
+  `loadSeedData()`, both via the real `window.*` bridges — and read the
+  actual rendered DOM. Direct cost total **$148,216** and final bid price
+  **$192,680**, both byte-identical to the golden values already pinned
+  earlier in this file (Phase 3A's own hand-check, the height-adders
+  brief's regression pin) — zero numeric drift through the port. Rates
+  totals bar (`calc()`, `ui.js`) read **$1,565**; the Market Read pipeline
+  hint (`_renderPipelineHint()`, `ui.js`, reading `_draftsCache`/
+  `activeDraftId` via the new real cross-module import) read "No other
+  bids currently open" correctly. Zero console/page errors throughout.
+  Scratch script and its log deleted after use, dev server and its child
+  Vite process stopped, ports re-confirmed clear.
+- **Pending before merge:** read-only Netlify deploy-preview
+  verification, mobile 390px check, per the standing standard.
+
+**Not started: Step 2** (convert `data/seed.js`, delete the temporary
+`legacyBridges.js` block, remove its `<script>` tag, decide how the
+dev-toolbar's inline `onclick="loadSeedData()"`/`onclick="clearSeedData()"`
+reach a module's exports — approved at plan review, not yet built).

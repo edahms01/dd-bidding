@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { debounce } from '../../js/debounce.js';
+import { debounce } from '../../src/state/debounce.js';
 
 // Split out of tests/unit/autosave.test.js (Migration Phase 5, Bucket 1,
 // Step A) — debounce() stayed behind in js/debounce.js as its own small
-// classic script rather than porting to src/state/ alongside the rest
-// of autosave.js. See js/debounce.js's header comment for why.
+// classic script through Bucket 1, rather than porting to src/state/
+// alongside the rest of autosave.js, because forms.js/ui.js (its only
+// two callers) were still classic scripts themselves. Ported for real in
+// Bucket 2, Step 1, once both became real ES modules that could import
+// it directly. See src/state/debounce.js's header comment for why.
 
 describe('debounce', () => {
   beforeEach(() => vi.useFakeTimers());
