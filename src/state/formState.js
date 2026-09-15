@@ -1,5 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────
-// state.js — Data layer
+// formState.js — Data layer (ported from js/state.js, Migration Phase 5,
+// Bucket 2)
+//
 // Owns the STATE object and collectFormData(), the single function
 // allowed to read the DOM for form values.
 //
@@ -7,15 +9,23 @@
 // or write STATE rather than reaching past it into the DOM or into
 // each other.
 //
-// Future: collectFormData() becomes the API request payload builder.
-//         STATE is hydrated from an API response on load.
+// Named formState.js, not state.js — src/state/store.jsx is already "the
+// state" (the React reducer); a second file literally named state.js
+// next to it would be ambiguous about which one that means.
+//
+// _draftsCache/activeDraftId are forms.js's — imported here as real ES
+// module bindings (live, read-only from this side) instead of the bare
+// shared-global-scope reads the original classic script relied on.
 // ─────────────────────────────────────────────────────────────────────
 
-const STATE = {
+import { _draftsCache, activeDraftId } from './forms.js';
+import { getOpenDraftCount } from './drafts.js';
+
+export const STATE = {
   conf: ''
 };
 
-function collectFormData() {
+export function collectFormData() {
   function num(id, fallback) {
     const el = document.getElementById(id);
     if (!el) return fallback !== undefined ? fallback : 0;
@@ -223,9 +233,9 @@ function collectFormData() {
     // called synchronously from calculator/agent-payload paths that are
     // out of scope for that migration — so this reads _draftsCache
     // directly instead, the same in-memory mirror getAllDrafts() keeps
-    // warm. _draftsCache/activeDraftId are js/forms.js globals (bare
-    // identifiers — classic scripts share one global lexical
-    // environment, same as this file's pre-existing activeDraftId read).
+    // warm. _draftsCache/activeDraftId are real ES module imports from
+    // forms.js now (Migration Phase 5, Bucket 2) — live, read-only
+    // bindings, same relationship the bare-identifier read used to have.
     openDraftCount:     getOpenDraftCount(_draftsCache, activeDraftId)
   };
 
@@ -260,8 +270,8 @@ function collectFormData() {
 // from markupResult (the plain calculator's independent result), which
 // used to feed both and is why they were wrong together. The fallback to
 // markupResult.finalBidPrice below only matters if this is ever called
-// without a selection — submitBid() (js/ui.js) always supplies one today.
-function buildBidRecord(state, summary, markupResult, finalizeSelection) {
+// without a selection — submitBid() (src/state/ui.js) always supplies one today.
+export function buildBidRecord(state, summary, markupResult, finalizeSelection) {
   const chosenAmount = finalizeSelection?.amount != null
     ? finalizeSelection.amount
     : markupResult.finalBidPrice;
@@ -334,7 +344,7 @@ function buildBidRecord(state, summary, markupResult, finalizeSelection) {
     actual_cost:            null,
     cost_variance:          null,
     // Nullable — populated later via the Update form's split-cost fields
-    // (saveUpdate(), js/ui.js), alongside actual_cost/cost_variance above,
+    // (saveUpdate(), src/state/ui.js), alongside actual_cost/cost_variance above,
     // not replacing them.
     actual_labor_cost:      null,
     actual_material_cost:   null,

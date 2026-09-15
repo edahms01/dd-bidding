@@ -15,7 +15,7 @@ test('a second loss to an already-seen competitor crosses the confidence thresho
   await loadSeed(page);
   await page.waitForTimeout(1500);
 
-  const before = await page.evaluate(() => getHistorySummary('Callahan Construction Group', 'Retail'));
+  const before = await page.evaluate(() => window.getHistorySummary('Callahan Construction Group', 'Retail'));
   const beforeEntry = before.competitorPatterns.find(c => c.name === 'Northeast Drywall Inc.');
   expect(beforeEntry).toEqual({ name: 'Northeast Drywall Inc.', timesLost: 1, avgUndercutPct: null });
 
@@ -34,7 +34,7 @@ test('a second loss to an already-seen competitor crosses the confidence thresho
   await page.click(`#uprow-${bidId} button:has-text("Save")`);
   await page.waitForTimeout(800);
 
-  const after = await page.evaluate(() => getHistorySummary('Callahan Construction Group', 'Retail'));
+  const after = await page.evaluate(() => window.getHistorySummary('Callahan Construction Group', 'Retail'));
   const afterEntry = after.competitorPatterns.find(c => c.name === 'Northeast Drywall Inc.');
   expect(afterEntry.timesLost).toBe(2);
   expect(afterEntry.avgUndercutPct).not.toBeNull();

@@ -10,11 +10,16 @@ test('typing and attempting to leave before the debounce window elapses triggers
   await page.fill('#proj-name', 'QA Unsaved');
 
   // Check well within the 700ms debounce window.
-  // hasUnsavedChanges is a top-level `let` in a classic <script> — it lives
-  // in the shared top-level lexical scope, not on `window`, so read it as a
-  // bare identifier here, not window.hasUnsavedChanges.
+  // hasUnsavedChanges was a top-level `let` in a classic <script> (bare-
+  // readable from anywhere sharing that global lexical scope) through
+  // Migration Phase 5, Bucket 1. Bucket 2, Step 1 ported forms.js to a
+  // real ES module — hasUnsavedChanges is module-scoped now, invisible to
+  // injected/evaluated code entirely, bare or via `window.`. Read it
+  // through the pre-existing window.__getHasUnsavedChanges() accessor
+  // instead (forms.js already exposed this for RatesPage.jsx's own use,
+  // for exactly the same "a `let` isn't a window property" reason).
   await page.waitForTimeout(150);
-  const flagBeforeDebounce = await page.evaluate(() => hasUnsavedChanges);
+  const flagBeforeDebounce = await page.evaluate(() => window.__getHasUnsavedChanges());
   expect(flagBeforeDebounce).toBe(true);
 
   // Secondary signal: the real native beforeunload dialog, triggered by an

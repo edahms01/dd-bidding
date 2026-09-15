@@ -37,9 +37,9 @@ test('escalation on one board type changes only that material, survives a rate t
   // Baseline, computed via the exact same functions runCalculation() calls.
   // Seed data already ships a 5% escalation on Type-X board (data/seed.json).
   const before = await page.evaluate(() => {
-    const state = collectFormData();
-    const escalatedRates = applyRateEscalation(state.rates, state.rateEscalation);
-    return calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions)[0];
+    const state = window.collectFormData();
+    const escalatedRates = window.applyRateEscalation(state.rates, state.rateEscalation);
+    return window.calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions)[0];
   });
 
   await page.click('#tab-rates');
@@ -47,9 +47,9 @@ test('escalation on one board type changes only that material, survives a rate t
   await page.waitForTimeout(300);
 
   const after = await page.evaluate(() => {
-    const state = collectFormData();
-    const escalatedRates = applyRateEscalation(state.rates, state.rateEscalation);
-    return calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions)[0];
+    const state = window.collectFormData();
+    const escalatedRates = window.applyRateEscalation(state.rates, state.rateEscalation);
+    return window.calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions)[0];
   });
 
   // Board material moved with the new escalation percentage (5% -> 20%)...
@@ -67,12 +67,12 @@ test('escalation on one board type changes only that material, survives a rate t
   // oninput="calc()" exist for.
   await page.click('#tab-output');
   const expectedMaterialsText = await page.evaluate(() => {
-    const state = collectFormData();
-    const escalatedRates = applyRateEscalation(state.rates, state.rateEscalation);
-    const wallCosts = calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions);
-    const ceilCosts = calculateCeilingCosts(state.ceilings, state.assemblies, escalatedRates, state.conditions);
-    const logistics = calculateLogistics(state.conditions, state.rates);
-    const summary   = buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct,
+    const state = window.collectFormData();
+    const escalatedRates = window.applyRateEscalation(state.rates, state.rateEscalation);
+    const wallCosts = window.calculateWallCosts(state.walls, state.assemblies, escalatedRates, state.conditions);
+    const ceilCosts = window.calculateCeilingCosts(state.ceilings, state.assemblies, escalatedRates, state.conditions);
+    const logistics = window.calculateLogistics(state.conditions, state.rates);
+    const summary   = window.buildCostSummary(wallCosts, ceilCosts, logistics, state.conditions.wastePct,
       state.rates.burdenPct, state.rates.superPct,
       state.rates.adder12Pct, state.rates.adder20Pct,
       state.conditions.sfAbove12, state.conditions.sfAbove20);

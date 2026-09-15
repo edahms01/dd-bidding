@@ -1,124 +1,155 @@
 // ─────────────────────────────────────────────────────────────────────
-// legacyBridges.js — window bridges for pure-logic modules ported from
-// js/*.js classic-script globals to real src/state/ ES modules
-// (Migration Phase 3).
+// legacyBridges.js — window bridges for src/state/ modules that real
+// browser code still reaches via `window.X`.
 //
-// Unlike src/state/bridges.js's registerBridges(dispatch), these are
-// flat, unconditional `window.X = fn` assignments — no dispatch, no
-// React lifecycle dependency, since every function here is a pure
-// calculation with no state to hydrate. Imported once, top-level, from
-// src/main.jsx (not called from a mount effect) for the same reason.
+// Migration Phase 5, Bucket 2 rewrote this file's purpose. Through
+// Phase 3 and Bucket 1, every entry here existed for exactly one reason:
+// some other file (js/ui.js, js/forms.js, js/state.js) was still a
+// classic <script>, so it could only reach a newly-ported ES module's
+// exports via `window.X` — a temporary crutch, deleted as soon as that
+// specific classic-script caller converted (Bucket 1 Steps A–D each
+// deleted a slice this way; Bucket 2 Step 1 deleted the rest, since
+// formState.js/forms.js/ui.js/debounce.js are the last of them and now
+// import each other directly — see those four files themselves for the
+// real import/export graph between them).
 //
-// index.html loads every classic <script> before the React module
-// bundle (src/main.jsx, always last), so these assignments are
-// guaranteed to exist before any classic-script caller can reach them —
-// verified caller-by-caller in the Phase 3 plan, not assumed.
+// What's left below is a different, PERMANENT kind of bridge: real
+// production React code (pages/components) that calls these functions
+// via `window.X` and is explicitly not being rewritten to import them
+// directly — that rewrite is out of scope for this migration (see the
+// Bucket 2 brief's own non-goal: "not in scope: rewriting this into
+// React components/hooks"). These entries won't disappear just because
+// every vanilla file eventually becomes a module; they're the same kind
+// of standing bridge src/state/bridges.js's registerBridges() already
+// provides for goto()/the __hydrateX family, just shaped as flat
+// `window.X = fn` since none of these need a `dispatch` reference or a
+// React lifecycle hook.
 //
-// Each block here should be deleted once its own classic-script
-// caller(s) convert to real imports and no longer need the global.
+// The one temporary block still here: data/seed.js is a fifth classic-
+// script consumer of formState.js/forms.js/ui.js the original Bucket-2
+// brief didn't name (Migration Phase 5, Bucket 2, plan Finding 1) — its
+// bridges are marked below and go away in Bucket 2 Step 2, once
+// data/seed.js itself converts to a real module and imports them
+// directly.
 // ─────────────────────────────────────────────────────────────────────
 
+import { collectFormData } from './formState.js';
+
+import {
+  exportBid,
+  handleImportFile,
+  _showFormToast,
+  getAllDrafts,
+  resumeActiveDraft,
+  createDraft,
+  switchToDraft,
+  duplicateDraft,
+  deleteDraft,
+  _handleFormChange,
+  _autosave,
+  populateForm,
+  _writeDraft,
+  _generateDraftId,
+  setActiveDraftId,
+  _resetDraftsCache
+} from './forms.js';
+
+import {
+  calculateOnly,
+  runCalculation,
+  submitBid,
+  renderAgentTab,
+  runAgentIfNeeded,
+  _resetAgentCache,
+  _renderPipelineHint
+} from './ui.js';
+
+// buildDraftRecord is the one drafts.js export still needed here —
+// data/seed.js bare-calls it directly (Finding 1). cloneDraftForDuplicate/
+// removeDraftAndClearActiveIfNeeded/migrateLegacyBidToDrafts/
+// getOpenDraftCount were only ever bridged for forms.js's/ui.js's/
+// formState.js's own sake — all three now import each of those directly
+// from drafts.js instead (grep-confirmed no other caller).
+import { buildDraftRecord } from './drafts.js';
+
+// Real, non-obvious finding from running the full suite, not assumed
+// clean from a `grep -rn "window\." src/` alone: several Playwright specs
+// call these six via a *bare* (non-`window.`) identifier inside
+// page.evaluate() — e.g. `page.evaluate(() => getHistorySummary(...))` —
+// which only worked pre-Bucket-2 because classic <script>-declared
+// `function`s become real global-object properties, reachable by bare
+// identifier from any injected/evaluated script, not just other classic
+// scripts (unlike the `let`-scoped globals like `_draftsCache`, which
+// were never reachable that way even before this migration). A real ES
+// module export doesn't do that, so these five specs broke the moment
+// calculator.js's/history.js's own bridges here were deleted (they'd
+// been carried, unnoticed, on the coattails of ui.js's now-superseded
+// bridge need). Fixed at both ends: the five specs were updated to call
+// `window.<fn>(...)` instead (rate-escalation.spec.js,
+// agent-history-fallback.spec.js, agent-receives-real-history.spec.js,
+// competitor-patterns.spec.js — the mechanism-only fix already
+// established for this exact situation, e.g. Migration Phase 4's
+// `_renderAgentResult()`-deletion fix), and these six bridges are
+// restored — permanently, not migration-temporary, same category as the
+// React-facing block above, just for a different real caller.
 import {
   calculateWallCosts,
   calculateCeilingCosts,
   calculateLogistics,
-  disposalMonthsFor,
-  applyLaborBurden,
   buildCostSummary,
-  applyMarkup,
-  computeWeightedWastePct,
   applyRateEscalation
 } from './calculator.js';
+import { getHistorySummary } from './history.js';
 
-// omit/buildAgentPayload/the 5 AGENT_*_DENYLIST constants are NOT
-// imported here as of Migration Phase 5, Bucket 1, Step D — they were
-// only ever bridged for js/agent.js's sake (grep-confirmed: no other
-// classic-script caller ever referenced them), which is now a real
-// module (src/state/agent.js) and imports buildAgentPayload directly.
+// ── Permanent — real React callers, confirmed with `grep -rn
+// "window\.<name>\b" src/` (not comments, not tests) before adding each
+// one. See the Bucket 2 plan's Finding 2 table for the full caller list
+// per function. ──
+window.collectFormData    = collectFormData;
+window.exportBid          = exportBid;
+window.handleImportFile   = handleImportFile;
+window._showFormToast     = _showFormToast;
+window._renderPipelineHint = _renderPipelineHint;
+window.getAllDrafts       = getAllDrafts;
+window.resumeActiveDraft  = resumeActiveDraft;
+window.createDraft        = createDraft;
+window.switchToDraft      = switchToDraft;
+window.duplicateDraft     = duplicateDraft;
+window.deleteDraft        = deleteDraft;
+window._handleFormChange  = _handleFormChange;
+window._autosave          = _autosave;
+window.calculateOnly      = calculateOnly;
+window.runCalculation     = runCalculation;
+window.submitBid          = submitBid;
+window.renderAgentTab     = renderAgentTab;
 
-// computeCostVariances is deliberately NOT imported here — its only
-// caller is src/components/BidUpdateRow.jsx, which imports it directly
-// (Migration Phase 3, Step 3C). A bridge for it would be dead on
-// arrival. MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE has no classic-script
-// caller either (grep-confirmed) and is likewise not bridged.
-// MIN_BIDS_FOR_MARGIN_CURVE IS bridged — js/ui.js's _launchBidAgent()
-// catch-block fallback references it as a bare global (a real caller
-// missed on first pass; caught by agent-history-fallback.spec.js).
-//
-// computeMarginOutcomeCurve/computeSeasonality/computeCompetitorPatterns
-// are NOT imported here as of Migration Phase 5, Bucket 1, Step C — they
-// were only ever bridged for js/history.js's sake, which is now a real
-// module (src/state/history.js) and imports them directly.
-import { MIN_BIDS_FOR_MARGIN_CURVE } from './historyAnalytics.js';
-
-import {
-  buildExportPayload,
-  validateImportPayload,
-  migrateSchema
-} from './autosave.js';
-
-import {
-  buildDraftRecord,
-  cloneDraftForDuplicate,
-  removeDraftAndClearActiveIfNeeded,
-  migrateLegacyBidToDrafts,
-  getOpenDraftCount
-} from './drafts.js';
-
-import { saveBid, getHistorySummary } from './history.js';
-
-import { runBidAgent } from './agent.js';
-
-// js/ui.js's calculateOnly()/submitBid() call these as bare globals.
-// Both are reachable only via user-triggered paths (debounced form-change/
-// state-watcher, explicit navigation, Finalize-confirm click) — never at
-// script-load time — so there's no load-order race with this assignment.
-window.calculateWallCosts = calculateWallCosts;
+// ── Permanent — Playwright test-harness callers only (page.evaluate()
+// bare-calling into the running page's globals). Not a React need, not a
+// migration-temporary one; see the import comment above for how this
+// was found. ──
+window.calculateWallCosts    = calculateWallCosts;
 window.calculateCeilingCosts = calculateCeilingCosts;
-window.calculateLogistics = calculateLogistics;
-window.disposalMonthsFor = disposalMonthsFor;
-window.applyLaborBurden = applyLaborBurden;
-window.buildCostSummary = buildCostSummary;
-window.applyMarkup = applyMarkup;
-window.computeWeightedWastePct = computeWeightedWastePct;
-window.applyRateEscalation = applyRateEscalation;
+window.calculateLogistics    = calculateLogistics;
+window.buildCostSummary      = buildCostSummary;
+window.applyRateEscalation   = applyRateEscalation;
+window.getHistorySummary     = getHistorySummary;
 
-// js/ui.js's _launchBidAgent() references this bare, in its
-// catch-block fallback shape for a history-fetch failure.
-window.MIN_BIDS_FOR_MARGIN_CURVE = MIN_BIDS_FOR_MARGIN_CURVE;
-
-// js/forms.js/js/ui.js call these as bare globals (Migration Phase 5,
-// Bucket 1, Step A — js/forms.js/js/ui.js stay classic scripts this
-// bucket, Bucket 2, out of scope). src/state/drafts.js (below) imports
-// buildExportPayload/migrateSchema directly — a real module dependency,
-// not reached through this bridge.
-//
-// debounce/AUTOSAVE_DEBOUNCE_MS are NOT bridged here — see js/debounce.js.
-// Their only callers (forms.js:725, ui.js:217) invoke debounce() at
-// classic-script top level, before this module-script bridge exists;
-// debounce.js stays its own small classic script for exactly that reason.
-window.buildExportPayload = buildExportPayload;
-window.validateImportPayload = validateImportPayload;
-window.migrateSchema = migrateSchema;
-
-// js/forms.js/js/state.js/js/ui.js call these as bare globals
-// (Migration Phase 5, Bucket 1, Step A — same out-of-scope callers as
-// autosave.js above).
-window.buildDraftRecord = buildDraftRecord;
-window.cloneDraftForDuplicate = cloneDraftForDuplicate;
-window.removeDraftAndClearActiveIfNeeded = removeDraftAndClearActiveIfNeeded;
-window.migrateLegacyBidToDrafts = migrateLegacyBidToDrafts;
-window.getOpenDraftCount = getOpenDraftCount;
-
-// js/ui.js calls these as bare globals (Migration Phase 5, Bucket 1,
-// Step C — js/ui.js stays a classic script this bucket, Bucket 2, out
-// of scope). getAllBids/updateBid/deleteBid are NOT bridged here — their
-// React callers (BidUpdateRow.jsx, InsightsPage.jsx, BidsPage.jsx) all
-// import them directly from src/state/history.js this same step.
-window.saveBid = saveBid;
-window.getHistorySummary = getHistorySummary;
-
-// js/ui.js's _launchBidAgent()/runAgentIfNeeded() call this as a bare
-// global (Migration Phase 5, Bucket 1, Step D — js/ui.js stays a
-// classic script this bucket, Bucket 2, out of scope).
-window.runBidAgent = runBidAgent;
+// ── Temporary — data/seed.js only. Bare-calls each of these directly
+// (not via `window.`) today, exactly the way forms.js/ui.js used to call
+// each other, because it's still a classic <script> sharing their old
+// global scope. Delete this whole block in Bucket 2 Step 2 once
+// data/seed.js is a real module and imports them instead. ──
+window.populateForm       = populateForm;
+window._writeDraft        = _writeDraft;
+window._generateDraftId   = _generateDraftId;
+window.setActiveDraftId   = setActiveDraftId;
+window.runAgentIfNeeded   = runAgentIfNeeded;
+window._resetAgentCache   = _resetAgentCache;
+window.buildDraftRecord   = buildDraftRecord;
+// data/seed.js currently does `_draftsCache = {}` as a bare reassignment
+// of forms.js's private variable — no longer possible once forms.js is a
+// module (an ES import is a read-only live view). _resetDraftsCache()
+// (forms.js) is the real equivalent; bridged here under its established
+// window.__x naming (matches window.__getDraftsCacheSync, the read-
+// direction counterpart forms.js already defines itself).
+window.__resetDraftsCache = _resetDraftsCache;

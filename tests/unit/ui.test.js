@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { escapeHtml } from '../../js/ui.js';
+import { escapeHtml } from '../../src/state/ui.js';
 
-// js/ui.js is otherwise pure DOM/display code (see its file header) —
-// escapeHtml() is the one function in it with no DOM dependency, which
-// is why it's directly importable here under Vitest's plain 'node'
-// environment (no jsdom). The file's one top-level DOM side effect
-// (document.addEventListener('keydown', ...)) is guarded specifically
-// so this import doesn't throw before reaching the export.
+// src/state/ui.js (ported from js/ui.js, Migration Phase 5, Bucket 2) is
+// otherwise pure DOM/display code (see its file header) — escapeHtml()
+// is the one function in it with no DOM dependency, which is why it's
+// directly importable here under Vitest's plain 'node' environment (no
+// jsdom). The file's own top-level DOM/window side effects are guarded
+// specifically so this import doesn't throw before reaching the export —
+// and, since ui.js now imports formState.js/forms.js for real (Bucket
+// 2's circular module graph), so are theirs.
 describe('escapeHtml', () => {
   it('escapes the five HTML-significant characters', () => {
     expect(escapeHtml('&')).toBe('&amp;');

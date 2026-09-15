@@ -59,12 +59,12 @@ test('a legitimate zero-prior-bids GC (successful fetch, not a failure) never sh
   await page.click('#tab-agent');
   await page.waitForTimeout(1500);
 
-  const summary = await page.evaluate(() => getHistorySummary('Totally New GC With No History', ''));
+  const summary = await page.evaluate(() => window.getHistorySummary('Totally New GC With No History', ''));
   expect(summary.totalBids).toBe(0); // the resolved (not rejected) zeroed shape
 
   await expect(page.locator('.page-title:has-text("Bid Strategy")')).toBeVisible();
   await expect(page.locator('text=Historical bid data unavailable')).toHaveCount(0);
 
-  const flagVal = await page.evaluate(() => _agentHistoryUnavailable);
+  const flagVal = await page.evaluate(() => window.__getAgentHistoryUnavailable());
   expect(flagVal).toBe(false);
 });
