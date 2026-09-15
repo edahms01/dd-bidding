@@ -55,6 +55,20 @@ import {
   computeCompetitorPatterns
 } from './historyAnalytics.js';
 
+import {
+  buildExportPayload,
+  validateImportPayload,
+  migrateSchema
+} from './autosave.js';
+
+import {
+  buildDraftRecord,
+  cloneDraftForDuplicate,
+  removeDraftAndClearActiveIfNeeded,
+  migrateLegacyBidToDrafts,
+  getOpenDraftCount
+} from './drafts.js';
+
 // js/ui.js's calculateOnly()/submitBid() call these as bare globals.
 // Both are reachable only via user-triggered paths (debounced form-change/
 // state-watcher, explicit navigation, Finalize-confirm click) — never at
@@ -94,3 +108,26 @@ window.computeCompetitorPatterns = computeCompetitorPatterns;
 // js/ui.js's _launchBidAgent() references this bare, in its
 // catch-block fallback shape for a history-fetch failure.
 window.MIN_BIDS_FOR_MARGIN_CURVE = MIN_BIDS_FOR_MARGIN_CURVE;
+
+// js/forms.js/js/ui.js call these as bare globals (Migration Phase 5,
+// Bucket 1, Step A — js/forms.js/js/ui.js stay classic scripts this
+// bucket, Bucket 2, out of scope). src/state/drafts.js (below) imports
+// buildExportPayload/migrateSchema directly — a real module dependency,
+// not reached through this bridge.
+//
+// debounce/AUTOSAVE_DEBOUNCE_MS are NOT bridged here — see js/debounce.js.
+// Their only callers (forms.js:725, ui.js:217) invoke debounce() at
+// classic-script top level, before this module-script bridge exists;
+// debounce.js stays its own small classic script for exactly that reason.
+window.buildExportPayload = buildExportPayload;
+window.validateImportPayload = validateImportPayload;
+window.migrateSchema = migrateSchema;
+
+// js/forms.js/js/state.js/js/ui.js call these as bare globals
+// (Migration Phase 5, Bucket 1, Step A — same out-of-scope callers as
+// autosave.js above).
+window.buildDraftRecord = buildDraftRecord;
+window.cloneDraftForDuplicate = cloneDraftForDuplicate;
+window.removeDraftAndClearActiveIfNeeded = removeDraftAndClearActiveIfNeeded;
+window.migrateLegacyBidToDrafts = migrateLegacyBidToDrafts;
+window.getOpenDraftCount = getOpenDraftCount;
