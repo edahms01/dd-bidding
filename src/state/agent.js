@@ -11,17 +11,35 @@
 // (Track A) — the client never sees any of them. It's a background
 // function because a full structured-output Sonnet response (~40-45s)
 // exceeds Netlify's synchronous HTTP timeout.
+//
+// Migration Phase 5, Bucket 1, Step D: ported from js/agent.js (a
+// classic <script>-tag global) to a real ES module. Only _demoResponse/
+// AGENT_FALLBACK were exported before this step (for Vitest); runBidAgent
+// gets a real `export` for the first time here. Still called as a bare
+// global from js/ui.js's _launchBidAgent()/runAgentIfNeeded() (not yet
+// converted) via the window bridge in src/state/legacyBridges.js.
+// _agentJobId/_liveFallback move as plain internal (non-exported)
+// helpers — confirmed zero external callers.
+//
+// buildAgentPayload/omit/the 5 AGENT_*_DENYLIST constants now import
+// directly from ./agentPayload.js instead of reading them as bare
+// globals through legacyBridges.js — that bridge existed only for this
+// file's sake (per its own Phase 3 comment: "js/agent.js's runBidAgent()
+// calls buildAgentPayload as a bare global"); now that it isn't, the
+// bridge entry is removed.
 // ─────────────────────────────────────────────────────────────────────
+
+import { buildAgentPayload } from './agentPayload.js';
 
 // Live Anthropic calls (via the server-side proxy) run in production only.
 // Demo everywhere else — deploy previews / branch deploys
 // (deploy-preview-N--bid-iq.netlify.app etc.), localhost, and Vitest's node
 // env (no `location`, hence the same `typeof` guard the window.* bridges use
 // below). If the production host ever changes, update the hostname here.
-const DEMO_MODE =
+export const DEMO_MODE =
   typeof location === 'undefined' || location.hostname !== 'bid-iq.netlify.app';
 
-const AGENT_FALLBACK = {
+export const AGENT_FALLBACK = {
   options: [
     { type: 'competitive', label: 'Competitive', bidAmount: null, margin: null, winLikelihood: 'High',        rationale: 'Agent unavailable. Calculate a competitive price manually.' },
     { type: 'recommended', label: 'Recommended', bidAmount: null, margin: null, winLikelihood: 'Medium',      rationale: 'Agent unavailable. Review signals manually.' },
@@ -40,7 +58,7 @@ const AGENT_FALLBACK = {
 // The old client-side win-likelihood scoring table was removed once the
 // live model reported its own factors — it never had any connection to
 // what the real model actually reasoned.
-function _demoResponse(state, summary, markupResult, bidHistory) {
+export function _demoResponse(state, summary, markupResult, bidHistory) {
   return {
     options: [
       {
@@ -173,7 +191,7 @@ function _demoResponse(state, summary, markupResult, bidHistory) {
   };
 }
 
-async function runBidAgent(state, summary, markupResult, bidHistory) {
+export async function runBidAgent(state, summary, markupResult, bidHistory) {
   if (DEMO_MODE) {
     await new Promise(r => setTimeout(r, 900));
     return _demoResponse(state, summary, markupResult, bidHistory);
@@ -181,8 +199,8 @@ async function runBidAgent(state, summary, markupResult, bidHistory) {
 
   // project / conditions go whole (minus an empty denylist) rather than
   // hand-picked, so a new state.project / state.conditions field reaches
-  // the agent automatically — see js/agent-payload.js, loaded just before
-  // this file, and docs/dirigo-ux-decisions.md §9.10.
+  // the agent automatically — see src/state/agentPayload.js and
+  // docs/dirigo-ux-decisions.md §9.10.
   const payload = buildAgentPayload(state, summary, markupResult, bidHistory);
 
   // Async flow: a full structured-output Sonnet 4.6 response takes
@@ -242,11 +260,4 @@ function _agentJobId() {
 // letting AGENT_FALLBACK read as a quiet, degraded recommendation.
 function _liveFallback(reason) {
   return Object.assign({}, AGENT_FALLBACK, { _liveError: reason });
-}
-
-// Guarded CommonJS export so the demo response shape can be unit-tested
-// under Vitest's node env without a browser — inert in the browser (no
-// `module`), same pattern as js/ui.js's escapeHtml export.
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { _demoResponse, AGENT_FALLBACK };
 }
