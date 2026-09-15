@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { _demoResponse } from '../../js/agent.js';
+import { _demoResponse } from '../../src/state/agent.js';
 
 // The demo response is a fully fixed literal now — the old client-side
 // scoring table that derived winLikelihood from state.intelligence is
