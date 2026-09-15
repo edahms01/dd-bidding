@@ -5,7 +5,7 @@ import {
   cloneDraftForDuplicate,
   removeDraftAndClearActiveIfNeeded,
   getOpenDraftCount
-} from '../../js/drafts.js';
+} from '../../src/state/drafts.js';
 
 function sampleState(overrides = {}) {
   return {
