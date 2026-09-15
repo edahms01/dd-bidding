@@ -8,23 +8,23 @@
 // Everything else (localStorage I/O, activeDraftId state, event wiring,
 // navigation) lives in js/forms.js, which is the only file that calls
 // into this one from the browser.
+//
+// Migration Phase 5, Bucket 1, Step A: ported from js/drafts.js (a
+// classic <script>-tag global) to a real ES module, alongside
+// src/state/autosave.js (its real dependency — see the import below).
+// Still called as a bare global from js/forms.js/js/state.js/js/ui.js
+// (not yet converted) via the window bridge in
+// src/state/legacyBridges.js.
 // ─────────────────────────────────────────────────────────────────────
 
-// In the browser, autosave.js has already loaded and buildExportPayload/
-// migrateSchema are plain globals (classic <script> tags share one
-// top-level scope). Under Node/Vitest each file is its own module scope,
-// so pull them in explicitly there — same dual-mode bridge autosave.js
-// itself uses for its CommonJS export below.
-if (typeof module !== 'undefined' && module.exports && typeof buildExportPayload === 'undefined') {
-  var { buildExportPayload, migrateSchema } = require('./autosave.js');
-}
+import { buildExportPayload, migrateSchema } from './autosave.js';
 
 // ── DRAFT RECORD ─────────────────────────────────────────────────────
 // state is a collectFormData()-shaped object. Reuses buildExportPayload
 // so a draft record is exactly { id, createdAt, lastModifiedAt, ...the
 // same shape Phase 1 already established } — no new shape invented.
 
-function buildDraftRecord(state, id, createdAt, lastModifiedAt) {
+export function buildDraftRecord(state, id, createdAt, lastModifiedAt) {
   return {
     id,
     createdAt,
@@ -51,7 +51,7 @@ function buildDraftRecord(state, id, createdAt, lastModifiedAt) {
 // caller's job, since JSON.parse belongs at the localStorage boundary,
 // not in pure logic).
 
-function migrateLegacyBidToDrafts({ currentBidState, draftsAlreadyExist, id, now }) {
+export function migrateLegacyBidToDrafts({ currentBidState, draftsAlreadyExist, id, now }) {
   if (draftsAlreadyExist) return null;
   if (!currentBidState) return { drafts: {}, activeDraftId: null };
 
@@ -65,7 +65,7 @@ function migrateLegacyBidToDrafts({ currentBidState, draftsAlreadyExist, id, now
 // fresh id/timestamps — guarantees the copy is independent of the
 // source; mutating one never touches the other.
 
-function cloneDraftForDuplicate(sourceRecord, newId, now) {
+export function cloneDraftForDuplicate(sourceRecord, newId, now) {
   const copy = JSON.parse(JSON.stringify(sourceRecord));
   copy.id            = newId;
   copy.createdAt     = now;
@@ -77,7 +77,7 @@ function cloneDraftForDuplicate(sourceRecord, newId, now) {
 // Returns the updated map and the id's replacement activeDraftId — null
 // only when the removed draft was the active one, unchanged otherwise.
 
-function removeDraftAndClearActiveIfNeeded(draftsMap, id, activeDraftId) {
+export function removeDraftAndClearActiveIfNeeded(draftsMap, id, activeDraftId) {
   const next = { ...draftsMap };
   delete next[id];
   const nextActiveId = (id === activeDraftId) ? null : activeDraftId;
@@ -91,18 +91,6 @@ function removeDraftAndClearActiveIfNeeded(draftsMap, id, activeDraftId) {
 // meaningful number for "how much is competing with this bid" is other
 // open work, not including itself (Tier 1 scoping brief).
 
-function getOpenDraftCount(draftsMap, activeDraftId) {
+export function getOpenDraftCount(draftsMap, activeDraftId) {
   return Object.keys(draftsMap || {}).filter(id => id !== activeDraftId).length;
-}
-
-// ── EXPORTS (Vitest / Node) ──────────────────────────────────────────
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    buildDraftRecord,
-    migrateLegacyBidToDrafts,
-    cloneDraftForDuplicate,
-    removeDraftAndClearActiveIfNeeded,
-    getOpenDraftCount
-  };
 }

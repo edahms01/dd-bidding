@@ -1,11 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   CURRENT_SCHEMA_VERSION,
-  debounce,
   buildExportPayload,
   validateImportPayload,
   migrateSchema
-} from '../../js/autosave.js';
+} from '../../src/state/autosave.js';
 
 // A representative collectFormData()-shaped object (js/state.js:168).
 function sampleState(overrides = {}) {
@@ -21,40 +20,6 @@ function sampleState(overrides = {}) {
     ...overrides
   };
 }
-
-describe('debounce', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  it('fires exactly once after multiple calls inside the window', () => {
-    const fn = vi.fn();
-    const debounced = debounce(fn, 700);
-    debounced(); debounced(); debounced();
-    vi.advanceTimersByTime(699);
-    expect(fn).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(1);
-    expect(fn).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not fire before the window elapses', () => {
-    const fn = vi.fn();
-    const debounced = debounce(fn, 700);
-    debounced();
-    vi.advanceTimersByTime(500);
-    expect(fn).not.toHaveBeenCalled();
-  });
-
-  it('fires again after a subsequent quiet period', () => {
-    const fn = vi.fn();
-    const debounced = debounce(fn, 700);
-    debounced();
-    vi.advanceTimersByTime(700);
-    expect(fn).toHaveBeenCalledTimes(1);
-    debounced();
-    vi.advanceTimersByTime(700);
-    expect(fn).toHaveBeenCalledTimes(2);
-  });
-});
 
 describe('buildExportPayload', () => {
   const requiredKeys = ['project', 'conditions', 'rates', 'assemblies', 'walls', 'ceilings', 'intelligence', 'markupInputs', 'schemaVersion'];

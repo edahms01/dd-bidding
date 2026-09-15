@@ -8,21 +8,22 @@
 // Everything else (localStorage I/O, event wiring, the indicator UI)
 // lives in js/forms.js, which is the only file that calls into this
 // one from the browser.
+//
+// Migration Phase 5, Bucket 1, Step A: ported from js/autosave.js (a
+// classic <script>-tag global) to a real ES module. Still called as a
+// bare global from js/forms.js/js/ui.js (not yet converted) via the
+// window bridge in src/state/legacyBridges.js. src/state/drafts.js
+// (ported alongside this file, same step) imports buildExportPayload/
+// migrateSchema directly — a real module dependency now, not a bridge.
+//
+// debounce()/AUTOSAVE_DEBOUNCE_MS deliberately did NOT move here — see
+// js/debounce.js for why (their only two callers invoke debounce() at
+// classic-script top level, which a module-script-timed window bridge
+// can't satisfy; they have zero callers outside forms.js/ui.js anyway,
+// so porting them isn't actually in scope until those files convert).
 // ─────────────────────────────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 1;
-const AUTOSAVE_DEBOUNCE_MS   = 700;
-
-// ── DEBOUNCE ─────────────────────────────────────────────────────────
-// Trailing-edge debounce: fn runs once, `wait` ms after the last call.
-
-function debounce(fn, wait) {
-  let timer = null;
-  return function debounced(...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), wait);
-  };
-}
+export const CURRENT_SCHEMA_VERSION = 1;
 
 // ── EXPORT PAYLOAD ───────────────────────────────────────────────────
 // state is a collectFormData()-shaped object:
@@ -30,12 +31,12 @@ function debounce(fn, wait) {
 // This is also the exact shape populateForm() expects back — autosave
 // and export share this same builder so there's only one payload shape.
 
-function buildExportPayload(state) {
+export function buildExportPayload(state) {
   // tabConfirmations is per-estimator review state, not part of the bid
-  // itself — kept on the draft record (buildDraftRecord, js/drafts.js) but
-  // stripped from exports/imports, so sharing a bid doesn't carry someone
-  // else's "I reviewed this" marks, and the golden-export fixture is
-  // unaffected by the feature.
+  // itself — kept on the draft record (buildDraftRecord, src/state/drafts.js)
+  // but stripped from exports/imports, so sharing a bid doesn't carry
+  // someone else's "I reviewed this" marks, and the golden-export
+  // fixture is unaffected by the feature.
   const { tabConfirmations, ...rest } = state || {};
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -48,7 +49,7 @@ function buildExportPayload(state) {
 // the two required top-level keys. Not full section-by-section
 // validation — that's out of scope for this phase.
 
-function validateImportPayload(raw) {
+export function validateImportPayload(raw) {
   let data;
   try {
     data = JSON.parse(raw);
@@ -73,27 +74,11 @@ function validateImportPayload(raw) {
 // Future versions add real migration steps in this function instead of
 // ad-hoc legacy-fallback reads scattered through forms.js.
 
-function migrateSchema(data) {
+export function migrateSchema(data) {
   if (data === null || typeof data !== 'object') return data;
   const version = data.schemaVersion;
   if (version === undefined || version === null || version < CURRENT_SCHEMA_VERSION) {
     return { ...data, schemaVersion: CURRENT_SCHEMA_VERSION };
   }
   return data;
-}
-
-// ── EXPORTS (Vitest / Node) ──────────────────────────────────────────
-// Browser <script> tags leave `module` undefined, so this is a no-op
-// there — the functions above stay global exactly like the rest of
-// the codebase's script-tag files.
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    CURRENT_SCHEMA_VERSION,
-    AUTOSAVE_DEBOUNCE_MS,
-    debounce,
-    buildExportPayload,
-    validateImportPayload,
-    migrateSchema
-  };
 }
