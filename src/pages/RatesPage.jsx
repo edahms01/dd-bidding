@@ -37,6 +37,7 @@ import { useStore } from '../state/store.jsx';
 import TabConfirmButton from '../components/TabConfirmButton.jsx';
 import { useUniformRowWidths } from '../state/useUniformRowWidths.js';
 import { RRRow } from '../components/RRRow.jsx';
+import { getAllRateTemplates, saveRateTemplate, deleteRateTemplate } from '../state/rateTemplates.js';
 
 function fmt(n) { return n > 0 ? '$' + Math.round(n).toLocaleString() : '-'; }
 
@@ -185,7 +186,7 @@ export default function RatesPage({ active }) {
 
   async function loadTemplates() {
     try {
-      setTemplates(await window.getAllRateTemplates());
+      setTemplates(await getAllRateTemplates());
     } catch (e) {
       setTemplates([]);
     }
@@ -232,7 +233,7 @@ export default function RatesPage({ active }) {
       // directly would save "5.00" verbatim, a real behavior difference
       // caught by rate-templates.spec.js expecting "5" back after a
       // reload. numify() replicates num()'s exact parseFloat/NaN->0 rule.
-      await window.saveRateTemplate(trimmed, numify(state.bid.rates), numify(state.bid.rateEscalation));
+      await saveRateTemplate(trimmed, numify(state.bid.rates), numify(state.bid.rateEscalation));
       await loadTemplates();
       window._showFormToast?.('Template saved ✓', 'success');
     } catch (e) {
@@ -268,7 +269,7 @@ export default function RatesPage({ active }) {
     const tmpl = templates.find((t) => t.id === selectedTemplateId);
     if (!confirm(`Delete template "${tmpl ? tmpl.name : ''}"? This cannot be undone.`)) return;
     try {
-      await window.deleteRateTemplate(selectedTemplateId);
+      await deleteRateTemplate(selectedTemplateId);
       await loadTemplates();
       setSelectedTemplateId('');
       window._showFormToast?.('Template deleted ✓', 'success');
