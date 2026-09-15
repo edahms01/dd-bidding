@@ -30,15 +30,11 @@ import {
   applyRateEscalation
 } from './calculator.js';
 
-import {
-  omit,
-  buildAgentPayload,
-  AGENT_PROJECT_DENYLIST,
-  AGENT_CONDITIONS_DENYLIST,
-  AGENT_ASSEMBLY_DENYLIST,
-  AGENT_WALL_DENYLIST,
-  AGENT_CEILING_DENYLIST
-} from './agentPayload.js';
+// omit/buildAgentPayload/the 5 AGENT_*_DENYLIST constants are NOT
+// imported here as of Migration Phase 5, Bucket 1, Step D — they were
+// only ever bridged for js/agent.js's sake (grep-confirmed: no other
+// classic-script caller ever referenced them), which is now a real
+// module (src/state/agent.js) and imports buildAgentPayload directly.
 
 // computeCostVariances is deliberately NOT imported here — its only
 // caller is src/components/BidUpdateRow.jsx, which imports it directly
@@ -71,6 +67,8 @@ import {
 
 import { saveBid, getHistorySummary } from './history.js';
 
+import { runBidAgent } from './agent.js';
+
 // js/ui.js's calculateOnly()/submitBid() call these as bare globals.
 // Both are reachable only via user-triggered paths (debounced form-change/
 // state-watcher, explicit navigation, Finalize-confirm click) — never at
@@ -84,19 +82,6 @@ window.buildCostSummary = buildCostSummary;
 window.applyMarkup = applyMarkup;
 window.computeWeightedWastePct = computeWeightedWastePct;
 window.applyRateEscalation = applyRateEscalation;
-
-// js/agent.js's runBidAgent() calls buildAgentPayload as a bare global,
-// only when DEMO_MODE is false (production only) — still user-triggered
-// (Send to Agent / Re-run agent), never at script-load time. agent.js
-// loads after agent-payload.js in index.html's classic-script chain,
-// and both load before the React module bundle that owns this bridge.
-window.omit = omit;
-window.buildAgentPayload = buildAgentPayload;
-window.AGENT_PROJECT_DENYLIST = AGENT_PROJECT_DENYLIST;
-window.AGENT_CONDITIONS_DENYLIST = AGENT_CONDITIONS_DENYLIST;
-window.AGENT_ASSEMBLY_DENYLIST = AGENT_ASSEMBLY_DENYLIST;
-window.AGENT_WALL_DENYLIST = AGENT_WALL_DENYLIST;
-window.AGENT_CEILING_DENYLIST = AGENT_CEILING_DENYLIST;
 
 // js/ui.js's _launchBidAgent() references this bare, in its
 // catch-block fallback shape for a history-fetch failure.
@@ -132,3 +117,8 @@ window.getOpenDraftCount = getOpenDraftCount;
 // import them directly from src/state/history.js this same step.
 window.saveBid = saveBid;
 window.getHistorySummary = getHistorySummary;
+
+// js/ui.js's _launchBidAgent()/runAgentIfNeeded() call this as a bare
+// global (Migration Phase 5, Bucket 1, Step D — js/ui.js stays a
+// classic script this bucket, Bucket 2, out of scope).
+window.runBidAgent = runBidAgent;
