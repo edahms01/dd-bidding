@@ -48,12 +48,12 @@ import {
 // MIN_BIDS_FOR_MARGIN_CURVE IS bridged — js/ui.js's _launchBidAgent()
 // catch-block fallback references it as a bare global (a real caller
 // missed on first pass; caught by agent-history-fallback.spec.js).
-import {
-  MIN_BIDS_FOR_MARGIN_CURVE,
-  computeMarginOutcomeCurve,
-  computeSeasonality,
-  computeCompetitorPatterns
-} from './historyAnalytics.js';
+//
+// computeMarginOutcomeCurve/computeSeasonality/computeCompetitorPatterns
+// are NOT imported here as of Migration Phase 5, Bucket 1, Step C — they
+// were only ever bridged for js/history.js's sake, which is now a real
+// module (src/state/history.js) and imports them directly.
+import { MIN_BIDS_FOR_MARGIN_CURVE } from './historyAnalytics.js';
 
 import {
   buildExportPayload,
@@ -68,6 +68,8 @@ import {
   migrateLegacyBidToDrafts,
   getOpenDraftCount
 } from './drafts.js';
+
+import { saveBid, getHistorySummary } from './history.js';
 
 // js/ui.js's calculateOnly()/submitBid() call these as bare globals.
 // Both are reachable only via user-triggered paths (debounced form-change/
@@ -96,15 +98,6 @@ window.AGENT_ASSEMBLY_DENYLIST = AGENT_ASSEMBLY_DENYLIST;
 window.AGENT_WALL_DENYLIST = AGENT_WALL_DENYLIST;
 window.AGENT_CEILING_DENYLIST = AGENT_CEILING_DENYLIST;
 
-// js/history.js's getHistorySummary() calls these three as bare globals
-// (both its zero-bids and real-data branches) — js/history.js stays a
-// classic script this phase, out of scope. computeCostVariances has no
-// classic-script caller (see the import comment above) and is
-// deliberately not bridged.
-window.computeMarginOutcomeCurve = computeMarginOutcomeCurve;
-window.computeSeasonality = computeSeasonality;
-window.computeCompetitorPatterns = computeCompetitorPatterns;
-
 // js/ui.js's _launchBidAgent() references this bare, in its
 // catch-block fallback shape for a history-fetch failure.
 window.MIN_BIDS_FOR_MARGIN_CURVE = MIN_BIDS_FOR_MARGIN_CURVE;
@@ -131,3 +124,11 @@ window.cloneDraftForDuplicate = cloneDraftForDuplicate;
 window.removeDraftAndClearActiveIfNeeded = removeDraftAndClearActiveIfNeeded;
 window.migrateLegacyBidToDrafts = migrateLegacyBidToDrafts;
 window.getOpenDraftCount = getOpenDraftCount;
+
+// js/ui.js calls these as bare globals (Migration Phase 5, Bucket 1,
+// Step C — js/ui.js stays a classic script this bucket, Bucket 2, out
+// of scope). getAllBids/updateBid/deleteBid are NOT bridged here — their
+// React callers (BidUpdateRow.jsx, InsightsPage.jsx, BidsPage.jsx) all
+// import them directly from src/state/history.js this same step.
+window.saveBid = saveBid;
+window.getHistorySummary = getHistorySummary;

@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────
 import { useState } from 'react';
 import { computeCostVariances } from '../state/historyAnalytics.js';
+import { getAllBids, updateBid } from '../state/history.js';
 
 export default function BidUpdateRow({ bid, open, onSaved }) {
   const [outcome, setOutcome] = useState(bid.outcome || 'pending');
@@ -25,14 +26,14 @@ export default function BidUpdateRow({ bid, open, onSaved }) {
     const parsedLabor = parseFloat(actualLabor);
     const parsedMaterial = parseFloat(actualMaterial);
     try {
-      const bids = await window.getAllBids();
+      const bids = await getAllBids();
       const rec = bids.find((b) => b.bid_id === bid.bid_id);
       const variances = computeCostVariances({
         record: rec,
         actualLabor: isNaN(parsedLabor) ? null : parsedLabor,
         actualMaterial: isNaN(parsedMaterial) ? null : parsedMaterial
       });
-      await window.updateBid(bid.bid_id, {
+      await updateBid(bid.bid_id, {
         outcome,
         competitor_who_won: winner.trim() || null,
         winning_bid: parseFloat(winBid) ? Math.round(parseFloat(winBid)) : null,
