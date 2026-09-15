@@ -17,7 +17,7 @@
 // src/ instead, and is unit-tested like every other piece of calc math
 // in this app (tests/unit/gcScorecard.test.js — Q3 at plan review).
 //
-// Operates on the plain array window.getAllBids() resolves to — submitted
+// Operates on the plain array getAllBids() (src/state/history.js) resolves to — submitted
 // bid records only; drafts never reach the Insights page. Bids with no
 // `gc` are omitted from the scorecard, not bucketed under a placeholder.
 // ─────────────────────────────────────────────────────────────────────

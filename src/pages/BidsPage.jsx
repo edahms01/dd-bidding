@@ -5,8 +5,9 @@
 // Two data sources, reconciled in a view layer only — no storage
 // migration (the §9.7 assumption, now confirmed): drafts come from
 // window.getAllDrafts() (localStorage, synchronous) and paint
-// immediately; submitted bids stream in from window.getAllBids() (a
-// Netlify function, async) with a loading/error affordance. Each source
+// immediately; submitted bids stream in from getAllBids()
+// (src/state/history.js, a Netlify function, async) with a loading/error
+// affordance. Each source
 // is normalised to one row view-model (draftRow/bidRow) so nested
 // project.* and flat project_name/gc/building_type collapse to the same
 // shape, then merge-sorted by date. Status is derived, not stored:
@@ -23,6 +24,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useStore } from '../state/store.jsx';
 import { useDraftsList } from '../state/useDraftsList.js';
 import BidUpdateRow from '../components/BidUpdateRow.jsx';
+import { getAllBids, deleteBid } from '../state/history.js';
 
 function fmtCost(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(n) { return (+n).toFixed(1) + '%'; }
@@ -101,7 +103,7 @@ export default function BidsPage({ active }) {
   async function loadBids() {
     setBidsStatus('loading');
     try {
-      setBids(await window.getAllBids());
+      setBids(await getAllBids());
       setBidsStatus('ready');
     } catch (e) {
       setBidsStatus('error');
@@ -131,7 +133,7 @@ export default function BidsPage({ active }) {
   }
   async function handleDeleteBid(id) {
     if (!confirm('Delete this bid record? This cannot be undone.')) return;
-    try { await window.deleteBid(id); loadBids(); }
+    try { await deleteBid(id); loadBids(); }
     catch (e) { alert('Failed to delete bid. Check your connection and try again.'); }
   }
 

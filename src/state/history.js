@@ -8,7 +8,24 @@
 // merging, delete filtering) now happens server-side in
 // netlify/functions/bids-core.js — the old client-side generation logic
 // was deleted outright rather than left unused alongside the fetch call.
+//
+// Migration Phase 5, Bucket 1, Step C: ported from js/history.js (a
+// classic <script>-tag global, no prior Vitest coverage) to a real ES
+// module. saveBid/getHistorySummary still called as bare globals from
+// js/ui.js (not yet converted) via the window bridge in
+// src/state/legacyBridges.js. getAllBids/updateBid/deleteBid switch to
+// real imports in their React callers (BidUpdateRow.jsx, InsightsPage.jsx,
+// BidsPage.jsx) this same step.
+//
+// getHistorySummary() now imports computeMarginOutcomeCurve/
+// computeSeasonality/computeCompetitorPatterns directly from
+// ./historyAnalytics.js instead of reading them as bare globals through
+// legacyBridges.js — that bridge existed only for this file's sake
+// (Phase 3 comment: "js/history.js stays a classic script this phase,
+// out of scope"); now that it isn't, the bridge entry is removed.
 // ─────────────────────────────────────────────────────────────────────
+
+import { computeMarginOutcomeCurve, computeSeasonality, computeCompetitorPatterns } from './historyAnalytics.js';
 
 const BIDS_ENDPOINT = '/.netlify/functions/bids';
 
@@ -20,7 +37,7 @@ const BIDS_ENDPOINT = '/.netlify/functions/bids';
 // looks identical to a real consistency lag); the rest are here for the
 // same "don't let anything in the chain cache dynamic data" reasoning.
 
-async function saveBid(bidRecord) {
+export async function saveBid(bidRecord) {
   const res = await fetch(BIDS_ENDPOINT, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -31,7 +48,7 @@ async function saveBid(bidRecord) {
   return res.json();
 }
 
-async function getAllBids() {
+export async function getAllBids() {
   const res = await fetch(BIDS_ENDPOINT, { cache: 'no-store' });
   // Deliberately throws rather than falling back to [] the way the old
   // localStorage try/catch did for corrupt JSON — callers (renderHistory()
@@ -42,7 +59,7 @@ async function getAllBids() {
   return res.json();
 }
 
-async function updateBid(bid_id, patch) {
+export async function updateBid(bid_id, patch) {
   const res = await fetch(BIDS_ENDPOINT + '?bid_id=' + encodeURIComponent(bid_id), {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -54,14 +71,14 @@ async function updateBid(bid_id, patch) {
   return true;
 }
 
-async function deleteBid(bid_id) {
+export async function deleteBid(bid_id) {
   const res = await fetch(BIDS_ENDPOINT + '?bid_id=' + encodeURIComponent(bid_id), { method: 'DELETE', cache: 'no-store' });
   if (!res.ok) throw new Error('deleteBid failed: ' + res.status);
 }
 
 // Returns aggregate history stats for the agent prompt.
 // Zeroed object if no bids exist.
-async function getHistorySummary(gc, buildingType) {
+export async function getHistorySummary(gc, buildingType) {
   const bids  = await getAllBids();
   const empty = {
     totalBids: 0, winRate: 0, winsWithThisGC: 0, lossesWithThisGC: 0, winRateByBuildingType: 0, avgCostVariance: null,

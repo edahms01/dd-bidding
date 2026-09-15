@@ -45,13 +45,25 @@ test('a confirmed row tab reverts on row add and on row delete', async ({ page }
 test('a confirmed Rates tab reverts when a template load overwrites the fields', async ({ page }) => {
   const templateName = 'E2E Confirm Revert ' + Date.now();
 
+  // A persistent handler instead of a fresh page.once() per click — three
+  // confirm()/prompt() dialogs fire across this test (save/load/delete),
+  // and chaining once() calls interleaved with clicks is a real race: if
+  // a dialog fires (or gets auto-dismissed by Playwright before a handler
+  // is attached) even slightly out of step with the click that triggers
+  // it, the next once() throws "Cannot accept dialog which is already
+  // handled" on an unrelated dialog. One handler covering the whole test
+  // sidesteps the ordering assumption entirely. Found flaky exactly this
+  // way during Migration Phase 5, Bucket 1, Step C — a legitimate,
+  // unrelated module-graph change (history.js's port) shifted dev-server
+  // timing just enough to trip it.
+  page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? templateName : undefined));
+
   await page.goto('/');
   await clearAll(page);
   await loadSeed(page);
   await page.waitForTimeout(1600);
 
   await page.click('#tab-rates');
-  page.once('dialog', (d) => d.accept(templateName));
   await page.click('button:has-text("Save as template")');
   await page.waitForTimeout(500);
 
@@ -63,12 +75,10 @@ test('a confirmed Rates tab reverts when a template load overwrites the fields',
 
   // Loading the template mutates bid.rates -> snapshot no longer matches.
   await page.selectOption('#rate-template-select', { label: templateName });
-  page.once('dialog', (d) => d.accept());
   await page.click('button:has-text("Load")');
   await page.waitForTimeout(400);
   await expect(page.locator('#tab-rates')).not.toHaveClass(/\bdone\b/);
 
   // Teardown — delete the template through its own affordance.
-  page.once('dialog', (d) => d.accept());
   await page.click('button[title="Delete selected template"]');
 });

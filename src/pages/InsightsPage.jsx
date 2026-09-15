@@ -14,9 +14,9 @@
 // MIN_LOSSES_FOR_COMPETITOR_CONFIDENCE = 2) are honoured as-is — no new
 // thresholds invented here.
 //
-// Data comes from window.getAllBids() with the same
-// loading / ready / error tri-state BidsPage.jsx uses (js/history.js
-// throws rather than returning [] so "zero bids" and "fetch failed" stay
+// Data comes from getAllBids() (src/state/history.js) with the same
+// loading / ready / error tri-state BidsPage.jsx uses (it throws rather
+// than returning [] so "zero bids" and "fetch failed" stay
 // distinguishable). Charting is CSS-only bars — no charting dependency
 // added (decided at Step 1: §9.1's "no dependency rot" value, ≤8 bands,
 // trivially theme-aware and testable). Cost Summary is the visual
@@ -36,6 +36,7 @@ import {
   computeSeasonality,
   computeCompetitorPatterns
 } from '../state/historyAnalytics.js';
+import { getAllBids } from '../state/history.js';
 
 // Proportional-width bar row: label | track | value. `pct` drives the
 // fill width (clamped 0–100); `value` is the text to its right.
@@ -139,7 +140,7 @@ export default function InsightsPage({ active }) {
     if (!active) return;
     let cancelled = false;
     setStatus('loading');
-    window.getAllBids()
+    getAllBids()
       .then((b) => { if (!cancelled) { setBids(b); setStatus('ready'); } })
       .catch(() => { if (!cancelled) setStatus('error'); });
     return () => { cancelled = true; };
