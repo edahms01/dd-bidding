@@ -7,30 +7,29 @@
 // some other file (js/ui.js, js/forms.js, js/state.js) was still a
 // classic <script>, so it could only reach a newly-ported ES module's
 // exports via `window.X` — a temporary crutch, deleted as soon as that
-// specific classic-script caller converted (Bucket 1 Steps A–D each
-// deleted a slice this way; Bucket 2 Step 1 deleted the rest, since
-// formState.js/forms.js/ui.js/debounce.js are the last of them and now
-// import each other directly — see those four files themselves for the
-// real import/export graph between them).
+// specific classic-script caller converted. Bucket 1 Steps A–D each
+// deleted a slice this way; Bucket 2 Step 1 deleted the bulk of it, since
+// formState.js/forms.js/ui.js/debounce.js import each other directly now
+// (see those four files themselves for the real import/export graph
+// between them); Bucket 2 Step 2 deleted the last of it (data/seed.js's
+// own temporary block), once data/seed.js converted too. There is no
+// more "temporary, for a still-classic sibling's sake" bridge left in
+// this file, or any classic <script src> tag left in index.html besides
+// the module bundle.
 //
 // What's left below is a different, PERMANENT kind of bridge: real
-// production React code (pages/components) that calls these functions
-// via `window.X` and is explicitly not being rewritten to import them
-// directly — that rewrite is out of scope for this migration (see the
-// Bucket 2 brief's own non-goal: "not in scope: rewriting this into
-// React components/hooks"). These entries won't disappear just because
-// every vanilla file eventually becomes a module; they're the same kind
-// of standing bridge src/state/bridges.js's registerBridges() already
-// provides for goto()/the __hydrateX family, just shaped as flat
-// `window.X = fn` since none of these need a `dispatch` reference or a
-// React lifecycle hook.
-//
-// The one temporary block still here: data/seed.js is a fifth classic-
-// script consumer of formState.js/forms.js/ui.js the original Bucket-2
-// brief didn't name (Migration Phase 5, Bucket 2, plan Finding 1) — its
-// bridges are marked below and go away in Bucket 2 Step 2, once
-// data/seed.js itself converts to a real module and imports them
-// directly.
+// production code that calls these functions via `window.X` and is
+// explicitly not being rewritten to import them directly — either React
+// (pages/components; out of scope for this migration, per its own
+// non-goal: "not in scope: rewriting this into React components/hooks"),
+// an inline HTML `onclick="..."` attribute (which can only resolve a
+// bare global, never `import` a module export), or a Playwright spec's
+// `page.evaluate()` bare-calling into the running page. These entries
+// won't disappear just because every vanilla file eventually becomes a
+// module; they're the same kind of standing bridge src/state/bridges.js's
+// registerBridges() already provides for goto()/the __hydrateX family,
+// just shaped as flat `window.X = fn` since none of these need a
+// `dispatch` reference or a React lifecycle hook.
 // ─────────────────────────────────────────────────────────────────────
 
 import { collectFormData } from './formState.js';
@@ -46,12 +45,7 @@ import {
   duplicateDraft,
   deleteDraft,
   _handleFormChange,
-  _autosave,
-  populateForm,
-  _writeDraft,
-  _generateDraftId,
-  setActiveDraftId,
-  _resetDraftsCache
+  _autosave
 } from './forms.js';
 
 import {
@@ -59,18 +53,18 @@ import {
   runCalculation,
   submitBid,
   renderAgentTab,
-  runAgentIfNeeded,
-  _resetAgentCache,
   _renderPipelineHint
 } from './ui.js';
 
-// buildDraftRecord is the one drafts.js export still needed here —
-// data/seed.js bare-calls it directly (Finding 1). cloneDraftForDuplicate/
-// removeDraftAndClearActiveIfNeeded/migrateLegacyBidToDrafts/
-// getOpenDraftCount were only ever bridged for forms.js's/ui.js's/
-// formState.js's own sake — all three now import each of those directly
-// from drafts.js instead (grep-confirmed no other caller).
-import { buildDraftRecord } from './drafts.js';
+// data/seed.js is a real ES module too now (Bucket 2, Step 2) — imports
+// everything it needs from formState.js/forms.js/ui.js/drafts.js
+// directly. loadSeedData/clearSeedData are the two names still bridged
+// here: the dev-toolbar's onclick="loadSeedData()"/onclick="clearSeedData()"
+// attributes (index.html) can only resolve a bare global, never `import`
+// a module export, and several Playwright specs also call
+// window.loadSeedData() directly (bypassing the button entirely, e.g. on
+// a mobile viewport where the toolbar is display:none).
+import { loadSeedData, clearSeedData } from '../../data/seed.js';
 
 // Real, non-obvious finding from running the full suite, not assumed
 // clean from a `grep -rn "window\." src/` alone: several Playwright specs
@@ -123,6 +117,11 @@ window.runCalculation     = runCalculation;
 window.submitBid          = submitBid;
 window.renderAgentTab     = renderAgentTab;
 
+// ── Permanent — dev-toolbar inline onclick attributes (index.html) +
+// Playwright specs calling window.loadSeedData() directly. ──
+window.loadSeedData       = loadSeedData;
+window.clearSeedData      = clearSeedData;
+
 // ── Permanent — Playwright test-harness callers only (page.evaluate()
 // bare-calling into the running page's globals). Not a React need, not a
 // migration-temporary one; see the import comment above for how this
@@ -133,23 +132,3 @@ window.calculateLogistics    = calculateLogistics;
 window.buildCostSummary      = buildCostSummary;
 window.applyRateEscalation   = applyRateEscalation;
 window.getHistorySummary     = getHistorySummary;
-
-// ── Temporary — data/seed.js only. Bare-calls each of these directly
-// (not via `window.`) today, exactly the way forms.js/ui.js used to call
-// each other, because it's still a classic <script> sharing their old
-// global scope. Delete this whole block in Bucket 2 Step 2 once
-// data/seed.js is a real module and imports them instead. ──
-window.populateForm       = populateForm;
-window._writeDraft        = _writeDraft;
-window._generateDraftId   = _generateDraftId;
-window.setActiveDraftId   = setActiveDraftId;
-window.runAgentIfNeeded   = runAgentIfNeeded;
-window._resetAgentCache   = _resetAgentCache;
-window.buildDraftRecord   = buildDraftRecord;
-// data/seed.js currently does `_draftsCache = {}` as a bare reassignment
-// of forms.js's private variable — no longer possible once forms.js is a
-// module (an ES import is a read-only live view). _resetDraftsCache()
-// (forms.js) is the real equivalent; bridged here under its established
-// window.__x naming (matches window.__getDraftsCacheSync, the read-
-// direction counterpart forms.js already defines itself).
-window.__resetDraftsCache = _resetDraftsCache;

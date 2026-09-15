@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { cpSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, mkdirSync, statSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 // Preflight check: stand up Vite against the current vanilla app with its
 // classic (non-module) <script src="js/..."> tags completely unchanged, to
@@ -13,29 +13,27 @@ import { join } from 'node:path';
 // the files they reference into dist/ either. `vite preview`'s SPA
 // fallback then serves index.html's *content* for those missing paths
 // with a 200 status, which looks like success until a browser tries to
-// parse that HTML as JavaScript. Fix: explicitly copy the directories
-// containing classic-script sources into the build output. This is an
-// addition to vite.config.mjs only — index.html and the js/ directory
-// layout are untouched.
+// parse that HTML as JavaScript. Fix: explicitly copy the classic-script
+// sources into the build output.
 //
 // LIFECYCLE NOTE — A2 found this plugin was still needed (js/*.js stayed
 // classic <script> tags, module conversion deferred — see CLAUDE.md's A2
-// close-out). Migration Phase 5, Bucket 2, Step 1 finally converted the
-// last of js/*.js to real module imports, so 'js' is dropped from
-// COPY_DIRS below — the directory is empty and gone. 'data' stays: it
-// still holds data/seed.json, plain fetched JSON with no module form,
-// and (until Bucket 2 Step 2 converts it) data/seed.js.
-const COPY_DIRS = ['data'];
-
-function listFilesRecursive(dir) {
-  const out = [];
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) out.push(...listFilesRecursive(full));
-    else out.push(full);
-  }
-  return out;
-}
+// close-out). Migration Phase 5, Bucket 2 finally converted every
+// js/*.js and data/seed.js to real module imports (Steps 1 and 2), so
+// there is no classic-script source left to raw-copy at all — the
+// former COPY_DIRS-based directory copy (['js', 'data'], then just
+// ['data'] after Step 1) is gone. What's left is a genuinely different
+// thing: data/seed.json is not a classic script, never was — it's plain
+// data, fetched at runtime (data/seed.js's `fetch('./data/seed.json')`),
+// which Vite has no reason to bundle and would otherwise drop from
+// dist/ entirely, the exact same "build looks clean, 404s at runtime"
+// failure mode this plugin has always existed to catch. Copying the
+// single file directly (not a directory) also sidesteps the class of
+// bug Step 2 surfaced: data/seed.js became a real bundled import that
+// COPY_DIRS's directory-wide copy kept raw-duplicating into dist/data/
+// alongside the real bundle, silently, until caught by inspecting dist/
+// directly — copying only the one genuine data file can't repeat that.
+const COPY_FILES = ['data/seed.json'];
 
 export default defineConfig({
   build: {
@@ -44,31 +42,22 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'copy-classic-script-sources',
+      name: 'copy-runtime-data-files',
       closeBundle() {
-        for (const dir of COPY_DIRS) {
-          cpSync(dir, `dist/${dir}`, { recursive: true });
-        }
-
-        // Build-time assertion: fail loudly if the copy silently drops a
-        // file, rather than shipping a dist/ that 404s at runtime. This
-        // is a generic directory-listing diff, not a hardcoded file
-        // list, so it stays correct as files are added/removed without
-        // needing manual upkeep here.
         const missing = [];
-        for (const dir of COPY_DIRS) {
-          for (const src of listFilesRecursive(dir)) {
-            const expected = join('dist', src);
-            try {
-              statSync(expected);
-            } catch {
-              missing.push(expected);
-            }
+        for (const src of COPY_FILES) {
+          const dest = `dist/${src}`;
+          mkdirSync(dirname(dest), { recursive: true });
+          cpSync(src, dest);
+          try {
+            statSync(dest);
+          } catch {
+            missing.push(dest);
           }
         }
         if (missing.length > 0) {
           throw new Error(
-            `copy-classic-script-sources: build output is missing ${missing.length} expected file(s):\n` +
+            `copy-runtime-data-files: build output is missing ${missing.length} expected file(s):\n` +
             missing.map(f => `  - ${f}`).join('\n')
           );
         }
