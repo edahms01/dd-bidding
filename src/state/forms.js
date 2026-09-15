@@ -1,18 +1,31 @@
 // ─────────────────────────────────────────────────────────────────────
-// forms.js — Dynamic form row management
+// forms.js — Dynamic form row management (ported from js/forms.js,
+// Migration Phase 5, Bucket 2)
+//
 // All mutable table rows (assemblies, walls, ceilings), net SF
 // auto-calculation, confidence selector, pill toggles, and draft save.
 //
 // Future: row mutations dispatch actions to a state store; net SF
-//         calculations move to the calculation engine in state.js.
+//         calculations move to the calculation engine in formState.js.
 // ─────────────────────────────────────────────────────────────────────
+
+import { collectFormData, STATE } from './formState.js';
+import { calc, _resetAgentCache } from './ui.js';
+import { debounce, AUTOSAVE_DEBOUNCE_MS } from './debounce.js';
+import {
+  buildDraftRecord,
+  cloneDraftForDuplicate,
+  removeDraftAndClearActiveIfNeeded,
+  migrateLegacyBidToDrafts
+} from './drafts.js';
+import { buildExportPayload, validateImportPayload, migrateSchema } from './autosave.js';
 
 // ── POPULATE FORM ─────────────────────────────────────────────────────
 // Inverse of collectFormData() — reads a state object and writes values
 // back into all form DOM elements. Used by loadSeedData() and
 // resumeActiveDraft(). Foundation for the save-and-resume workflow.
 
-function populateForm(state) {
+export function populateForm(state) {
   function set(id, val) {
     const el = document.getElementById(id);
     if (el !== null && val !== undefined && val !== null) el.value = val;
@@ -121,7 +134,7 @@ function populateForm(state) {
   set('cond-notes',  c.notes);
   // setConf() is dead in the browser path (ConditionsPage's confidence
   // buttons dispatch SET_FIELD directly) but still updates STATE.conf,
-  // which window.__getConfidence's fallback (js/state.js) needs correct
+  // which window.__getConfidence's fallback (formState.js) needs correct
   // before ConditionsPage has ever mounted — keep calling it.
   if (c.confidence) setConf(c.confidence);
 
@@ -258,19 +271,45 @@ const DRAFTS_KEY = 'dirigo_drafts';
 
 const DRAFTS_ENDPOINT = '/.netlify/functions/drafts';
 
-let activeDraftId = null;
-let _draftsCache  = {};
+// Migration Phase 5, Bucket 2: exported as real, live ES module bindings
+// — formState.js's collectFormData() and ui.js's _renderPipelineHint()
+// both import these directly now instead of reading them as bare
+// identifiers via shared classic-script global scope. An importer sees
+// live updates when this file reassigns them (a standard ESM `export
+// let` guarantee) but cannot itself reassign them — only this file does.
+export let activeDraftId = null;
+export let _draftsCache  = {};
 
-// Read-direction bridge for React/module-scope consumers (useDraftsList()
-// and js/state.js's/js/ui.js's own bare-identifier reads don't need this
-// — classic scripts share one global lexical environment, so a plain
-// `let` here is already visible to them directly, same as activeDraftId
-// always has been). React runs as an ES module (Vite), which does NOT
-// share that environment, so it needs the same window.__getX() bridge
-// shape every other React-facing accessor in this app uses.
-window.__getDraftsCacheSync = () => _draftsCache;
+// Read-direction bridge for React/module-scope consumers (useDraftsList())
+// — a real `import` isn't an option for React's separately-bundled call
+// sites (see this file's own header note on why bridges still exist for
+// those, even though they no longer exist between formState.js/forms.js/
+// ui.js themselves).
+//
+// Guarded — Migration Phase 5, Bucket 2: this file is a real ES module
+// now, and ui.js (imported by tests/unit/ui.test.js under Vitest's plain
+// 'node' environment, no `window`) imports from this one — so every
+// top-level `window.*` touch in this file needs the same guard ui.js's
+// own top-level statements already carry (CLAUDE.md checklist item 9),
+// not just the ones this file happened to need before it was reachable
+// from Vitest at all.
+if (typeof window !== 'undefined') {
+  window.__getDraftsCacheSync = () => _draftsCache;
+}
 
-async function getAllDrafts() {
+// Migration Phase 5, Bucket 2, Step 2 (pending): data/seed.js still bare-
+// assigns `_draftsCache = {}` directly today, which only works because
+// classic scripts share one global lexical scope — a real ES module
+// export is a read-only live binding to every importer, so there is no
+// equivalent bare-assignment path once forms.js is a module. This setter
+// is data/seed.js's replacement, bridged in legacyBridges.js until
+// data/seed.js itself converts (Bucket 2, Step 2), at which point it can
+// import and call this directly and the bridge goes away.
+export function _resetDraftsCache() {
+  _draftsCache = {};
+}
+
+export async function getAllDrafts() {
   const res = await fetch(DRAFTS_ENDPOINT, { cache: 'no-store' });
   if (!res.ok) throw new Error('getAllDrafts failed: ' + res.status);
   const map = await res.json();
@@ -286,7 +325,7 @@ async function _readDraftRemote(id) {
   return res.json();
 }
 
-async function _writeDraft(id, record) {
+export async function _writeDraft(id, record) {
   const res = await fetch(DRAFTS_ENDPOINT + '?id=' + encodeURIComponent(id), {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, cache: 'no-store', body: JSON.stringify(record)
   });
@@ -307,20 +346,20 @@ async function _deleteDraftRemote(id) {
   window.dispatchEvent(new CustomEvent('dirigo:drafts-changed'));
 }
 
-function setActiveDraftId(id) {
+export function setActiveDraftId(id) {
   activeDraftId = id;
   if (id) localStorage.setItem(ACTIVE_DRAFT_KEY, id);
   else localStorage.removeItem(ACTIVE_DRAFT_KEY);
 }
 
-function _generateDraftId() {
+export function _generateDraftId() {
   return 'draft_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 }
 
 // ── LEGACY MIGRATION ─────────────────────────────────────────────────
 // Out of scope for Step 2B — explicitly not to be redesigned. One-time:
 // wraps a pre-Phase-2 dirigo_current_bid value into a draft.
-// migrateLegacyBidToDrafts() itself (js/drafts.js) and the
+// migrateLegacyBidToDrafts() itself (src/state/drafts.js) and the
 // draftsAlreadyExist exactly-once guard are untouched, pure logic.
 //
 // The one necessary adaptation: this function's WRITE step used to be a
@@ -374,7 +413,7 @@ async function _runLegacyMigrationIfNeeded() {
 // window.__setDraftBootStatus bridge (src/state/bridges.js) — 'error'
 // is the one genuinely new failure surface this step introduces, since
 // today's synchronous version could never fail at all.
-async function resumeActiveDraft() {
+export async function resumeActiveDraft() {
   const id = localStorage.getItem(ACTIVE_DRAFT_KEY);
   try {
     const drafts = await getAllDrafts(); // warms _draftsCache for every sync reader in one shot
@@ -402,7 +441,7 @@ async function resumeActiveDraft() {
 // visit to those tabs, so they self-refresh from whatever draft is
 // active by the time the user gets there.
 
-function resetFormFields() {
+export function resetFormFields() {
   function clear(id) {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -484,7 +523,7 @@ function resetFormFields() {
   // bridges.js's window.__hydrateAssemblies comment). Non-browser
   // fallback: window.__resetBidState won't exist (Vitest doesn't mount
   // React), so this leaves #asm-body empty in that context — harmless,
-  // since js/forms.js isn't imported by any Vitest test today.
+  // since this module isn't imported by any Vitest test today.
 
   // ── Walls / Ceilings — WallsPage/CeilingsPage now own #wall-body/
   // #ceil-body's children via .map(); window.__resetBidState() above
@@ -546,7 +585,7 @@ async function _createAndActivateBlankDraft({ announce } = {}) {
   return id;
 }
 
-async function createDraft() {
+export async function createDraft() {
   await window.__draftsBootPromise;
   // _flushAndSwitch() is called (not awaited) immediately before
   // _createAndActivateBlankDraft() so its resetFormFields() — and this
@@ -559,10 +598,10 @@ async function createDraft() {
   const created = _createAndActivateBlankDraft();
   await flush;
   await created;
-  goto('project');
+  window.goto('project');
 }
 
-async function switchToDraft(id) {
+export async function switchToDraft(id) {
   await window.__draftsBootPromise;
   // Existence check first (matches the prior sync-map-lookup order) —
   // a single-id GET, not a full-list fetch, since only this one record
@@ -584,10 +623,10 @@ async function switchToDraft(id) {
   hasUnsavedChanges = false;
   _setIndicator('saved', new Date(record.lastModifiedAt));
   await flush;
-  goto('project');
+  window.goto('project');
 }
 
-async function duplicateDraft(id) {
+export async function duplicateDraft(id) {
   const source = await _readDraftRemote(id);
   if (!source) return;
 
@@ -598,7 +637,7 @@ async function duplicateDraft(id) {
 // Dialog-free by design so it stays directly unit-testable — the
 // confirm() from the brief lives in BidsPage.jsx's UI-layer wrapper, not
 // here.
-async function deleteDraft(id) {
+export async function deleteDraft(id) {
   // Pure decision (does this removal clear activeDraftId) runs against
   // the current in-memory cache — no network read needed just to decide
   // that.
@@ -611,7 +650,7 @@ async function deleteDraft(id) {
   if (result.activeDraftId === null) await _createAndActivateBlankDraft({ announce: true });
 }
 
-// Called by submitBid() (js/ui.js) right after saveBid() succeeds — the
+// Called by submitBid() (src/state/ui.js) right after saveBid() succeeds — the
 // finalized draft now lives permanently in the bids store, so it's
 // deleted from the drafts store and immediately replaced with a fresh
 // blank active draft (never a bare null — same invariant as
@@ -624,7 +663,7 @@ async function deleteDraft(id) {
 // bid" toast would announce something they didn't ask for and would
 // collide with BidSubmitToast at the same screen corner. deleteDraft()
 // keeps announce:true — that path does land the user on the blank draft.
-async function clearFinalizedDraft() {
+export async function clearFinalizedDraft() {
   if (!activeDraftId) return;
   await _deleteDraftRemote(activeDraftId);
   await _createAndActivateBlankDraft({ announce: false });
@@ -632,7 +671,7 @@ async function clearFinalizedDraft() {
 
 // ── CONFIDENCE ────────────────────────────────────────────────────────
 
-function setConf(v) {
+export function setConf(v) {
   STATE.conf = v;
   ['hi', 'md', 'lo'].forEach(c => {
     document.getElementById('c-' + c).className = 'conf-btn' + (c === v ? ' ' + c : '');
@@ -644,7 +683,7 @@ function setConf(v) {
 // .workflow-area rather than per-field, so rows added later by
 // addWall()/addCeil()/addAsm() are covered without rebinding.
 
-let hasUnsavedChanges = false;
+export let hasUnsavedChanges = false;
 
 // A2 spike: real bug found, not assumed. hasUnsavedChanges is a plain
 // top-level `let` — unlike a `function` declaration, `let`/`const` at
@@ -654,9 +693,12 @@ let hasUnsavedChanges = false;
 // there was always undefined — silently skipping the "overwrite my
 // unsaved changes?" confirm() before loading a rate template. One
 // accessor, not retrofitting every one of this flag's assignment sites.
-window.__getHasUnsavedChanges = () => hasUnsavedChanges;
+// Guarded — same reason as window.__getDraftsCacheSync above.
+if (typeof window !== 'undefined') {
+  window.__getHasUnsavedChanges = () => hasUnsavedChanges;
+}
 
-function _setIndicator(status, when) {
+export function _setIndicator(status, when) {
   const el = document.getElementById('autosave-indicator');
   if (!el) return;
   el.className = 'autosave-indicator ' + status;
@@ -675,7 +717,7 @@ function _setIndicator(status, when) {
   }
 }
 
-function _showFormToast(message, kind) {
+export function _showFormToast(message, kind) {
   const existing = document.getElementById('form-toast');
   if (existing) existing.remove();
 
@@ -710,7 +752,7 @@ function _showFormToast(message, kind) {
 // directly. No automatic timer-based retry — avoids hammering a down
 // network or double-writing a save that actually succeeded server-side
 // but timed out on the response (Open Question 2, plan-approved).
-async function _autosave() {
+export async function _autosave() {
   try {
     const record = buildDraftRecord(collectFormData(), activeDraftId,
       _draftsCache[activeDraftId]?.createdAt || new Date().toISOString(), new Date().toISOString());
@@ -724,43 +766,35 @@ async function _autosave() {
 
 const _debouncedAutosave = debounce(_autosave, AUTOSAVE_DEBOUNCE_MS);
 
-// A `function` declaration — unlike the `const _debouncedAutosave`
-// above, this automatically becomes window._handleFormChange, callable
-// directly from a React module. 3.5: real bug found running the actual
-// draft-switch-after-delete check (per the plan's own empirical
-// standard), not assumed safe on paper — row add/delete/duplicate/undo
-// (and 3.3's mode toggle before this) are plain reducer dispatches, not
-// native DOM input/change events, so this function's caller below (the
-// .workflow-area delegated listener) never saw them: hasUnsavedChanges
-// never got set, so _flushAndSwitch()'s `if (hasUnsavedChanges)
-// _autosave()` guard never flushed the pending change before handing
-// the form to a different draft — a row deleted with no other edit
-// afterward silently reappeared on the next draft switch. src/
-// AppShell.jsx's state.bid watcher now calls this exact function
-// directly for React-dispatched changes, rather than reimplementing its
-// three effects (hasUnsavedChanges, indicator, debounced autosave) or
-// stopping short at just the debounced-save piece, which would have
-// left the same _flushAndSwitch() gap only partially closed.
-function _handleFormChange() {
+// Migration Phase 5, Bucket 2: exported for real, direct import by
+// React/module consumers that used to reach this via `window.X` because
+// classic-script `function` declarations happened to become window
+// properties automatically — a real ES module export doesn't do that,
+// so every remaining `window.*` consumer needs an explicit bridge now
+// (src/state/legacyBridges.js), same as every other function in this
+// file that crosses the vanilla/React boundary.
+export function _handleFormChange() {
   hasUnsavedChanges = true;
   _setIndicator('saving');
   _debouncedAutosave();
   // 4.2: reactive calculation. Independent debounced timer from the
-  // autosave one above (js/ui.js's window.scheduleRecalc, its own
-  // 500ms).
+  // autosave one above (ui.js's window.scheduleRecalc, its own 500ms).
   window.scheduleRecalc?.();
 }
 
-window.addEventListener('beforeunload', (e) => {
-  if (hasUnsavedChanges) {
-    e.preventDefault();
-    e.returnValue = '';
-  }
-});
+// Guarded — same reason as window.__getDraftsCacheSync above.
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', (e) => {
+    if (hasUnsavedChanges) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+}
 
 // ── EXPORT / IMPORT ──────────────────────────────────────────────────
 
-function exportBid() {
+export function exportBid() {
   const payload = buildExportPayload(collectFormData());
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a    = document.createElement('a');
@@ -769,7 +803,7 @@ function exportBid() {
   a.click();
 }
 
-function handleImportFile(event) {
+export function handleImportFile(event) {
   const input = event.target;
   const file  = input.files && input.files[0];
   if (!file) return;
@@ -833,9 +867,20 @@ function handleImportFile(event) {
 //
 // Fix: everything in this section that touches React-owned DOM now runs
 // off AppShell's 'dirigo:shell-ready' event (src/AppShell.jsx), dispatched
-// once every LegacyPage's mount effect has already cloned its template in
-// (children's effects fire before a parent's, in the same commit — by the
-// time AppShell's own effect dispatches this, every template is in).
+// once every LegacyPage child's mount effect has already cloned its
+// template in (children's effects fire before a parent's, in the same
+// commit — by the time AppShell's own effect dispatches this, every
+// template is in).
+//
+// Migration Phase 5, Bucket 2: this file is a real ES module now, so
+// calc() (ui.js) is a guaranteed-resolved import rather than a bare
+// identifier that only worked once ui.js's <script> tag had also
+// finished loading — the load-order hazard the original version of this
+// comment warned about (populateForm() -> calc() throwing "calc is not
+// defined" if called too early) can no longer happen via that mechanism.
+// The 'dirigo:shell-ready' gating stays regardless: the real remaining
+// hazard is DOM elements that don't exist yet (React hasn't cloned the
+// <template>s in), not module load order.
 function _initApp() {
   // addAsm()/addWall()/addCeil() all removed from this unconditional
   // boot-time call — AssembliesPage/WallsPage/CeilingsPage now each own
@@ -856,19 +901,6 @@ function _initApp() {
   // other unconditional direct call site, for the same reason the
   // addAsm() one was).
 
-  // resumeActiveDraft() -> populateForm() calls calc(), which is defined
-  // in js/ui.js — loaded *after* this file. That was latent and harmless
-  // before Phase 1 (the only prior writer of dirigo_current_bid was
-  // loadSeedData(), whose populateForm() call happens after an async
-  // fetch(), well after every script has loaded). Once autosave made
-  // real data available on nearly every reload, calling this
-  // synchronously here would hit that ordering gap and throw "calc is
-  // not defined", silently truncating populateForm() before it reaches
-  // markup/assemblies/walls/ceilings. DO NOT "simplify" this back to a
-  // bare synchronous call at module-load time — that reintroduces the
-  // bug above; 'dirigo:shell-ready' already fires late enough (after
-  // every classic script, including ui.js, has loaded) that this concern
-  // is satisfied by construction, not by accident.
   // Both now async (Step 2B — draft storage is a network call). Captured
   // on window so createDraft()/switchToDraft() (any navigation entry
   // point into the workflow) can await it before doing anything else —
@@ -901,4 +933,7 @@ function _initApp() {
   }
 }
 
-window.addEventListener('dirigo:shell-ready', _initApp, { once: true });
+// Guarded — same reason as window.__getDraftsCacheSync above.
+if (typeof window !== 'undefined') {
+  window.addEventListener('dirigo:shell-ready', _initApp, { once: true });
+}

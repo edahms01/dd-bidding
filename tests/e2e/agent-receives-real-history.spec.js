@@ -11,7 +11,7 @@ test('getHistorySummary() resolves with real aggregate stats and Tab 8 renders s
   await loadSeed(page);
   await page.waitForTimeout(1500);
 
-  const summary = await page.evaluate(() => getHistorySummary('Callahan Construction Group', 'Retail'));
+  const summary = await page.evaluate(() => window.getHistorySummary('Callahan Construction Group', 'Retail'));
   expect(summary.totalBids).toBe(5);
   expect(typeof summary.winRate).toBe('number');
 

@@ -18,12 +18,14 @@ import { join } from 'node:path';
 // addition to vite.config.mjs only — index.html and the js/ directory
 // layout are untouched.
 //
-// LIFECYCLE NOTE — this plugin must be deleted in A2, not kept around.
-// Once js/*.js become real module imports, Vite bundles them for real;
-// a plugin still copying the raw source files would ship untransformed
-// duplicates alongside the bundled output — silent, and easy to miss in
-// a local check. Tracked as an explicit A2 checklist item.
-const COPY_DIRS = ['js', 'data'];
+// LIFECYCLE NOTE — A2 found this plugin was still needed (js/*.js stayed
+// classic <script> tags, module conversion deferred — see CLAUDE.md's A2
+// close-out). Migration Phase 5, Bucket 2, Step 1 finally converted the
+// last of js/*.js to real module imports, so 'js' is dropped from
+// COPY_DIRS below — the directory is empty and gone. 'data' stays: it
+// still holds data/seed.json, plain fetched JSON with no module form,
+// and (until Bucket 2 Step 2 converts it) data/seed.js.
+const COPY_DIRS = ['data'];
 
 function listFilesRecursive(dir) {
   const out = [];
