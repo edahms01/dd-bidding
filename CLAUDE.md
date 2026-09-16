@@ -1852,6 +1852,19 @@ to actually reach "no bridge left" rather than stop short of it).
   "Load Demo" via real `page.click()`, Direct cost total **$148,216** /
   final bid price panel matching the pinned golden values byte-
   identical, Rates totals bar **$1,565**, zero console/page errors.
+- **Follow-up check, requested at PR review, before merge:** a slow/
+  interrupted manual run during review looked like `loadSeedData()`'s
+  post-write side effects (the 500ms-delayed `window.__confirmAllTabsForDemo?.()`
+  + `runAgentIfNeeded()`) hadn't fired — Bid Strategy still empty, Tabs
+  1–6 not confirmed. Re-ran clean and uninterrupted (no alert/dialog
+  this time — confirmed via a `page.on('dialog', ...)` listener, zero
+  fired) via a scratch Playwright script against a fresh `netlify dev`:
+  Bid Strategy shows a real cached result (`.agent-cards-scroll` present,
+  `.empty-state` absent) within the wait window; all six input tabs
+  (`#tab-project`/`conditions`/`assemblies`/`walls`/`ceilings`/`rates`)
+  read class `tab done`. **Confirmed: fallout from the earlier
+  interrupted session, not a bug in this step** — both side effects fire
+  correctly on a clean run.
 - **Pending before merge:** read-only Netlify deploy-preview
   verification, mobile 390px check, per the standing standard.
 
