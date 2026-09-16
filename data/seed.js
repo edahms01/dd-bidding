@@ -1,5 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────
-// data/seed.js — Demo / test seed loader
+// data/seed.js — Demo / test seed loader (Migration Phase 5, Bucket 2,
+// Step 2: ported to a real ES module — the last classic <script src>
+// tag this migration's four-plus-one files needed to remove)
+//
 // Loads seed.json (Harborview Plaza retail project + 5 bid history
 // records) into the app for demos, testing, and screenshots.
 //
@@ -7,22 +10,35 @@
 // clearSeedData() — "Clear all data" dev-toolbar button.
 //
 // Whether the bid agent runs canned or live is decided entirely by
-// js/agent.js's DEMO_MODE (a location.hostname check) — there is no
-// load-time override any more (dual-demo mode removed 2026-09-08, once
-// DEMO_MODE became environment-driven in PR #50). On production "Load
-// Demo" calls the real Anthropic agent; everywhere else it's canned.
+// src/state/agent.js's DEMO_MODE (a location.hostname check) — there is
+// no load-time override any more (dual-demo mode removed 2026-09-08,
+// once DEMO_MODE became environment-driven in PR #50). On production
+// "Load Demo" calls the real Anthropic agent; everywhere else it's
+// canned.
+//
+// Kept in data/, not moved to src/state/ — it's demo/test scaffolding
+// tightly coupled to the seed.json file sitting right next to it, not
+// pure app logic; moving it would separate the two for no benefit.
 // ─────────────────────────────────────────────────────────────────────
 
+import { populateForm, _generateDraftId, _writeDraft, setActiveDraftId, _resetDraftsCache } from '../src/state/forms.js';
+import { buildDraftRecord } from '../src/state/drafts.js';
+import { runCalculation, runAgentIfNeeded, _resetAgentCache } from '../src/state/ui.js';
+
 // Public name — the "Load Demo" button's onclick, the e2e helpers, and
-// several specs call window.loadSeedData() directly.
+// several specs call window.loadSeedData() directly. Bridged onto
+// window below (this file's own last lines) since a real ES module
+// export isn't reachable from an inline onclick="..." attribute or a
+// bare page.evaluate() call the way a classic-script function
+// declaration used to be.
 async function loadSeedData() {
   // Migration Phase 2 Step 2B: boot's own draft-storage settling
-  // (_initApp() -> resumeActiveDraft(), forms.js) is now asynchronous —
-  // a real network round trip, not an instant synchronous localStorage
-  // read. A caller that invokes loadSeedData() immediately after
-  // page.goto('/') (some e2e specs do exactly this, with no intervening
-  // wait) can otherwise race boot's own resumeActiveDraft(): if it's
-  // still in flight when this function's own draft writes below
+  // (_initApp() -> resumeActiveDraft(), src/state/forms.js) is now
+  // asynchronous — a real network round trip, not an instant synchronous
+  // localStorage read. A caller that invokes loadSeedData() immediately
+  // after page.goto('/') (some e2e specs do exactly this, with no
+  // intervening wait) can otherwise race boot's own resumeActiveDraft():
+  // if it's still in flight when this function's own draft writes below
   // complete, boot finishing LATER can clobber the just-seeded active
   // draft with whatever it independently decided (its own blank-draft
   // fallback). Waiting for boot here closes that window regardless of
@@ -76,11 +92,11 @@ async function loadSeedData() {
     // _writeDraft()'s merge-spread below would add the new seed draft on
     // top instead of replacing — found via a real openDraftCount
     // mismatch in golden-export-parity.spec.js (server had 1 draft,
-    // cache showed 2). Migration Phase 5, Bucket 2, Step 1: forms.js is
-    // a real ES module now, so _draftsCache is a read-only live import
-    // everywhere except forms.js itself — this file (still classic) can
-    // no longer bare-reassign it directly, hence the bridge.
-    window.__resetDraftsCache();
+    // cache showed 2). Migration Phase 5, Bucket 2, Step 2: this file is
+    // a real ES module now too, importing _resetDraftsCache() directly —
+    // the window.__resetDraftsCache bridge Step 1 added just for this
+    // file's sake is gone (see legacyBridges.js).
+    _resetDraftsCache();
     await _writeDraft(id, buildDraftRecord(seed.project_state, id, now, now));
   } catch (e) {
     alert('Failed to load seed draft. Check your connection and try again.');
@@ -90,7 +106,7 @@ async function loadSeedData() {
   _resetAgentCache(); // loading a demo over an existing session shouldn't leak Tab 8's prior cached result
 
   runCalculation();
-  goto('output');
+  window.goto('output');
 
   // Pre-run agent — Tab 8 ready without clicking through Tab 7.
   setTimeout(() => {
@@ -147,3 +163,6 @@ async function clearSeedData() {
   localStorage.removeItem('dirigo_active_draft_id');
   location.reload();
 }
+
+// ── EXPORTS ──────────────────────────────────────────────────────────
+export { loadSeedData, clearSeedData };

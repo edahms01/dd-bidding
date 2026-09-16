@@ -1774,7 +1774,117 @@ itself; found here by re-checking that reasoning against `forms.js`
 - **Pending before merge:** read-only Netlify deploy-preview
   verification, mobile 390px check, per the standing standard.
 
-**Not started: Step 2** (convert `data/seed.js`, delete the temporary
-`legacyBridges.js` block, remove its `<script>` tag, decide how the
-dev-toolbar's inline `onclick="loadSeedData()"`/`onclick="clearSeedData()"`
-reach a module's exports — approved at plan review, not yet built).
+**Step 2 (convert `data/seed.js`) complete — Migration Phase 5, Bucket 2
+done, no classic `<script src>` tag left in `index.html` anywhere except
+the `type="module"` bundle.** Approved at plan review (the brief's own
+four-file list didn't name `data/seed.js`; Eric approved doing it anyway
+to actually reach "no bridge left" rather than stop short of it).
+
+- **`data/seed.js`** ported to a real ES module — `loadSeedData()`/
+  `clearSeedData()` (`_demoToolbarNote()` stays internal) now import
+  `populateForm`/`_generateDraftId`/`_writeDraft`/`setActiveDraftId`/
+  `_resetDraftsCache` from `forms.js`, `buildDraftRecord` from
+  `drafts.js`, `runCalculation`/`runAgentIfNeeded`/`_resetAgentCache`
+  from `ui.js` directly — no more bare-global reliance on the classic-
+  script shared scope. Kept in `data/`, not moved to `src/state/`: it's
+  demo/test scaffolding tightly coupled to `seed.json` sitting right next
+  to it, not app logic: moving it would separate the two for no benefit.
+- **Onclick-attribute decision, resolved by evidence, not the plan's
+  proposed rewrite:** the plan floated rewriting the dev-toolbar's
+  `onclick="loadSeedData()"`/`onclick="clearSeedData()"` to real
+  `addEventListener` calls, to avoid needing a bridge at all. Turned out
+  moot before writing any of it — several Playwright specs
+  (`tray-columns-responsive`, `home`, `agent-mobile`, `mobile-layout`)
+  already call `window.loadSeedData()` directly, bypassing the button
+  entirely (mobile viewports hide `#dev-toolbar`), so `window.loadSeedData`
+  has to exist regardless of what the button itself does. Kept the
+  `onclick="..."` attributes exactly as-is (least churn) and added two
+  small permanent bridges in `legacyBridges.js` instead —
+  `window.loadSeedData`/`window.clearSeedData` — which also happen to be
+  exactly what the inline attributes need (a bare global is the only
+  thing an `onclick="..."` string can resolve; it can never `import` a
+  module export).
+- **`legacyBridges.js`'s last temporary block deleted** (`populateForm`/
+  `_writeDraft`/`_generateDraftId`/`setActiveDraftId`/`runAgentIfNeeded`/
+  `_resetAgentCache`/`buildDraftRecord`/`__resetDraftsCache` — confirmed
+  zero remaining callers with the same `grep -rn "window\.<name>\b"`
+  discipline as every prior deletion here, not assumed dead because the
+  plan said so) and replaced by the two `loadSeedData`/`clearSeedData`
+  entries above. File header rewritten: there is no more "temporary, for
+  a still-classic sibling" category in this file at all — everything
+  left is a permanent React/onclick-attribute/Playwright-test-harness
+  bridge.
+- **`index.html`**'s `<script src="data/seed.js">` tag removed —
+  `main.jsx` (via `legacyBridges.js`) imports it now. Every `<script>` in
+  this file is either the small inline devbar-toggle helper or the
+  `type="module"` bundle; there is nothing else left to remove.
+- **Real bug found before running anything, same "check before trusting
+  the plan" discipline as Step 1's two findings:** `vite.config.mjs`'s
+  `copy-classic-script-sources` plugin (`COPY_DIRS = ['data']` after Step
+  1) copies the *whole* `data/` directory wholesale — including the now-
+  real, now-bundled `data/seed.js`, duplicating it raw into
+  `dist/data/seed.js` alongside the real bundled copy inside
+  `dist/assets/index-*.js`. The exact "silent duplicate build artifact"
+  failure mode the plugin's own header comment has warned about since A2
+  ("a plugin still copying the raw source files would ship untransformed
+  duplicates alongside the bundled output") — caught by inspecting a
+  real `dist/` build directly after this step's `vite build`, not
+  assumed clean because the build exited 0. Fixed by dropping the whole
+  directory-copy abstraction (`COPY_DIRS`, `listFilesRecursive`) for a
+  targeted single-file copy (`COPY_FILES = ['data/seed.json']`) — the
+  one genuine non-bundleable runtime asset left, and the only thing this
+  plugin has any reason to touch any more. Renamed
+  `copy-classic-script-sources` → `copy-runtime-data-files`, since there
+  is no classic-script source left for the old name to describe.
+- **Verified:** 327/327 Vitest (unchanged — no test touched this step);
+  clean `vite build`, confirmed by inspecting `dist/` directly:
+  `dist/data/` holds exactly `seed.json`, no `seed.js` duplicate;
+  `dist/index.html` has exactly two `<script>` tags (the inline devbar
+  helper, the module bundle). Full Playwright suite **200 passed / 0
+  failed / 4 skipped** — identical to the pre-change baseline, zero spec
+  changes needed this step (the specs that call `window.loadSeedData()`
+  directly already worked through the bridge before this step existed).
+  Real local `netlify dev` hand-check, real numbers, this time clicking
+  the actual `#dev-toolbar` buttons themselves (not just calling the
+  bridge functions from a script — the specific new risk this step
+  introduced, since the buttons' `onclick="..."` now resolves through a
+  bridge rather than a classic-script global): "Clear all data" then
+  "Load Demo" via real `page.click()`, Direct cost total **$148,216** /
+  final bid price panel matching the pinned golden values byte-
+  identical, Rates totals bar **$1,565**, zero console/page errors.
+- **Follow-up check, requested at PR review, before merge:** a slow/
+  interrupted manual run during review looked like `loadSeedData()`'s
+  post-write side effects (the 500ms-delayed `window.__confirmAllTabsForDemo?.()`
+  + `runAgentIfNeeded()`) hadn't fired — Bid Strategy still empty, Tabs
+  1–6 not confirmed. Re-ran clean and uninterrupted (no alert/dialog
+  this time — confirmed via a `page.on('dialog', ...)` listener, zero
+  fired) via a scratch Playwright script against a fresh `netlify dev`:
+  Bid Strategy shows a real cached result (`.agent-cards-scroll` present,
+  `.empty-state` absent) within the wait window; all six input tabs
+  (`#tab-project`/`conditions`/`assemblies`/`walls`/`ceilings`/`rates`)
+  read class `tab done`. **Confirmed: fallout from the earlier
+  interrupted session, not a bug in this step** — both side effects fire
+  correctly on a clean run.
+- **Pending before merge:** read-only Netlify deploy-preview
+  verification, mobile 390px check, per the standing standard.
+
+**Migration Phase 5, Bucket 2 close-out.** Both steps shipped. Every
+`js/*.js` classic script and `data/seed.js` are real ES modules under
+`src/state/` (or, for `seed.js`, `data/` — a deliberate exception, not an
+oversight, per its own note above). `index.html` carries no classic
+`<script src>` tag anywhere. `legacyBridges.js` holds only permanent
+bridges now (React, `onclick` attributes, Playwright test harness) — the
+"temporary, for a still-classic sibling" category that gave the file its
+name and its original purpose no longer has any members, though the file
+itself stays (renaming it was never in scope, and it's still the right
+home for whatever the next permanent cross-boundary need turns out to
+be). Two real bugs were found and fixed via direct verification, not
+assumed safe, across the two steps: unguarded top-level `window.*` in
+`forms.js` once Vitest could reach it transitively; the `dist/`
+raw-duplicate finding above. Migration Phase 5 in full (Buckets 1 + 2)
+retires the last of the pre-React vanilla-JS `<script>` architecture this
+file's own Architecture section (`js/autosave.js → js/drafts.js → ...`)
+describes — that section is now historical record of a state the
+codebase no longer has, on the same "left as accurate-at-the-time, not
+rewritten" precedent as several other superseded sections in this file;
+not corrected here, flagged for whoever next has reason to touch it.
