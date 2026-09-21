@@ -17,6 +17,14 @@ test('opening a second draft shows a pipeline count of 1 on the Market Read tab'
   await page.click('#tab-market');
   await expect(page.locator('#pipeline-count-hint')).toHaveText('No other bids currently open');
 
+  // The first draft must be persisted server-side (a real edit) before it
+  // can count as an "other" open draft — see src/state/forms.js's
+  // _createAndActivateBlankDraft(), which no longer eagerly writes a
+  // blank draft to the server.
+  await page.click('#tab-project');
+  await page.fill('#proj-gc', 'QA First Draft GC');
+  await page.waitForTimeout(900); // past debounce
+
   await page.click('#new-bid-btn'); // createDraft() — now two drafts, this one active
   await page.click('#tab-market');
   await expect(page.locator('#pipeline-count-hint')).toHaveText('1 other bid currently open');

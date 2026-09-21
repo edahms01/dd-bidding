@@ -46,13 +46,21 @@ test('deleting the only active draft replaces it immediately — never leaves a 
   // Migration Phase 2 Step 2B: drafts are server-side — the active id
   // itself stays local-only (per the migration plan), but the draft map
   // it points into is read via the real endpoint now.
+  //
+  // The replacement draft is NOT written server-side yet — the eager
+  // write in _createAndActivateBlankDraft() was removed (see
+  // src/state/forms.js): a blank draft only persists once a real edit
+  // happens, same as every other blank-draft-creation path (boot, New
+  // Bid, post-finalize). The "never leaves a draftless state" invariant
+  // this test is named for is about activeDraftId always being set, not
+  // about the record already existing on the server.
   const { activeId, hasRecord } = await page.evaluate(async () => {
     const activeId = localStorage.getItem('dirigo_active_draft_id');
     const drafts   = await window.getAllDrafts();
     return { activeId, hasRecord: !!(activeId && drafts[activeId]) };
   });
   expect(activeId).toBeTruthy();
-  expect(hasRecord).toBe(true);
+  expect(hasRecord).toBe(false);
 
   // The replacement is surfaced, not silent — see the finalize-path bug this closes
   await expect(page.locator('#form-toast')).toContainText('Started a new bid');
