@@ -574,9 +574,7 @@ function _flushAndSwitch() {
 // createDraft() path is harmless. Does not navigate.
 async function _createAndActivateBlankDraft({ announce } = {}) {
   resetFormFields();
-  const id  = _generateDraftId();
-  const now = new Date().toISOString();
-  await _writeDraft(id, buildDraftRecord(collectFormData(), id, now, now));
+  const id = _generateDraftId();
   setActiveDraftId(id);
   hasUnsavedChanges = false;
   _setIndicator('idle');
