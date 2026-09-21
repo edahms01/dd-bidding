@@ -96,12 +96,24 @@ function sortedOpenDrafts(drafts) {
   );
 }
 
+// A brand-new blank draft (src/state/forms.js's _createAndActivateBlankDraft())
+// is deliberately not written server-side until the first real edit, so it
+// won't be in the fetched drafts list yet. The nav "Current bid" item and
+// the header's Open Bid menu both need to represent it anyway — otherwise
+// there's no way back into the workflow for an in-progress-but-untouched
+// draft. This synthesizes a minimal placeholder row when the active draft
+// is missing from the real list; never used to decide whether to persist
+// or switch drafts, only to keep these two nav surfaces populated.
+function withActiveDraftFallback(drafts, activeDraftId) {
+  if (!activeDraftId || drafts.some((d) => d.id === activeDraftId)) return drafts;
+  return [...drafts, { id: activeDraftId, project: {}, createdAt: null, lastModifiedAt: null }];
+}
+
 // Header "Open Bid" combobox — lists the open drafts and switches to
 // the chosen one.
 function OpenBidMenu() {
   const [open, setOpen] = useState(false);
   const { drafts: rawDrafts, status: draftsStatus } = useDraftsList(open);
-  const drafts = sortedOpenDrafts(rawDrafts);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -115,6 +127,7 @@ function OpenBidMenu() {
 
   let activeId = null;
   try { activeId = localStorage.getItem('dirigo_active_draft_id'); } catch (e) { /* private mode */ }
+  const drafts = sortedOpenDrafts(withActiveDraftFallback(rawDrafts, activeId));
 
   return (
     <div className="open-bid-menu" ref={ref}>
@@ -166,9 +179,9 @@ export default function AppShell() {
   // resolves, same as it would read on a fresh install today.
   const navLabelsVisible = !navCollapsed || navDrawerOpen;
   const { drafts: openDraftsRaw } = useDraftsList();
-  const openDrafts = sortedOpenDrafts(openDraftsRaw);
   let activeDraftId = null;
   try { activeDraftId = localStorage.getItem('dirigo_active_draft_id'); } catch (e) { /* private mode */ }
+  const openDrafts = sortedOpenDrafts(withActiveDraftFallback(openDraftsRaw, activeDraftId));
 
   // Phase C 2.2 — URL routing. stateRef gives the once-registered
   // hashchange listener the *current* section/tab without re-subscribing
