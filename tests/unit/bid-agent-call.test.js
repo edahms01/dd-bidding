@@ -140,6 +140,13 @@ describe('callAnthropicWithRetry', () => {
   it('exports the documented constants', () => {
     expect(MAX_ATTEMPTS).toBe(3);
     expect(BACKOFF_MS).toEqual([2000, 5000]);
-    expect(PER_ATTEMPT_TIMEOUT_MS).toBe(60000);
+    expect(PER_ATTEMPT_TIMEOUT_MS).toBe(180000);
+  });
+
+  // Regression: a measured production-equivalent call (seed data, full
+  // takeoff + factors) took 74s / 3,239 output tokens. A 60s cap aborted
+  // every attempt, so all 3 retries failed and every live run errored.
+  it('per-attempt timeout leaves headroom over the measured 74s response', () => {
+    expect(PER_ATTEMPT_TIMEOUT_MS).toBeGreaterThanOrEqual(74000 * 2);
   });
 });

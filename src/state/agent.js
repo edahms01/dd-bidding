@@ -191,6 +191,11 @@ export function _demoResponse(state, summary, markupResult, bidHistory) {
   };
 }
 
+// How long the client polls for a result. Must outlast one full server-side
+// attempt (PER_ATTEMPT_TIMEOUT_MS = 180s in bid-agent-call.js); a real call
+// measured 74s on 2026-11-01.
+export const AGENT_POLL_MAX_WAIT_MS = 300000;
+
 export async function runBidAgent(state, summary, markupResult, bidHistory) {
   if (DEMO_MODE) {
     await new Promise(r => setTimeout(r, 900));
@@ -223,7 +228,7 @@ export async function runBidAgent(state, summary, markupResult, bidHistory) {
     }
 
     const POLL_MS     = 2000;
-    const MAX_WAIT_MS = 120000; // Anthropic ~45s + Blobs lag + margin
+    const MAX_WAIT_MS = AGENT_POLL_MAX_WAIT_MS;
     const deadline    = Date.now() + MAX_WAIT_MS;
     while (Date.now() < deadline) {
       await new Promise(r => setTimeout(r, POLL_MS));
