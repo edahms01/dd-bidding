@@ -19,7 +19,12 @@
 
 const MAX_ATTEMPTS = 3;
 const BACKOFF_MS = [2000, 5000];       // wait before attempt 2, before attempt 3
-const PER_ATTEMPT_TIMEOUT_MS = 60000;  // generous above the ~29-44s observed real latency (CLAUDE.md)
+// 180s: a production-equivalent call (seed data, full takeoff + per-option
+// factors) measured 74s / ~3.2k output tokens on 2026-11-01. The earlier
+// 60s cap sat below that, so every attempt aborted and every live run
+// failed. Worst case stays inside the background function's 15-min budget
+// (3 x 180s + backoff = ~9.1 min).
+const PER_ATTEMPT_TIMEOUT_MS = 180000;
 
 function isRetryableStatus(status) {
   return status === 429 || (status >= 500 && status <= 599);
